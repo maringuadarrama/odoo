@@ -5,6 +5,7 @@ from markupsafe import Markup
 
 from odoo import api, fields, models, Command, _
 
+
 _logger = logging.getLogger(__name__)
 
 TOLERANCE = 0.02  # tolerance applied to the total when searching for a matching purchase order
@@ -41,22 +42,116 @@ class AccountMove(models.Model):
     )
 
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        # OVERRIDE
+        moves = super(AccountMove, self).create(vals_list)
+        for move in moves:
+            if move.reversed_entry_id:
+                continue
+
+            purchases = move.line_ids.purchase_line_id.order_id
+            if not purchases:
+                continue
+
+            refs = [purchase._get_html_link() for purchase in purchases]
+            message = _('This vendor bill has been created from: ') + Markup(',').join(refs)
+            move.message_post(body=message)
+        return moves
+
+    def write(self, vals):
+        # OVERRIDE
+        old_purchases = [move.mapped('line_ids.purchase_line_id.order_id') for move in self]
+        res = super(AccountMove, self).write(vals)
+        for i, move in enumerate(self):
+            new_purchases = move.mapped('line_ids.purchase_line_id.order_id')
+            if not new_purchases:
+                continue
+
+            diff_purchases = new_purchases - old_purchases[i]
+            if diff_purchases:
+                refs = [purchase._get_html_link() for purchase in diff_purchases]
+                message = _('This vendor bill has been modified from: ') + Markup(',').join(refs)
+                move.message_post(body=message)
+        return res
+
     def _get_invoice_reference(self):
         self.ensure_one()
         vendor_refs = [ref for ref in set(self.invoice_line_ids.mapped('purchase_line_id.order_id.partner_ref')) if ref]
         if self.ref:
             return [ref for ref in self.ref.split(', ') if ref and ref not in vendor_refs] + vendor_refs
+
         return vendor_refs
+
+    @api.depends('line_ids.purchase_line_id')
+    def _compute_is_purchase_matched(self):
+        for move in self:
+            if any(il.display_type == 'product' and not bool(il.purchase_line_id) for il in move.invoice_line_ids):
+                move.is_purchase_matched = False
+                continue
+            move.is_purchase_matched = True
+
+    @api.depends('line_ids.purchase_line_id')
+    def _compute_origin_po_count(self):
+        for move in self:
+            move.purchase_order_count = len(move.line_ids.purchase_line_id.order_id)
+
+    @api.depends('purchase_order_count')
+    def _compute_purchase_order_name(self):
+        for move in self:
+            if move.purchase_order_count == 1:
+                move.purchase_order_name = move.invoice_line_ids.purchase_order_id.display_name
+            else:
+                move.purchase_order_name = False
+
+    @api.onchange('company_id', 'partner_id')
+    def _onchange_partner_id(self):
+        res = super(AccountMove, self)._onchange_partner_id()
+        currency_id = (
+            self.partner_id.property_purchase_currency_id
+            or self.env['res.currency'].browse(self.env.context.get('default_currency_id'))
+            or self.currency_id
+        )
+        if (
+            self.partner_id
+            and self.move_type in ['in_invoice', 'in_refund']
+            and self.currency_id != currency_id
+        ):
+            if not self.env.context.get('default_journal_id'):
+                journal_domain = [
+                    *self.env['account.journal']._check_company_domain(self.company_id),
+                    ('type', '=', 'purchase'),
+                    ('currency_id', '=', currency_id.id),
+                ]
+                default_journal_id = self.env['account.journal'].search(
+                    journal_domain,
+                    limit=1
+                )
+                if default_journal_id:
+                    self.journal_id = default_journal_id
+            self.currency_id = currency_id
+        return res
+
+    def _add_purchase_order_lines(self, purchase_order_lines):
+        '''Creates new invoice lines from purchase order lines'''
+        self.ensure_one()
+        new_line_ids = self.env['account.move.line']
+        for po_line in purchase_order_lines:
+            new_line_values = po_line._prepare_account_move_line(self)
+            new_line_ids += self.env['account.move.line'].new(new_line_values)
+        self.invoice_line_ids += new_line_ids
 
     @api.onchange('purchase_vendor_bill_id', 'purchase_id')
     def _onchange_purchase_auto_complete(self):
-        ''' Load from either an old purchase order, either an old vendor bill.
+        '''
+        Load from either an old purchase order, either an old vendor bill.
 
         When setting a 'purchase.bill.union' in 'purchase_vendor_bill_id':
-        * If it's a vendor bill, 'invoice_vendor_bill_id' is set and the loading is done by '_onchange_invoice_vendor_bill'.
+        * If it's a vendor bill, 'invoice_vendor_bill_id' is set and the loading is done
+          by '_onchange_invoice_vendor_bill'.
         * If it's a purchase order, 'purchase_id' is set and this method will load lines.
 
-        /!\ All this not-stored fields must be empty at the end of this function.
+        *All this not-stored fields must be empty at the end of this function.
         '''
         if self.purchase_vendor_bill_id.vendor_bill_id:
             self.invoice_vendor_bill_id = self.purchase_vendor_bill_id.vendor_bill_id
@@ -64,13 +159,15 @@ class AccountMove(models.Model):
         elif self.purchase_vendor_bill_id.purchase_order_id:
             self.purchase_id = self.purchase_vendor_bill_id.purchase_order_id
         self.purchase_vendor_bill_id = False
-
         if not self.purchase_id:
             return
 
         # Copy data from PO
         invoice_vals = self.purchase_id.with_company(self.purchase_id.company_id)._prepare_invoice()
-        has_invoice_lines = bool(self.invoice_line_ids.filtered(lambda x: x.display_type not in ('line_note', 'line_section')))
+        has_invoice_lines = bool(self.invoice_line_ids.filtered(
+                lambda x: x.display_type not in ('line_note', 'line_section')
+            )
+        )
         new_currency_id = self.currency_id if has_invoice_lines else invoice_vals.get('currency_id')
         del invoice_vals['ref'], invoice_vals['payment_reference']
         del invoice_vals['company_id']  # avoid recomputing the currency
@@ -104,55 +201,6 @@ class AccountMove(models.Model):
 
         self.purchase_id = False
 
-    @api.onchange('company_id', 'partner_id')
-    def _onchange_partner_id(self):
-        res = super(AccountMove, self)._onchange_partner_id()
-        currency_id = (
-            self.partner_id.property_purchase_currency_id
-            or self.env['res.currency'].browse(self.env.context.get('default_currency_id'))
-            or self.currency_id
-        )
-        if (
-            self.partner_id
-            and self.move_type in ['in_invoice', 'in_refund']
-            and self.currency_id != currency_id
-        ):
-            if not self.env.context.get('default_journal_id'):
-                journal_domain = [
-                    *self.env['account.journal']._check_company_domain(self.company_id),
-                    ('type', '=', 'purchase'),
-                    ('currency_id', '=', currency_id.id),
-                ]
-                default_journal_id = self.env['account.journal'].search(
-                    journal_domain,
-                    limit=1
-                )
-                if default_journal_id:
-                    self.journal_id = default_journal_id
-            self.currency_id = currency_id
-        return res
-
-    @api.depends('line_ids.purchase_line_id')
-    def _compute_is_purchase_matched(self):
-        for move in self:
-            if any(il.display_type == 'product' and not bool(il.purchase_line_id) for il in move.invoice_line_ids):
-                move.is_purchase_matched = False
-                continue
-            move.is_purchase_matched = True
-
-    @api.depends('line_ids.purchase_line_id')
-    def _compute_origin_po_count(self):
-        for move in self:
-            move.purchase_order_count = len(move.line_ids.purchase_line_id.order_id)
-
-    @api.depends('purchase_order_count')
-    def _compute_purchase_order_name(self):
-        for move in self:
-            if move.purchase_order_count == 1:
-                move.purchase_order_name = move.invoice_line_ids.purchase_order_id.display_name
-            else:
-                move.purchase_order_name = False
-
     def action_purchase_matching(self):
         self.ensure_one()
         return {
@@ -180,55 +228,15 @@ class AccountMove(models.Model):
             result = {'type': 'ir.actions.act_window_close'}
         return result
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        # OVERRIDE
-        moves = super(AccountMove, self).create(vals_list)
-        for move in moves:
-            if move.reversed_entry_id:
-                continue
-
-            purchases = move.line_ids.purchase_line_id.order_id
-            if not purchases:
-                continue
-
-            refs = [purchase._get_html_link() for purchase in purchases]
-            message = _('This vendor bill has been created from: ') + Markup(',').join(refs)
-            move.message_post(body=message)
-        return moves
-
-    def write(self, vals):
-        # OVERRIDE
-        old_purchases = [move.mapped('line_ids.purchase_line_id.order_id') for move in self]
-        res = super(AccountMove, self).write(vals)
-        for i, move in enumerate(self):
-            new_purchases = move.mapped('line_ids.purchase_line_id.order_id')
-            if not new_purchases:
-                continue
-            diff_purchases = new_purchases - old_purchases[i]
-            if diff_purchases:
-                refs = [purchase._get_html_link() for purchase in diff_purchases]
-                message = _('This vendor bill has been modified from: ') + Markup(',').join(refs)
-                move.message_post(body=message)
-        return res
-
-    def _add_purchase_order_lines(self, purchase_order_lines):
-        '''Creates new invoice lines from purchase order lines'''
-        self.ensure_one()
-        new_line_ids = self.env['account.move.line']
-        for po_line in purchase_order_lines:
-            new_line_values = po_line._prepare_account_move_line(self)
-            new_line_ids += self.env['account.move.line'].new(new_line_values)
-        self.invoice_line_ids += new_line_ids
-
     def _find_matching_subset_po_lines(self, po_lines_with_amount, goal_total, timeout):
         '''
         Finds the purchase order lines adding up to the goal amount.
 
-        The problem of finding the subset of `po_lines_with_amount` which sums up to `goal_total` reduces to
-        the 0-1 Knapsack problem. The dynamic programming approach to solve this problem is most of the time slower
-        than this because identical sub-problems don't arise often enough. It returns the list of purchase order lines
-        which sum up to `goal_total` or an empty list if multiple or no solutions were found.
+        The problem of finding the subset of `po_lines_with_amount` which sums up to `goal_total` 
+        reduces to the 0-1 Knapsack problem. The dynamic programming approach to solve this
+        problem is most of the time slower than this because identical sub-problems don't arise
+        often enough. It returns the list of purchase order lines which sum up to `goal_total` or
+        an empty list if multiple or no solutions were found.
 
         :param po_lines_with_amount: a dict (str: float|recordset) containing:
             * line: an `purchase.order.line`
@@ -276,8 +284,8 @@ class AccountMove(models.Model):
         '''
         Finds purchase order lines that match some of the invoice lines.
 
-        We try to find a purchase order line for every invoice line matching on the unit price and having at least
-        the same quantity to invoice.
+        We try to find a purchase order line for every invoice line matching on the unit price and
+        having at least the same quantity to invoice.
 
         :param po_lines: list of purchase order lines that can be matched
         :param inv_lines: list of invoice lines to be matched

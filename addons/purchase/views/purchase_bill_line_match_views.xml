@@ -4,11 +4,14 @@
         <field name="name">purchase.bill.line.match.list</field>
         <field name="model">purchase.bill.line.match</field>
         <field name="arch" type="xml">
-            <list string="Purchase Bill Lines"
-                  decoration-info="pol_id != False"
-                  decoration-muted="state == 'draft'"
-                  editable="bottom" edit="1"
-                  type="object">
+            <list 
+                string="Purchase Bill Lines"
+                decoration-info="pol_id != False"
+                decoration-muted="state == 'draft'"
+                editable="bottom"
+                edit="1"
+                type="object"
+            >
                 <header>
                     <button name="action_match_lines" type="object" string="Match" groups="account.group_account_invoice" class="btn btn-primary"/>
                     <button name="action_add_to_po" type="object" string="Add to PO" groups="purchase.group_purchase_user"/>

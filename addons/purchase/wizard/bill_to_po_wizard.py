@@ -1,4 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
 from odoo import fields, models, Command, _
 from odoo.exceptions import UserError
 
@@ -7,14 +6,19 @@ class BillToPO(models.TransientModel):
     _name = 'bill.to.po.wizard'
     _description = 'Bill to Purchase Order'
 
+
     purchase_order_id = fields.Many2one(comodel_name='purchase.order')
     partner_id = fields.Many2one(comodel_name='res.partner')
+
 
     def action_add_to_po(self):
         aml_ids = [abs(record_id) for record_id in self.env.context.get('active_ids') if record_id < 0]
         lines_to_add = self.env['account.move.line'].browse(aml_ids).filtered(lambda l: l.product_id)
         if not lines_to_add:
-            raise UserError(_("There are no products to add to the Purchase Order. Are these Down Payments?"))
+            raise UserError(_(
+                'There are no products to add to the Purchase Order. Are these Down Payments?'
+            ))
+
         line_vals = lines_to_add._prepare_line_values_for_purchase()
         if self.purchase_order_id:
             new_po_lines = self.env['purchase.order.line'].create([{
@@ -50,7 +54,7 @@ class BillToPO(models.TransientModel):
             })
         line_vals = [
             {
-                'name': _("Down Payment (ref: %(ref)s)", ref=aml.display_name),
+                'name': _('Down Payment (ref: %(ref)s)', ref=aml.display_name),
                 'product_qty': 0.0,
                 'product_uom': aml.product_uom_id.id,
                 'is_downpayment': True,

@@ -1,11 +1,6 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-#
 # Please note that these reports are not multi-currency !!!
-#
-
-from odoo import fields, models, api
+from odoo import fields, models
 from odoo.tools.query import Query
 from odoo.tools.sql import SQL
 
@@ -15,6 +10,7 @@ class PurchaseReport(models.Model):
     _description = "Purchase Report"
     _auto = False
     _order = 'date_order desc, price_total desc'
+
 
     date_order = fields.Datetime('Order Date', readonly=True)
     state = fields.Selection([
