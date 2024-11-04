@@ -1,0 +1,37 @@
+from odoo import fields, models
+
+
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
+
+
+    is_downpayment = fields.Boolean()
+    purchase_line_id = fields.Many2one(
+        'purchase.order.line',
+        'Purchase Order Line',
+        ondelete='set null',
+        copy=False,
+        index='btree_not_null',
+    )
+    purchase_order_id = fields.Many2one(
+        related='purchase_line_id.order_id',
+        string='Purchase Order',
+        readonly=True,
+    )
+
+    def _copy_data_extend_business_fields(self, values):
+        # OVERRIDE to copy the 'purchase_line_id' field as well.
+        super(AccountMoveLine, self)._copy_data_extend_business_fields(values)
+        values['purchase_line_id'] = self.purchase_line_id.id
+
+    def _prepare_line_values_for_purchase(self):
+        return [
+            {
+                'product_id': line.product_id.id,
+                'product_qty': line.quantity,
+                'product_uom': line.product_uom_id.id,
+                'price_unit': line.price_unit,
+                'discount': line.discount,
+            }
+            for line in self
+        ]
