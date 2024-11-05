@@ -15,7 +15,7 @@ class AccountMove(models.Model):
         'crm.team', string='Sales Team', default=_get_invoice_default_sale_team,
         compute='_compute_team_id', store=True, readonly=False,
         ondelete='set null', tracking=True,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain="[('company_id', 'in', (False, company_id))]",
     )
 
     # UTMs - enforcing the fact that we want to 'set null' when relation is unlinked

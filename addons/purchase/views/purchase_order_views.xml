@@ -584,6 +584,15 @@
         </field>
     </record>
 
+    <record id="action_rfq_form" model="ir.actions.act_window">
+        <field name="name">Requests for Quotation</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="purchase.purchase_order_form"/>
+        <field name="search_view_id" ref="view_purchase_order_filter"/>
+        <field name="target">main</field>
+    </record>
+
     <record id="purchase_form_action" model="ir.actions.act_window">
         <field name="name">Purchase Orders</field>
         <field name="res_model">purchase.order</field>
@@ -604,14 +613,26 @@
             </p>
         </field>
     </record>
-
-    <record id="action_rfq_form" model="ir.actions.act_window">
-        <field name="name">Requests for Quotation</field>
+    
+    <record id="act_res_partner_2_purchase_order" model="ir.actions.act_window">
+        <field name="name">RFQs and Purchases</field>
         <field name="res_model">purchase.order</field>
-        <field name="view_mode">form</field>
-        <field name="view_id" ref="purchase.purchase_order_form"/>
-        <field name="search_view_id" ref="view_purchase_order_filter"/>
-        <field name="target">main</field>
+        <field name="view_mode">list,kanban,form,graph</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('purchase.purchase_order_tree')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('purchase.purchase_order_view_kanban_without_dashboard')}),
+        ]"/>
+        <field name="context">{'search_default_partner_id': active_id, 'default_partner_id': active_id}</field>
+        <field name="groups_id" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                This vendor has no purchase order. Create a new RfQ
+            </p><p>
+                The request for quotation is the first step of the purchases flow. Once
+                converted into a purchase order, you will be able to control the receipt
+                of the products and the vendor bill.
+            </p>
+        </field>
     </record>
 
     <record id="action_accrued_expense_entry" model="ir.actions.act_window">

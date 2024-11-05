@@ -16,7 +16,7 @@ class MandatoryDay(models.Model):
     color = fields.Integer(default=lambda dummy: randint(1, 11))
     resource_calendar_id = fields.Many2one(
         'resource.calendar', 'Working Hours',
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+        domain="[('company_id', 'in', (False, company_id))]")
     department_ids = fields.Many2many('hr.department', string="Departments")
 
     _sql_constraints = [

@@ -144,12 +144,12 @@ class PurchaseOrder(models.Model):
     fiscal_position_id = fields.Many2one(
         'account.fiscal.position',
         'Fiscal Position',
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain=[('company_id', 'in', (False, company_id))],
     )
     payment_term_id = fields.Many2one(
         'account.payment.term',
         'Payment Terms',
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain=[('company_id', 'in', (False, company_id))],
     )
     incoterm_id = fields.Many2one(
         'account.incoterms',

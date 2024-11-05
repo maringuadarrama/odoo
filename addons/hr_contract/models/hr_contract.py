@@ -24,12 +24,12 @@ class Contract(models.Model):
     name = fields.Char('Contract Reference', required=True)
     active = fields.Boolean(default=True)
     structure_type_id = fields.Many2one('hr.payroll.structure.type', string="Salary Structure Type", compute="_compute_structure_type_id", readonly=False, store=True, tracking=True)
-    employee_id = fields.Many2one('hr.employee', string='Employee', tracking=True, domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", index=True)
+    employee_id = fields.Many2one('hr.employee', string='Employee', tracking=True, domain="[('company_id', 'in', (False, company_id))]", index=True)
     active_employee = fields.Boolean(related="employee_id.active", string="Active Employee")
     department_id = fields.Many2one('hr.department', compute='_compute_employee_contract', store=True, readonly=False,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", string="Department")
+        domain="[('company_id', 'in', (False, company_id))]", string="Department")
     job_id = fields.Many2one('hr.job', compute='_compute_employee_contract', store=True, readonly=False,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", string='Job Position')
+        domain="[('company_id', 'in', (False, company_id))]", string='Job Position')
     date_start = fields.Date('Start Date', required=True, default=fields.Date.today, tracking=True, index=True)
     date_end = fields.Date('End Date', tracking=True,
         help="End date of the contract (if it's a fixed-term contract).")
@@ -38,7 +38,7 @@ class Contract(models.Model):
     resource_calendar_id = fields.Many2one(
         'resource.calendar', 'Working Schedule', compute='_compute_employee_contract', store=True, readonly=False,
         default=lambda self: self.env.company.resource_calendar_id.id, copy=False, index=True, tracking=True,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+        domain="[('company_id', 'in', (False, company_id))]")
     wage = fields.Monetary('Wage', required=True, tracking=True, help="Employee's monthly gross wage.", aggregator="avg")
     contract_wage = fields.Monetary('Contract Wage', compute='_compute_contract_wage')
     notes = fields.Html('Notes')

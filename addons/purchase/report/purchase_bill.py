@@ -6,7 +6,7 @@ class PurchaseBillUnion(models.Model):
     _name = 'purchase.bill.union'
     _auto = False
     _description = 'Purchases & Bills Union'
-    _order = "date desc, name desc"
+    _order = 'date desc, name desc'
     _rec_names_search = ['name', 'reference']
 
 
@@ -23,7 +23,8 @@ class PurchaseBillUnion(models.Model):
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, 'purchase_bill_union')
-        self.env.cr.execute("""
+        self.env.cr.execute(
+            '''
             CREATE OR REPLACE VIEW purchase_bill_union AS (
                 SELECT
                     id, name, ref as reference, partner_id, date, amount_untaxed as amount, currency_id, company_id,
@@ -39,7 +40,9 @@ class PurchaseBillUnion(models.Model):
                 WHERE
                     state in ('purchase', 'done') AND
                     invoice_status in ('to invoice', 'no')
-            )""")
+            )
+            '''
+        )
 
     @api.depends('currency_id', 'reference', 'amount', 'purchase_order_id')
     @api.depends_context('show_total_amount')

@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import base64
 from collections import OrderedDict
 from datetime import datetime
@@ -15,6 +12,7 @@ from odoo.addons.portal.controllers.portal import pager as portal_pager
 
 
 class CustomerPortal(portal.CustomerPortal):
+
 
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
@@ -109,24 +107,24 @@ class CustomerPortal(portal.CustomerPortal):
             history = 'my_purchases_history'
         return self._get_page_view_values(order, access_token, values, history, False, **kwargs)
 
-    @http.route(['/my/rfq', '/my/rfq/page/<int:page>'], type='http', auth="user", website=True)
+    @http.route(['/my/rfq', '/my/rfq/page/<int:page>'], type='http', auth='user', website=True)
     def portal_my_requests_for_quotation(self, page=1, date_begin=None, date_end=None, sortby=None, filterby=None, **kw):
         return self._render_portal(
-            "purchase.portal_my_purchase_rfqs",
+            'purchase.portal_my_purchase_rfqs',
             page, date_begin, date_end, sortby, filterby,
             [('state', '=', 'sent')],
             {},
             None,
-            "/my/rfq",
+            '/my/rfq',
             'my_rfqs_history',
             'rfq',
             'rfqs'
         )
 
-    @http.route(['/my/purchase', '/my/purchase/page/<int:page>'], type='http', auth="user", website=True)
+    @http.route(['/my/purchase', '/my/purchase/page/<int:page>'], type='http', auth='user', website=True)
     def portal_my_purchase_orders(self, page=1, date_begin=None, date_end=None, sortby=None, filterby=None, **kw):
         return self._render_portal(
-            "purchase.portal_my_purchase_orders",
+            'purchase.portal_my_purchase_orders',
             page, date_begin, date_end, sortby, filterby,
             [],
             {
@@ -136,13 +134,13 @@ class CustomerPortal(portal.CustomerPortal):
                 'done': {'label': _('Locked'), 'domain': [('state', '=', 'done')]},
             },
             'all',
-            "/my/purchase",
+            '/my/purchase',
             'my_purchases_history',
             'purchase',
             'orders'
         )
 
-    @http.route(['/my/purchase/<int:order_id>'], type='http', auth="public", website=True)
+    @http.route(['/my/purchase/<int:order_id>'], type='http', auth='public', website=True)
     def portal_my_purchase_order(self, order_id=None, access_token=None, **kw):
         try:
             order_sudo = self._document_check_access('purchase.order', order_id, access_token=access_token)
@@ -166,13 +164,13 @@ class CustomerPortal(portal.CustomerPortal):
         if order_sudo.company_id:
             values['res_company'] = order_sudo.company_id
         if update_date == 'True':
-            return request.render("purchase.portal_my_purchase_order_update_date", values)
-        return request.render("purchase.portal_my_purchase_order", values)
+            return request.render('purchase.portal_my_purchase_order_update_date', values)
+        return request.render('purchase.portal_my_purchase_order', values)
 
-    @http.route(['/my/purchase/<int:order_id>/update'], type='json', auth="public", website=True)
+    @http.route(['/my/purchase/<int:order_id>/update'], type='json', auth='public', website=True)
     def portal_my_purchase_order_update_dates(self, order_id=None, access_token=None, **kw):
-        """User update scheduled date on purchase order line.
-        """
+        '''User update scheduled date on purchase order line.
+        '''
         try:
             order_sudo = self._document_check_access('purchase.order', order_id, access_token=access_token)
         except (AccessError, MissingError):
@@ -199,10 +197,10 @@ class CustomerPortal(portal.CustomerPortal):
             order_sudo._update_date_planned_for_lines(updated_dates)
         return Response(status=204)
 
-    @http.route(['/my/purchase/<int:order_id>/download_edi'], auth="public", website=True)
+    @http.route(['/my/purchase/<int:order_id>/download_edi'], auth='public', website=True)
     def portal_my_purchase_order_download_edi(self, order_id=None, access_token=None, **kw):
-        """An endpoint to download EDI file representation.
-        """
+        '''An endpoint to download EDI file representation.
+        '''
         try:
             order_sudo = self._document_check_access('purchase.order', order_id, access_token=access_token)
         except (AccessError, MissingError):
@@ -213,12 +211,10 @@ class CustomerPortal(portal.CustomerPortal):
         # This handles only one builder for now, more can be added in the future
         if len(builders) != 1:
             return request.redirect('/my')
+
         builder = builders[0]
-
         xml_content = builder._export_order(order_sudo)
-
         download_name = builder._export_purchase_order_filename(order_sudo)
-
         http_headers = [
             ('Content-Type', 'text/xml'),
             ('Content-Length', len(xml_content)),

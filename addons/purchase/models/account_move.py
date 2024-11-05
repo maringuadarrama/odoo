@@ -75,14 +75,6 @@ class AccountMove(models.Model):
                 move.message_post(body=message)
         return res
 
-    def _get_invoice_reference(self):
-        self.ensure_one()
-        vendor_refs = [ref for ref in set(self.invoice_line_ids.mapped('purchase_line_id.order_id.partner_ref')) if ref]
-        if self.ref:
-            return [ref for ref in self.ref.split(', ') if ref and ref not in vendor_refs] + vendor_refs
-
-        return vendor_refs
-
     @api.depends('line_ids.purchase_line_id')
     def _compute_is_purchase_matched(self):
         for move in self:
@@ -140,6 +132,14 @@ class AccountMove(models.Model):
             new_line_values = po_line._prepare_account_move_line(self)
             new_line_ids += self.env['account.move.line'].new(new_line_values)
         self.invoice_line_ids += new_line_ids
+
+    def _get_invoice_reference(self):
+        self.ensure_one()
+        vendor_refs = [ref for ref in set(self.invoice_line_ids.mapped('purchase_line_id.order_id.partner_ref')) if ref]
+        if self.ref:
+            return [ref for ref in self.ref.split(', ') if ref and ref not in vendor_refs] + vendor_refs
+
+        return vendor_refs
 
     @api.onchange('purchase_vendor_bill_id', 'purchase_id')
     def _onchange_purchase_auto_complete(self):
@@ -201,33 +201,6 @@ class AccountMove(models.Model):
 
         self.purchase_id = False
 
-    def action_purchase_matching(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Purchase Matching'),
-            'res_model': 'purchase.bill.line.match',
-            'domain': [
-                ('partner_id', '=', self.partner_id.id),
-                ('company_id', 'in', self.env.company.ids),
-                ('account_move_id', 'in', [self.id, False]),
-            ],
-            'views': [(self.env.ref('purchase.purchase_bill_line_match_tree').id, 'list')],
-        }
-
-    def action_view_source_purchase_orders(self):
-        self.ensure_one()
-        source_orders = self.line_ids.purchase_line_id.order_id
-        result = self.env['ir.actions.act_window']._for_xml_id('purchase.purchase_form_action')
-        if len(source_orders) > 1:
-            result['domain'] = [('id', 'in', source_orders.ids)]
-        elif len(source_orders) == 1:
-            result['views'] = [(self.env.ref('purchase.purchase_order_form', False).id, 'form')]
-            result['res_id'] = source_orders.id
-        else:
-            result = {'type': 'ir.actions.act_window_close'}
-        return result
-
     def _find_matching_subset_po_lines(self, po_lines_with_amount, goal_total, timeout):
         '''
         Finds the purchase order lines adding up to the goal amount.
@@ -269,6 +242,7 @@ class AccountMove(models.Model):
                     # return any solution.
                     return []
             return solutions
+
         start_time = time.time()
         try:
             subsets = find_matching_subset_po_lines(
@@ -276,6 +250,7 @@ class AccountMove(models.Model):
                 goal_total
             )
             return subsets[0] if subsets else []
+
         except TimeoutError:
             _logger.warning('Timed out during search of a matching subset of purchase order lines')
             return []
@@ -347,25 +322,6 @@ class AccountMove(models.Model):
         except TimeoutError:
             _logger.warning('Timed out during search of matching purchase order lines')
             return ([], [])
-
-    def _set_purchase_orders(self, purchase_orders, force_write=True):
-        '''
-        Link the given purchase orders to this vendor bill and add their lines as invoice lines.
-
-        :param purchase_orders: a list of purchase orders to be linked to this vendor bill
-        :param force_write: whether to delete all existing invoice lines before adding the vendor bill lines
-        '''
-        with self.env.cr.savepoint():
-            with self._get_edi_creation() as invoice:
-                if force_write and invoice.line_ids:
-                    invoice.invoice_line_ids = [Command.clear()]
-                for purchase_order in purchase_orders:
-                    invoice.invoice_line_ids = [Command.create({
-                        'display_type': 'line_section',
-                        'name': _('From %s', purchase_order.name)
-                    })]
-                    invoice.purchase_id = purchase_order
-                    invoice._onchange_purchase_auto_complete()
 
     def _match_purchase_orders(self, po_references, partner_id, amount_total, from_ocr, timeout):
         '''Tries to match open purchase order lines with this invoice given the information we have.
@@ -466,6 +422,25 @@ class AccountMove(models.Model):
         # We couldn't find anything, so we return no lines.
         return ('no_match', matching_purchase_orders.order_line, None)
 
+    def _set_purchase_orders(self, purchase_orders, force_write=True):
+        '''
+        Link the given purchase orders to this vendor bill and add their lines as invoice lines.
+
+        :param purchase_orders: a list of purchase orders to be linked to this vendor bill
+        :param force_write: whether to delete all existing invoice lines before adding the vendor bill lines
+        '''
+        with self.env.cr.savepoint():
+            with self._get_edi_creation() as invoice:
+                if force_write and invoice.line_ids:
+                    invoice.invoice_line_ids = [Command.clear()]
+                for purchase_order in purchase_orders:
+                    invoice.invoice_line_ids = [Command.create({
+                        'display_type': 'line_section',
+                        'name': _('From %s', purchase_order.name)
+                    })]
+                    invoice.purchase_id = purchase_order
+                    invoice._onchange_purchase_auto_complete()
+
     def _find_and_set_purchase_orders(self, po_references, partner_id, amount_total, from_ocr=False, timeout=10):
         '''
         Finds related purchase orders that (partially) match the vendor bill and links the matching lines on this
@@ -545,3 +520,30 @@ class AccountMove(models.Model):
                         'name': _('From Electronic Document'),
                         'sequence': -1,
                     })]
+
+    def action_purchase_matching(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Purchase Matching'),
+            'res_model': 'purchase.bill.line.match',
+            'domain': [
+                ('partner_id', '=', self.partner_id.id),
+                ('company_id', 'in', self.env.company.ids),
+                ('account_move_id', 'in', [self.id, False]),
+            ],
+            'views': [(self.env.ref('purchase.purchase_bill_line_match_tree').id, 'list')],
+        }
+
+    def action_view_source_purchase_orders(self):
+        self.ensure_one()
+        source_orders = self.line_ids.purchase_line_id.order_id
+        result = self.env['ir.actions.act_window']._for_xml_id('purchase.purchase_form_action')
+        if len(source_orders) > 1:
+            result['domain'] = [('id', 'in', source_orders.ids)]
+        elif len(source_orders) == 1:
+            result['views'] = [(self.env.ref('purchase.purchase_order_form', False).id, 'form')]
+            result['res_id'] = source_orders.id
+        else:
+            result = {'type': 'ir.actions.act_window_close'}
+        return result

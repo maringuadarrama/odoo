@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="portal_my_home_menu_purchase" name="Portal layout : purchase menu entries"
-        inherit_id="portal.portal_breadcrumbs" priority="25">
+    <template
+        id="portal_my_home_menu_purchase"
+        name="Portal layout : purchase menu entries"
+        inherit_id="portal.portal_breadcrumbs"
+        priority="25"
+    >
         <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
             <li t-if="page_name == 'rfq' or order and order.state == 'sent'"
-                t-attf-class="breadcrumb-item #{'active ' if not order else ''}">
+                t-attf-class="breadcrumb-item #{'active ' if not order else ''}"
+            >
                 <a t-if="order" t-attf-href="/my/rfq?{{ keep_query() }}">Requests for Quotation</a>
                 <t t-else="">Requests for Quotation</t>
             </li>
             <li t-if="page_name == 'purchase' or order and order.state != 'sent'"
-                t-attf-class="breadcrumb-item #{'active ' if not order else ''}">
+                t-attf-class="breadcrumb-item #{'active ' if not order else ''}"
+            >
                 <a t-if="order" t-attf-href="/my/purchase?{{ keep_query() }}">Purchase Orders</a>
                 <t t-else="">Purchase Orders</t>
             </li>
@@ -19,8 +25,13 @@
         </xpath>
     </template>
 
-    <template id="portal_my_home_purchase" name="Requests for Quotation / Purchase Orders"
-        customize_show="True" inherit_id="portal.portal_my_home" priority="25">
+    <template
+        id="portal_my_home_purchase"
+        name="Requests for Quotation / Purchase Orders"
+        inherit_id="portal.portal_my_home"
+        priority="25"
+        customize_show="True"
+    >
         <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
             <t t-set="portal_vendor_category_enable" t-value="True" />
         </xpath>
@@ -45,7 +56,6 @@
     <template id="portal_my_purchase_rfqs" name="My Requests For Quotation">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True" />
-
             <t t-call="portal.portal_searchbar">
                 <t t-set="title">Requests For Quotation</t>
             </t>
@@ -89,7 +99,6 @@
     <template id="portal_my_purchase_orders" name="My Purchase Orders">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True" />
-
             <t t-call="portal.portal_searchbar">
                 <t t-set="title">Purchase Orders</t>
             </t>
@@ -154,21 +163,23 @@
         </t>
     </template>
 
-    <template id="portal_my_purchase_order" name="Purchase Order" inherit_id="portal.portal_sidebar"
-        primary="True">
+    <template
+        id="portal_my_purchase_order"
+        name="Purchase Order"
+        inherit_id="portal.portal_sidebar"
+        primary="True"
+    >
         <xpath expr="//div[hasclass('o_portal_sidebar')]" position="inside">
             <t t-set="o_portal_fullwidth_alert" groups="purchase.group_purchase_manager">
                 <t t-call="portal.portal_back_in_edit_mode">
                     <t t-set="backend_url"
-                        t-value="'/odoo/action-purchase.purchase_rfq/%s' % (order.id)" />
+                       t-value="'/odoo/action-purchase.purchase_rfq/%s' % (order.id)" />
                 </t>
             </t>
-
             <div class="row o_portal_purchase_sidebar">
                 <!-- Sidebar -->
                 <t t-call="portal.portal_record_sidebar">
                     <t t-set="classes" t-value="'col-lg-4 col-xxl-3 d-print-none'" />
-
                     <t t-set="title">
                         <h2 t-field="order.amount_total" data-id="total_amount"
                             class="mb-0 text-break" />
@@ -197,7 +208,6 @@
                                     aria-disabled="true" name="decline" title="Decline">Decline</a>
                             </div>
                         </div>
-
                         <div class="d-flex flex-column gap-4 mt-3">
                             <a class="btn btn-secondary o_print_btn o_portal_invoice_print"
                                 t-att-href="order.get_portal_url(report_type='pdf')"
@@ -218,9 +228,10 @@
                                         t-options='{"widget": "contact", "fields": ["phone"], "no_marker": False}' />
                                 </t>
                             </div>
-
                             <div>
-                                <button id="portal_connect_software_modal_btn" type="button"
+                                <button
+                                    id="portal_connect_software_modal_btn"
+                                    type="button"
                                     class="btn btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#portal_connect_software_modal">
@@ -230,7 +241,6 @@
                         </div>
                     </t>
                 </t>
-
                 <div class="modal fade" id="portal_connect_software_modal" tabindex="-1"
                     role="dialog" aria-hidden="true">
                     <div class="modal-dialog modal-lg" role="document">
@@ -276,10 +286,8 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Page content -->
                 <div id="quote_content" class="o_portal_content col-12 col-lg-8 col-xxl-9">
-
                     <!-- status messages -->
                     <div t-if="order.state == 'cancel'"
                         class="alert alert-danger alert-dismissable d-print-none" role="alert">
@@ -301,12 +309,10 @@
                             aria-label="close"></button>
                         <strong>This quotation has been declined.</strong>
                     </div>
-
                     <!-- main content -->
                     <div id="portal_purchase_content">
                         <div t-call="purchase.purchase_order_portal_content" />
                     </div>
-
                     <!-- chatter -->
                     <hr />
                     <div id="purchase_order_communication">
@@ -330,7 +336,6 @@
                 <em t-esc="order.name" />
             </h2>
         </div>
-
         <div>
             <!-- Informations -->
             <div id="informations">
@@ -360,7 +365,6 @@
                         </div>
                     </div>
                 </div>
-
                 <t t-set="invoices"
                     t-value="[i for i in order.invoice_ids if i.state not in ['draft', 'cancel']]" />
                 <div t-if="invoices" class="row">
@@ -393,10 +397,8 @@
                     </div>
                 </div>
             </div>
-
             <section id="details" style="page-break-inside: auto;" class="mt32">
                 <h3 id="details">Pricing</h3>
-
                 <div class="table-responsive">
                     <table t-att-data-order-id="order.id" t-att-data-token="order.access_token"
                         class="table table-sm" id="purchase_order_table">
@@ -540,9 +542,12 @@
         </table>
     </template>
 
-    <template id="portal_my_purchase_order_update_date"
-        name="Portal: My Purchase Order Update Dates" inherit_id="purchase.portal_my_purchase_order"
-        primary="True">
+    <template
+        id="portal_my_purchase_order_update_date"
+        name="Portal: My Purchase Order Update Dates"
+        inherit_id="purchase.portal_my_purchase_order"
+        primary="True"
+    >
         <xpath expr="////div[@id='portal_purchase_content']" position="replace">
             <div id="portal_purchase_content">
                 <t t-set="update_dates" t-value="True" />

@@ -11,14 +11,14 @@ class FleetVehicle(models.Model):
     driver_employee_id = fields.Many2one(
         'hr.employee', 'Driver (Employee)',
         compute='_compute_driver_employee_id', store=True,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain="[('company_id', 'in', (False, company_id))]",
         tracking=True,
     )
     driver_employee_name = fields.Char(related="driver_employee_id.name")
     future_driver_employee_id = fields.Many2one(
         'hr.employee', 'Future Driver (Employee)',
         compute='_compute_future_driver_employee_id', store=True,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain="[('company_id', 'in', (False, company_id))]",
         tracking=True,
     )
 

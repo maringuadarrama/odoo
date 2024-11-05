@@ -5,13 +5,21 @@
         <field name="model">purchase.bill.union</field>
         <field name="arch" type="xml">
             <search string="Search Reference Document">
-                <field name="name" string="Reference" filter_domain="['|', ('name','ilike',self), ('reference','=like',self+'%')]"/>
+                <field
+                    name="name"
+                    string="Reference"
+                    filter_domain="['|', ('name','ilike',self), ('reference','=like',self+'%')]"
+                />
                 <field name="amount"/>
                 <separator/>
                 <field name="partner_id" operator="child_of"/>
                 <separator/>
-                <filter name="purchase_orders" string="Purchase Orders" domain="[('purchase_order_id', '!=', False)]"/>
-                <filter name="vendor_bills" string="Vendor Bills" domain="[('vendor_bill_id', '!=', False)]"/>
+                <filter name="purchase_orders" string="Purchase Orders"
+                    domain="[('purchase_order_id', '!=', False)]"
+                />
+                <filter name="vendor_bills" string="Vendor Bills"
+                    domain="[('vendor_bill_id', '!=', False)]"
+                />
             </search>
         </field>
     </record>
@@ -27,7 +35,7 @@
                 <field name="date"/>
                 <field name="amount"/>
                 <field name="currency_id" column_invisible="True"/>
-                <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company"/>
             </list>
         </field>
     </record>

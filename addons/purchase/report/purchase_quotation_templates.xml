@@ -7,7 +7,7 @@
             appears in the footer of the report instead of the company VAT if it's set -->
             <t t-set="address">
                 <div t-field="o.partner_id"
-                    t-options='{"widget": "contact", "fields": ["address", "name", "phone", "vat"], "no_marker": True, "phone_icons": True}' />
+                     t-options='{"widget": "contact", "fields": ["address", "name", "phone", "vat"], "no_marker": True, "phone_icons": True}' />
             </t>
             <t t-if="o.dest_address_id">
                 <t t-set="information_block">
@@ -22,7 +22,6 @@
                 <t t-set="layout_document_title">
                     <span>Request for Quotation <span t-field="o.name" /></span>
                 </t>
-
                 <table class="table table-borderless">
                     <thead style="display: table-row-group">
                         <tr>
@@ -67,18 +66,15 @@
                         </t>
                     </tbody>
                 </table>
-
                 <p t-field="o.notes" class="mt-4" />
-
                 <div class="oe_structure" />
-
                 <t t-set="base_address"
-                    t-value="o.env['ir.config_parameter'].sudo().get_param('web.base.url')" />
+                   t-value="o.env['ir.config_parameter'].sudo().get_param('web.base.url')" />
                 <t t-set="portal_url"
-                    t-value="base_address + '/my/purchase/' + str(o.id) + '#portal_connect_software_modal'" />
+                   t-value="base_address + '/my/purchase/' + str(o.id) + '#portal_connect_software_modal'" />
                 <div t-if="any(u._is_portal() for u in o.partner_id.user_ids)" class="text-center">
                     <a t-att-href="portal_url">Connect your software</a> with <t
-                        t-out="o.company_id.name" /> to create quotes automatically. </div>
+                       t-out="o.company_id.name" /> to create quotes automatically. </div>
             </div>
         </t>
     </template>
