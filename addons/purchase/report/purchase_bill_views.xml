@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-   <record id="view_purchase_bill_union_filter" model="ir.ui.view">
+    <record id="view_purchase_bill_union_filter" model="ir.ui.view">
         <field name="name">purchase.bill.union.select</field>
         <field name="model">purchase.bill.union</field>
         <field name="arch" type="xml">
@@ -10,10 +10,10 @@
                     string="Reference"
                     filter_domain="['|', ('name','ilike',self), ('reference','=like',self+'%')]"
                 />
-                <field name="amount"/>
-                <separator/>
-                <field name="partner_id" operator="child_of"/>
-                <separator/>
+                <field name="amount" />
+                <separator />
+                <field name="partner_id" operator="child_of" />
+                <separator />
                 <filter name="purchase_orders" string="Purchase Orders"
                     domain="[('purchase_order_id', '!=', False)]"
                 />
@@ -29,13 +29,14 @@
         <field name="model">purchase.bill.union</field>
         <field name="arch" type="xml">
             <list string="Reference Document">
-                <field name="name"/>
-                <field name="reference"/>
-                <field name="partner_id"/>
-                <field name="date"/>
-                <field name="amount"/>
-                <field name="currency_id" column_invisible="True"/>
-                <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company"/>
+                <field name="date" />
+                <field name="name" />
+                <field name="partner_id" />
+                <field name="reference" />
+                <field name="amount" />
+                <field name="currency_id" column_invisible="True" />
+                <field name="company_id" options="{'no_create': True}"
+                    groups="base.group_multi_company" />
             </list>
         </field>
     </record>

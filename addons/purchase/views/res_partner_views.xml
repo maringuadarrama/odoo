@@ -3,18 +3,17 @@
     <record id="purchase_partner_kanban_view" model="ir.ui.view">
         <field name="name">res.partner.kanban.purchaseorder.inherit</field>
         <field name="model">res.partner</field>
-        <field name="inherit_id" ref="base.res_partner_kanban_view"/>
+        <field name="inherit_id" ref="base.res_partner_kanban_view" />
         <field name="arch" type="xml">
             <xpath expr="//footer/div" position="inside">
                 <a t-if="record.purchase_order_count?.value"
-                   class="btn btn-sm btn-link smaller"
-                   groups="purchase.group_purchase_user"
-                   name="%(purchase.act_res_partner_2_purchase_order)d"
-                   role="button"
-                   type="action"
-                >
-                    <i class="fa fa-credit-card me-1" aria-label="Purchases" role="img" title="Purchases"/>
-                    <field name="purchase_order_count"/>
+                    name="%(purchase.act_res_partner_2_purchase_order)d"
+                    type="action" class="btn btn-sm btn-link smaller"
+                    role="button"
+                    groups="purchase.group_purchase_user">
+                    <i title="Purchases" class="fa fa-credit-card me-1" aria-label="Purchases"
+                        role="img" />
+                    <field name="purchase_order_count" />
                 </a>
             </xpath>
         </field>
@@ -24,32 +23,27 @@
         <field name="name">res.partner.view.purchase.buttons</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form" />
-        <field name="priority" eval="9"/>
+        <field name="priority" eval="9" />
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
-                <button
-                    name="%(purchase.act_res_partner_2_purchase_order)d"
-                    type="action"
-                    class="oe_stat_button"
+                <button name="%(purchase.act_res_partner_2_purchase_order)d"
+                    type="action" class="oe_stat_button"
                     icon="fa-credit-card"
-                    groups="purchase.group_purchase_user"
-                >
-                    <field string="Purchases" name="purchase_order_count" widget="statinfo"/>
+                    groups="purchase.group_purchase_user">
+                    <field string="Purchases" name="purchase_order_count" widget="statinfo" />
                 </button>
             </div>
             <page name="internal_notes" position="inside">
                 <group groups="purchase.group_purchase_user">
                     <group groups="purchase.group_warning_purchase" col="2">
-                        <separator string="Warning on the Purchase Order" colspan="2"/>
-                        <field name="purchase_warn" nolabel="1" colspan="2" required="1"/>
-                        <field
-                            name="purchase_warn_msg"
+                        <separator string="Warning on the Purchase Order" colspan="2" />
+                        <field name="purchase_warn" nolabel="1" colspan="2" required="1" />
+                        <field name="purchase_warn_msg"
                             placeholder="Type a message..."
                             nolabel="1"
                             colspan="2"
                             required="purchase_warn and purchase_warn != 'no-message'"
-                            invisible="purchase_warn in (False, 'no-message')"
-                        />
+                            invisible="purchase_warn in (False, 'no-message')" />
                     </group>
                 </group>
             </page>
@@ -59,26 +53,26 @@
     <record id="view_partner_property_form" model="ir.ui.view">
         <field name="name">res.partner.purchase.property.form.inherit</field>
         <field name="model">res.partner</field>
-        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="inherit_id" ref="base.view_partner_form" />
         <field name="priority">36</field>
         <field name="arch" type="xml">
             <group name="purchase" position="inside">
-                <div name="receipt_reminder" colspan="2" class="o_checkbox_optional_field" groups='purchase.group_send_reminder'>
-                    <label for="receipt_reminder_email"/>
-                    <field name="receipt_reminder_email"/>
+                <div name="receipt_reminder" colspan="2" class="o_checkbox_optional_field"
+                    groups='purchase.group_send_reminder'>
+                    <label for="receipt_reminder_email" />
+                    <field name="receipt_reminder_email" />
                     <div invisible="not receipt_reminder_email">
-                        <field name="reminder_date_before_receipt" class="oe_inline"/>
+                        <field name="reminder_date_before_receipt" class="oe_inline" />
                         <span> day(s) before</span>
                     </div>
                 </div>
-                <field
-                    name="property_purchase_currency_id"
+                <field name="property_purchase_currency_id"
                     options="{'no_create': True, 'no_open': True}"
-                    groups='base.group_multi_currency'
-                />
+                    groups='base.group_multi_currency' />
             </group>
             <field name="property_supplier_payment_term_id" position="before">
-                <field name="buyer_id" widget="many2one_avatar_user" domain="[('share', '=', False)]" />
+                <field name="buyer_id" widget="many2one_avatar_user"
+                    domain="[('share', '=', False)]" />
             </field>
         </field>
     </record>
@@ -87,18 +81,15 @@
         <field name="name">res.partner.view.purchase.account.buttons</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form" />
-        <field name="priority" eval="12"/>
+        <field name="priority" eval="12" />
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
-                <button
-                    name="%(purchase.act_res_partner_2_supplier_invoices)d"
-                    type="action"
-                    class="oe_stat_button"
+                <button name="%(purchase.act_res_partner_2_supplier_invoices)d"
+                    type="action" class="oe_stat_button"
                     icon="fa-pencil-square-o"
                     help="Vendor Bills"
-                    groups="account.group_account_invoice"
-                >
-                    <field string="Vendor Bills" name="supplier_invoice_count" widget="statinfo"/>
+                    groups="account.group_account_invoice">
+                    <field string="Vendor Bills" name="supplier_invoice_count" widget="statinfo" />
                 </button>
             </div>
         </field>

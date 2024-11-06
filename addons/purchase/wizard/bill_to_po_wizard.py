@@ -69,7 +69,6 @@ class BillToPO(models.TransientModel):
         downpayment_lines = self.purchase_order_id._create_downpayments(line_vals)
         for aml, dpl in zip(lines_to_convert, downpayment_lines):
             aml.purchase_line_id = dpl.id
-
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'purchase.order',

@@ -3,7 +3,7 @@
     <record id="view_move_form_inherit_purchase" model="ir.ui.view">
         <field name="name">account.move.inherit.purchase</field>
         <field name="model">account.move</field>
-        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="inherit_id" ref="account.view_move_form" />
         <field name="arch" type="xml">
             <!-- Auto-complete could be done from either a bill either a purchase order -->
             <field name="invoice_vendor_bill_id" position="after">
@@ -11,8 +11,7 @@
                     <field name="purchase_id" readonly="state != 'draft'" invisible="1" />
                     <label for="purchase_vendor_bill_id" string="Auto-Complete" class="oe_edit_only"
                         invisible="state != 'draft' or move_type != 'in_invoice'" />
-                    <field
-                        name="purchase_vendor_bill_id"
+                    <field name="purchase_vendor_bill_id"
                         nolabel="1"
                         placeholder="Select a purchase order or an old bill"
                         class="oe_edit_only"
@@ -32,17 +31,18 @@
             </field>
             <!-- Add link to purchase_line_id to account.move.line -->
             <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='company_id']" position="after">
-                <field name="purchase_line_id" groups="purchase.group_purchase_user" column_invisible="True"/>
-                <field name="purchase_order_id" groups="purchase.group_purchase_user" column_invisible="parent.move_type != 'in_invoice'" optional="hide"/>
+                <field name="purchase_line_id" column_invisible="True"
+                    groups="purchase.group_purchase_user" />
+                <field name="purchase_order_id" column_invisible="parent.move_type != 'in_invoice'"
+                    optional="hide" groups="purchase.group_purchase_user" />
             </xpath>
             <xpath expr="//field[@name='line_ids']/list/field[@name='company_id']" position="after">
-                <field name="purchase_line_id" groups="purchase.group_purchase_user" column_invisible="True"/>
+                <field name="purchase_line_id" column_invisible="True"
+                    groups="purchase.group_purchase_user" />
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
-                <button
-                    name="action_purchase_matching"
-                    type="object"
-                    class="oe_stat_button"
+                <button name="action_purchase_matching"
+                    type="object" class="oe_stat_button"
                     icon="fa-bullseye"
                     invisible="
                         not partner_id
@@ -54,10 +54,8 @@
                         <span class="o_stat_text">Purchase Matching</span>
                     </div>
                 </button>
-                <button
-                    name="action_view_source_purchase_orders"
-                    type="object"
-                    class="oe_stat_button"
+                <button name="action_view_source_purchase_orders"
+                    type="object" class="oe_stat_button"
                     icon="fa-pencil-square-o"
                     invisible="
                         purchase_order_count == 0
@@ -65,8 +63,10 @@
                     "
                     groups="purchase.group_purchase_user"
                 >
-                    <field string="Purchases" name="purchase_order_name" widget="statinfo" invisible="purchase_order_count != 1"/>
-                    <field string="Purchases" name="purchase_order_count" widget="statinfo" invisible="purchase_order_count == 1"/>
+                    <field name="purchase_order_name" string="Purchases" widget="statinfo"
+                        invisible="purchase_order_count != 1" />
+                    <field name="purchase_order_count" string="Purchases" widget="statinfo"
+                        invisible="purchase_order_count == 1" />
                 </button>
             </xpath>
         </field>
@@ -77,11 +77,16 @@
         <field name="res_model">account.move</field>
         <field name="view_mode">list,form,graph</field>
         <field name="domain">[('move_type','in',('in_invoice', 'in_refund'))]</field>
-        <field name="context">{'search_default_partner_id': active_id, 'default_move_type': 'in_invoice', 'default_partner_id': active_id}</field>
+        <field name="context">{
+            'search_default_partner_id': active_id,
+            'default_move_type': 'in_invoice',
+            'default_partner_id': active_id
+        }</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Record a new vendor bill
-            </p><p>
+            </p>
+            <p>
                 Vendors bills can be pre-generated based on purchase
                 orders or receipts. This allows you to control bills
                 you receive from your vendor according to the draft
