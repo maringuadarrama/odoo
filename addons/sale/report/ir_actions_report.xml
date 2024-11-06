@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
     <record id="action_report_saleorder" model="ir.actions.report">
         <field name="name">Quotation / Order</field>
         <field name="model">sale.order</field>
@@ -23,5 +22,4 @@
         <field name="binding_type">report</field>
         <field name="groups_id" eval="[(4, ref('sale.group_proforma_sales'))]"/>
     </record>
-
 </odoo>

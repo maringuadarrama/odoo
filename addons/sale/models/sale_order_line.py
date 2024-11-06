@@ -1,8 +1,5 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from collections import defaultdict
 from datetime import timedelta
-
 from markupsafe import Markup
 
 from odoo import api, fields, models
@@ -16,19 +13,11 @@ from odoo.tools.translate import _
 class SaleOrderLine(models.Model):
     _name = 'sale.order.line'
     _inherit = 'analytic.mixin'
-    _description = "Sales Order Line"
+    _description = 'Sales Order Line'
     _rec_names_search = ['name', 'order_id.name']
     _order = 'order_id, sequence, id'
     _check_company_auto = True
 
-    _sql_constraints = [
-        ('accountable_required_fields',
-            "CHECK(display_type IS NOT NULL OR is_downpayment OR (product_id IS NOT NULL AND product_uom IS NOT NULL))",
-            "Missing required fields on accountable sale order line."),
-        ('non_accountable_null_fields',
-            "CHECK(display_type IS NULL OR (product_id IS NULL AND price_unit = 0 AND product_uom_qty = 0 AND product_uom IS NULL AND customer_lead = 0))",
-            "Forbidden values on non-accountable sale order line"),
-    ]
 
     # Fields are ordered according by tech & business logics
     # and computed fields are defined after their dependencies.
@@ -36,31 +25,40 @@ class SaleOrderLine(models.Model):
     # on record creation (and is also a good ordering logic imho)
 
     order_id = fields.Many2one(
-        comodel_name='sale.order',
-        string="Order Reference",
-        required=True, ondelete='cascade', index=True, copy=False)
+        'sale.order',
+        "Order Reference",
+        required=True,
+        copy=False,
+        ondelete='cascade',
+        index=True,
+    )
     sequence = fields.Integer(string="Sequence", default=10)
 
     # Order-related fields
     company_id = fields.Many2one(
         related='order_id.company_id',
-        store=True, index=True, precompute=True)
+        store=True, index=True, precompute=True,
+    )
     currency_id = fields.Many2one(
         related='order_id.currency_id',
         depends=['order_id.currency_id'],
-        store=True, precompute=True)
+        store=True, precompute=True,
+    )
     order_partner_id = fields.Many2one(
         related='order_id.partner_id',
         string="Customer",
-        store=True, index=True, precompute=True)
+        store=True, index=True, precompute=True,
+    )
     salesman_id = fields.Many2one(
         related='order_id.user_id',
         string="Salesperson",
-        store=True, precompute=True)
+        store=True, precompute=True,
+    )
     state = fields.Selection(
         related='order_id.state',
         string="Order Status",
-        copy=False, store=True, precompute=True)
+        copy=False, store=True, precompute=True,
+    )
     tax_country_id = fields.Many2one(related='order_id.tax_country_id')
 
     # Fields specifying custom line logic
@@ -69,25 +67,30 @@ class SaleOrderLine(models.Model):
             ('line_section', "Section"),
             ('line_note', "Note"),
         ],
-        default=False)
+        default=False,
+    )
     is_configurable_product = fields.Boolean(
         string="Is the product configurable?",
         related='product_template_id.has_configurable_attributes',
-        depends=['product_id'])
+        depends=['product_id'],
+    )
     is_downpayment = fields.Boolean(
         string="Is a down payment",
         help="Down payments are made when creating invoices from a sales order."
-            " They are not copied when duplicating a sales order.")
+            " They are not copied when duplicating a sales order.",
+    )
     is_expense = fields.Boolean(
         string="Is expense",
-        help="Is true if the sales order line comes from an expense or a vendor bills")
+        help="Is true if the sales order line comes from an expense or a vendor bills",
+    )
 
     # Generic configuration fields
     product_id = fields.Many2one(
         comodel_name='product.product',
         string="Product",
         change_default=True, ondelete='restrict', index='btree_not_null',
-        domain="[('sale_ok', '=', True)]")
+        domain="[('sale_ok', '=', True)]",
+    )
     product_template_id = fields.Many2one(
         string="Product Template",
         comodel_name='product.template',
@@ -97,42 +100,49 @@ class SaleOrderLine(models.Model):
         # previously related='product_id.product_tmpl_id'
         # not anymore since the field must be considered editable for product configurator logic
         # without modifying the related product_id when updated.
-        domain=[('sale_ok', '=', True)])
+        domain=[('sale_ok', '=', True)],
+    )
     product_uom_category_id = fields.Many2one(related='product_id.uom_id.category_id', depends=['product_id'])
 
     product_template_attribute_value_ids = fields.Many2many(
         related='product_id.product_template_attribute_value_ids',
-        depends=['product_id'])
+        depends=['product_id'],
+    )
     product_custom_attribute_value_ids = fields.One2many(
         comodel_name='product.attribute.custom.value', inverse_name='sale_order_line_id',
         string="Custom Values",
         compute='_compute_custom_attribute_values',
-        store=True, readonly=False, precompute=True, copy=True)
+        store=True, readonly=False, precompute=True, copy=True,
+    )
     # M2M holding the values of product.attribute with create_variant field set to 'no_variant'
     # It allows keeping track of the extra_price associated to those attribute values and add them to the SO line description
     product_no_variant_attribute_value_ids = fields.Many2many(
         comodel_name='product.template.attribute.value',
         string="Extra Values",
         compute='_compute_no_variant_attribute_values',
-        store=True, readonly=False, precompute=True, ondelete='restrict')
+        store=True, readonly=False, precompute=True, ondelete='restrict',
+    )
     is_product_archived = fields.Boolean(compute="_compute_is_product_archived")
 
     name = fields.Text(
         string="Description",
         compute='_compute_name',
-        store=True, readonly=False, required=True, precompute=True)
+        store=True, readonly=False, required=True, precompute=True,
+    )
 
     product_uom_qty = fields.Float(
         string="Quantity",
         compute='_compute_product_uom_qty',
         digits='Product Unit of Measure', default=1.0,
-        store=True, readonly=False, required=True, precompute=True)
+        store=True, readonly=False, required=True, precompute=True,
+    )
     product_uom = fields.Many2one(
         comodel_name='uom.uom',
         string="Unit of Measure",
         compute='_compute_product_uom',
         store=True, readonly=False, precompute=True, ondelete='restrict',
-        domain="[('category_id', '=', product_uom_category_id)]")
+        domain="[('category_id', '=', product_uom_category_id)]",
+    )
     linked_line_id = fields.Many2one(
         string="Linked Order Line",
         comodel_name='sale.order.line',
@@ -161,46 +171,55 @@ class SaleOrderLine(models.Model):
         compute='_compute_tax_id',
         store=True, readonly=False, precompute=True,
         context={'active_test': False},
-        check_company=True)
+        check_company=True,
+    )
 
     # Tech field caching pricelist rule used for price & discount computation
     pricelist_item_id = fields.Many2one(
         comodel_name='product.pricelist.item',
-        compute='_compute_pricelist_item_id')
+        compute='_compute_pricelist_item_id',
+    )
 
     price_unit = fields.Float(
         string="Unit Price",
         compute='_compute_price_unit',
         digits='Product Price',
-        store=True, readonly=False, required=True, precompute=True)
+        store=True, readonly=False, required=True, precompute=True,
+    )
     technical_price_unit = fields.Float()
 
     discount = fields.Float(
         string="Discount (%)",
         compute='_compute_discount',
         digits='Discount',
-        store=True, readonly=False, precompute=True)
+        store=True, readonly=False, precompute=True,
+    )
 
     price_subtotal = fields.Monetary(
         string="Subtotal",
         compute='_compute_amount',
-        store=True, precompute=True)
+        store=True, precompute=True,
+    )
     price_tax = fields.Float(
         string="Total Tax",
         compute='_compute_amount',
-        store=True, precompute=True)
+        store=True, precompute=True,
+    )
     price_total = fields.Monetary(
         string="Total",
         compute='_compute_amount',
-        store=True, precompute=True)
+        store=True, precompute=True,
+    )
     price_reduce_taxexcl = fields.Monetary(
         string="Price Reduce Tax excl",
         compute='_compute_price_reduce_taxexcl',
-        store=True, precompute=True)
+        store=True, precompute=True,
+    )
     price_reduce_taxinc = fields.Monetary(
         string="Price Reduce Tax incl",
         compute='_compute_price_reduce_taxinc',
-        store=True, precompute=True)
+        store=True, precompute=True,
+    )
 
     # Logistics/Delivery fields
     product_packaging_id = fields.Many2one(
@@ -209,17 +228,20 @@ class SaleOrderLine(models.Model):
         compute='_compute_product_packaging_id',
         store=True, readonly=False, precompute=True,
         domain="[('sales', '=', True), ('product_id','=',product_id)]",
-        check_company=True)
+        check_company=True,
+    )
     product_packaging_qty = fields.Float(
         string="Packaging Quantity",
         compute='_compute_product_packaging_qty',
-        store=True, readonly=False, precompute=True)
+        store=True, readonly=False, precompute=True,
+    )
 
     customer_lead = fields.Float(
         string="Lead Time",
         compute='_compute_customer_lead',
         store=True, readonly=False, required=True, precompute=True,
-        help="Number of days between the order confirmation and the shipping of the products to the customer")
+        help="Number of days between the order confirmation and the shipping of the products to the customer",
+    )
 
     qty_delivered_method = fields.Selection(
         selection=[
@@ -233,39 +255,46 @@ class SaleOrderLine(models.Model):
              "  - Manual: the quantity is set manually on the line\n"
              "  - Analytic From expenses: the quantity is the quantity sum from posted expenses\n"
              "  - Timesheet: the quantity is the sum of hours recorded on tasks linked to this sale line\n"
-             "  - Stock Moves: the quantity comes from confirmed pickings\n")
+             "  - Stock Moves: the quantity comes from confirmed pickings\n",
+    )
     qty_delivered = fields.Float(
         string="Delivery Quantity",
         compute='_compute_qty_delivered',
         default=0.0,
         digits='Product Unit of Measure',
-        store=True, readonly=False, copy=False)
+        store=True, readonly=False, copy=False,
+    )
 
     # Analytic & Invoicing fields
     qty_invoiced = fields.Float(
         string="Invoiced Quantity",
         compute='_compute_qty_invoiced',
         digits='Product Unit of Measure',
-        store=True)
+        store=True,
+    )
     qty_invoiced_posted = fields.Float(
         string="Invoiced Quantity (posted)",
         compute='_compute_qty_invoiced_posted',
-        digits='Product Unit of Measure')
+        digits='Product Unit of Measure',
+    )
     qty_to_invoice = fields.Float(
         string="Quantity To Invoice",
         compute='_compute_qty_to_invoice',
         digits='Product Unit of Measure',
-        store=True)
+        store=True,
+    )
 
     analytic_line_ids = fields.One2many(
         comodel_name='account.analytic.line', inverse_name='so_line',
-        string="Analytic lines")
+        string="Analytic lines",
+    )
 
     invoice_lines = fields.Many2many(
         comodel_name='account.move.line',
         relation='sale_order_line_invoice_rel', column1='order_line_id', column2='invoice_line_id',
         string="Invoice Lines",
-        copy=False)
+        copy=False,
+    )
     invoice_status = fields.Selection(
         selection=[
             ('upselling', "Upselling Opportunity"),
@@ -275,35 +304,57 @@ class SaleOrderLine(models.Model):
         ],
         string="Invoice Status",
         compute='_compute_invoice_status',
-        store=True)
+        store=True,
+    )
 
     untaxed_amount_invoiced = fields.Monetary(
         string="Untaxed Invoiced Amount",
         compute='_compute_untaxed_amount_invoiced',
-        store=True)
+        store=True,
+    )
     amount_invoiced = fields.Monetary(
         string="Invoiced Amount",
-        compute='_compute_amount_invoiced')
+        compute='_compute_amount_invoiced',
+    )
     untaxed_amount_to_invoice = fields.Monetary(
         string="Untaxed Amount To Invoice",
         compute='_compute_untaxed_amount_to_invoice',
-        store=True)
+        store=True,
+    )
     amount_to_invoice = fields.Monetary(
         string="Un-invoiced Balance",
-        compute='_compute_amount_to_invoice')
+        compute='_compute_amount_to_invoice',
+    )
 
     # Technical computed fields for UX purposes (hide/make fields readonly, ...)
     product_type = fields.Selection(related='product_id.type', depends=['product_id'])
     service_tracking = fields.Selection(related='product_id.service_tracking', depends=['product_id'])
     product_updatable = fields.Boolean(
         string="Can Edit Product",
-        compute='_compute_product_updatable')
+        compute='_compute_product_updatable',
+    )
     product_uom_readonly = fields.Boolean(
-        compute='_compute_product_uom_readonly')
+        compute='_compute_product_uom_readonly',
+    )
     tax_calculation_rounding_method = fields.Selection(
         related='company_id.tax_calculation_rounding_method',
-        string='Tax calculation rounding method', readonly=True)
+        string='Tax calculation rounding method', readonly=True,
+    )
     company_price_include = fields.Selection(related="company_id.account_price_include")
+
+
+    _sql_constraints = [
+        (
+            'accountable_required_fields',
+            'CHECK(display_type IS NOT NULL OR is_downpayment OR (product_id IS NOT NULL AND product_uom IS NOT NULL))',
+            'Missing required fields on accountable sale order line.'
+        ),
+        (
+            'non_accountable_null_fields',
+            'CHECK(display_type IS NULL OR (product_id IS NULL AND price_unit = 0 AND product_uom_qty = 0 AND product_uom IS NULL AND customer_lead = 0))',
+            'Forbidden values on non-accountable sale order line'
+        ),
+    ]
 
     #=== COMPUTE METHODS ===#
 

@@ -12,12 +12,15 @@ class AccountMove(models.Model):
 
 
     team_id = fields.Many2one(
-        'crm.team', string='Sales Team', default=_get_invoice_default_sale_team,
-        compute='_compute_team_id', store=True, readonly=False,
-        ondelete='set null', tracking=True,
+        'crm.team',
+        string='Sales Team',
+        default=_get_invoice_default_sale_team,
+        compute='_compute_team_id', store=True,
+        readonly=False,
         domain="[('company_id', 'in', (False, company_id))]",
+        ondelete='set null',
+        tracking=True,
     )
-
     # UTMs - enforcing the fact that we want to 'set null' when relation is unlinked
     campaign_id = fields.Many2one(ondelete='set null')
     medium_id = fields.Many2one(ondelete='set null')
@@ -40,6 +43,7 @@ class AccountMove(models.Model):
         for move in self:
             if not move.invoice_user_id.sale_team_id or not move.is_sale_document(include_receipts=True):
                 continue
+
             move.team_id = self.env['crm.team']._get_default_team_id(
                 user_id=move.invoice_user_id.id,
                 domain=[('company_id', '=', move.company_id.id)])
@@ -61,50 +65,6 @@ class AccountMove(models.Model):
             })
         return super()._reverse_moves(default_values_list=default_values_list, cancel=cancel)
 
-    def action_post(self):
-        # inherit of the function from account.move to validate a new tax and the priceunit of a downpayment
-        res = super(AccountMove, self).action_post()
-
-        # We cannot change lines content on locked SO, changes on invoices are not forwarded to the SO if the SO is locked
-        dp_lines = self.line_ids.sale_line_ids.filtered(lambda l: l.is_downpayment and not l.display_type)
-        dp_lines._compute_name()  # Update the description of DP lines (Draft -> Posted)
-        downpayment_lines = dp_lines.filtered(lambda sol: not sol.order_id.locked)
-        other_so_lines = downpayment_lines.order_id.order_line - downpayment_lines
-        real_invoices = set(other_so_lines.invoice_lines.move_id)
-        for so_dpl in downpayment_lines:
-            so_dpl.price_unit = so_dpl._get_downpayment_line_price_unit(real_invoices)
-            so_dpl.tax_id = so_dpl.invoice_lines.tax_ids
-
-        return res
-
-    def button_draft(self):
-        res = super().button_draft()
-
-        self.line_ids.filtered('is_downpayment').sale_line_ids.filtered(
-            lambda sol: not sol.display_type)._compute_name()
-
-        return res
-
-    def button_cancel(self):
-        res = super().button_cancel()
-
-        self.line_ids.filtered('is_downpayment').sale_line_ids.filtered(
-            lambda sol: not sol.display_type)._compute_name()
-
-        return res
-
-    def _post(self, soft=True):
-        # OVERRIDE
-        # Auto-reconcile the invoice with payments coming from transactions.
-        # It's useful when you have a 'paid' sale order (using a payment transaction) and you invoice it later.
-        posted = super()._post(soft)
-        for invoice in posted.filtered(lambda move: move.is_invoice()):
-            payments = invoice.mapped('transaction_ids.payment_id').filtered(lambda x: x.state == 'in_process')
-            move_lines = payments.move_id.line_ids.filtered(lambda line: line.account_type in ('asset_receivable', 'liability_payable') and not line.reconciled)
-            for line in move_lines:
-                invoice.js_assign_outstanding_line(line.id)
-        return posted
-
     def _invoice_paid_hook(self):
         # OVERRIDE
         res = super(AccountMove, self)._invoice_paid_hook()
@@ -117,9 +77,63 @@ class AccountMove(models.Model):
             order.message_post(body=_('Invoice %s paid', name))
         return res
 
+    def action_post(self):
+        # inherit of the function from account.move to validate a new tax and the priceunit of a downpayment
+        res = super(AccountMove, self).action_post()
+        # We cannot change lines content on locked SO, changes on invoices are not forwarded to the SO if the SO is locked
+        dp_lines = self.line_ids.sale_line_ids.filtered(
+            lambda l: l.is_downpayment and not l.display_type
+        )
+        dp_lines._compute_name()  # Update the description of DP lines (Draft -> Posted)
+        downpayment_lines = dp_lines.filtered(lambda sol: not sol.order_id.locked)
+        other_so_lines = downpayment_lines.order_id.order_line - downpayment_lines
+        real_invoices = set(other_so_lines.invoice_lines.move_id)
+        for so_dpl in downpayment_lines:
+            so_dpl.price_unit = sum(
+                l.price_unit if l.move_id.move_type == 'out_invoice' else -l.price_unit
+                for l in so_dpl.invoice_lines
+                if l.move_id.state == 'posted' and l.move_id not in real_invoices  # don't recompute with the final invoice
+            )
+            so_dpl.tax_id = so_dpl.invoice_lines.tax_ids
+        return res
+
+    def button_draft(self):
+        res = super().button_draft()
+        self.line_ids.filtered('is_downpayment').sale_line_ids.filtered(
+            lambda sol: not sol.display_type
+        )._compute_name()
+        return res
+
+    def button_cancel(self):
+        res = super().button_cancel()
+        self.line_ids.filtered('is_downpayment').sale_line_ids.filtered(
+            lambda sol: not sol.display_type
+        )._compute_name()
+        return res
+
+    def _post(self, soft=True):
+        # OVERRIDE
+        # Auto-reconcile the invoice with payments coming from transactions.
+        # It's useful when you have a 'paid' sale order (using a payment transaction)
+        # and you invoice it later.
+        posted = super()._post(soft)
+        for invoice in posted.filtered(lambda move: move.is_invoice()):
+            payments = invoice.mapped('transaction_ids.payment_id').filtered(
+                lambda x: x.state == 'in_process'
+            )
+            move_lines = payments.move_id.line_ids.filtered(
+                lambda line:
+                    line.account_type in ('asset_receivable', 'liability_payable')
+                    and not line.reconciled
+            )
+            for line in move_lines:
+                invoice.js_assign_outstanding_line(line.id)
+        return posted
+
     def _action_invoice_ready_to_be_sent(self):
         # OVERRIDE
-        # Make sure the send invoice CRON is called when an invoice becomes ready to be sent by mail.
+        # Make sure the send invoice CRON is called when an invoice becomes ready
+        # to be sent by mail.
         res = super()._action_invoice_ready_to_be_sent()
         send_invoice_cron = self.env.ref('sale.send_invoice_cron', raise_if_not_found=False)
         if send_invoice_cron:
@@ -142,17 +156,24 @@ class AccountMove(models.Model):
     def _is_downpayment(self):
         # OVERRIDE
         self.ensure_one()
-        return self.line_ids.sale_line_ids and all(sale_line.is_downpayment for sale_line in self.line_ids.sale_line_ids) or False
+        return self.line_ids.sale_line_ids and all(
+            sale_line.is_downpayment for sale_line in self.line_ids.sale_line_ids
+        ) or False
 
     def _get_sale_order_invoiced_amount(self, order):
         '''
-        Consider all lines on any invoice in self that stem from the sales order `order`. (All those invoices belong to order.company_id)
+        Consider all lines on any invoice in self that stem from the sales order `order`.
+        (All those invoices belong to order.company_id)
         This function returns the sum of the totals of all those lines.
         Note that this amount may be bigger than `order.amount_total`.
         '''
         order_amount = 0
         for invoice in self:
-            prices = sum(invoice.line_ids.filtered(lambda x: order in x.sale_line_ids.order_id).mapped('price_total'))
+            prices = sum(
+                invoice.line_ids.filtered(
+                    lambda x: order in x.sale_line_ids.order_id
+                ).mapped('price_total')
+            )
             order_amount += invoice.currency_id._convert(
                 prices * -invoice.direction_sign,
                 order.currency_id,
@@ -181,8 +202,9 @@ class AccountMove(models.Model):
             exclude_amount += order_amount_company
         return exclude_amount
 
-    # todo need to remove both the field and compute method in master as this field is neither used in python nor in XML
-    @api.depends('line_ids.sale_line_ids.order_id', 'currency_id', 'tax_totals', 'date')
+    # todo need to remove both the field and compute method in master as this field is
+    # neither used in python nor in XML
+    @api.depends('currency_id', 'date', 'line_ids.sale_line_ids.order_id', 'tax_totals')
     def _compute_partner_credit(self):
         super()._compute_partner_credit()
         for move in self.filtered(lambda m: m.is_invoice(include_receipts=True)):

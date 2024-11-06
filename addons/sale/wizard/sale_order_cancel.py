@@ -1,40 +1,43 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
 
 
 class SaleOrderCancel(models.TransientModel):
     _name = 'sale.order.cancel'
     _inherit = 'mail.composer.mixin'
-    _description = "Sales Order Cancel"
+    _description = 'Sales Order Cancel'
+
 
     @api.model
     def _default_author_id(self):
         return self.env.user.partner_id
 
+
     # origin
     author_id = fields.Many2one(
         'res.partner',
-        string="Author",
-        index=True,
-        ondelete='set null',
+        'Author',
         default=_default_author_id,
+        ondelete='set null',
+        index=True,
     )
-
     # recipients
     recipient_ids = fields.Many2many(
         'res.partner',
-        string="Recipients",
+        string='Recipients',
         compute='_compute_recipient_ids',
         readonly=False,
     )
-    order_id = fields.Many2one('sale.order', string="Sale Order", required=True, ondelete='cascade')
+    order_id = fields.Many2one(
+        'sale.order',
+        'Sale Order',
+        required=True,
+        ondelete='cascade',
+    )
     display_invoice_alert = fields.Boolean(
-        string="Invoice Alert",
+        string='Invoice Alert',
         compute='_compute_display_invoice_alert',
     )
+
 
     @api.depends('order_id')
     def _compute_recipient_ids(self):
@@ -70,6 +73,9 @@ class SaleOrderCancel(models.TransientModel):
                 options={'post_process': True},
             )[wizard_su.order_id.id]
 
+    def action_cancel(self):
+        return self.order_id.with_context(disable_cancel_warning=True).action_cancel()
+
     def action_send_mail_and_cancel(self):
         self.ensure_one()
         self.order_id.message_post(
@@ -81,6 +87,3 @@ class SaleOrderCancel(models.TransientModel):
             subject=self.subject,
         )
         return self.action_cancel()
-
-    def action_cancel(self):
-        return self.order_id.with_context(disable_cancel_warning=True).action_cancel()

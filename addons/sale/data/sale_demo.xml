@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-
     <!-- We want to activate pay and sign by default for easier demoing. -->
     <record id="base.main_company" model="res.company">
         <field name="portal_confirmation_pay" eval="True"/>

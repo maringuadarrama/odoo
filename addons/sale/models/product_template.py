@@ -1,11 +1,8 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from collections import defaultdict
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools import float_round, format_list
-
 from odoo.addons.base.models.res_partner import WARNING_HELP, WARNING_MESSAGE
 
 
@@ -13,53 +10,72 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
     _check_company_auto = True
 
+
     service_type = fields.Selection(
-        selection=[('manual', "Manually set quantities on order")],
-        string="Track Service",
-        compute='_compute_service_type', store=True, readonly=False, precompute=True,
-        help="Manually set quantities on order: Invoice based on the manually entered quantity, without creating an analytic account.\n"
-             "Timesheets on contract: Invoice based on the tracked hours on the related timesheet.\n"
-             "Create a task and track hours: Create a task on the sales order validation and track the work hours.")
+        [('manual', 'Manually set quantities on order')],
+        'Track Service',
+        compute='_compute_service_type', store=True, precompute=True,
+        readonly=False,
+        help='Manually set quantities on order: Invoice based on the manually entered quantity, '
+             'without creating an analytic account.\n'
+             'Timesheets on contract: Invoice based on the tracked hours on the related timesheet.\n'
+             'Create a task and track hours: Create a task on the sales order validation and track '
+             'the work hours.'
+    )
     sale_line_warn = fields.Selection(
-        WARNING_MESSAGE, string="Sales Order Line",
-        help=WARNING_HELP, required=True, default="no-message")
-    sale_line_warn_msg = fields.Text(string="Message for Sales Order Line")
+        WARNING_MESSAGE,
+        string='Sales Order Line',
+        required=True,
+        default='no-message',
+        help=WARNING_HELP,
+    )
+    sale_line_warn_msg = fields.Text(string='Message for Sales Order Line')
     expense_policy = fields.Selection(
-        selection=[
-            ('no', "No"),
-            ('cost', "At cost"),
-            ('sales_price', "Sales price"),
+        [
+            ('no', 'No'),
+            ('cost', 'At cost'),
+            ('sales_price', 'Sales price'),
         ],
-        string="Re-Invoice Costs", default='no',
-        compute='_compute_expense_policy', store=True, readonly=False,
-        help="Validated expenses, vendor bills, or stock pickings (set up to track costs) can be invoiced to the customer at either cost or sales price.")
+        'Re-Invoice Costs',
+        default='no',
+        compute='_compute_expense_policy', store=True,
+        readonly=False,
+        help='Validated expenses, vendor bills, or stock pickings (set up to track costs) can '
+             'be invoiced to the customer at either cost or sales price.',
+    )
     visible_expense_policy = fields.Boolean(
-        string="Re-Invoice Policy visible", compute='_compute_visible_expense_policy')
-    sales_count = fields.Float(
-        string="Sold", compute='_compute_sales_count', digits='Product Unit of Measure')
+        string='Re-Invoice Policy visible',
+        compute='_compute_visible_expense_policy',
+    )
     invoice_policy = fields.Selection(
-        selection=[
-            ('order', "Ordered quantities"),
-            ('delivery', "Delivered quantities"),
+        [
+            ('order', 'Ordered quantities'),
+            ('delivery', 'Delivered quantities'),
         ],
-        string="Invoicing Policy",
-        compute='_compute_invoice_policy',
-        precompute=True,
-        store=True,
+        'Invoicing Policy',
+        compute='_compute_invoice_policy', store=True, precompute=True,
         readonly=False,
         tracking=True,
-        help="Ordered Quantity: Invoice quantities ordered by the customer.\n"
-             "Delivered Quantity: Invoice quantities delivered to the customer.")
+        help='Ordered Quantity: Invoice quantities ordered by the customer.\n'
+             'Delivered Quantity: Invoice quantities delivered to the customer.',
+    )
     optional_product_ids = fields.Many2many(
-        comodel_name='product.template',
-        relation='product_optional_rel',
-        column1='src_id',
-        column2='dest_id',
-        string="Optional Products",
-        help="Optional Products are suggested "
-             "whenever the customer hits *Add to Cart* (cross-sell strategy, "
-             "e.g. for computers: warranty, software, etc.).",
-        check_company=True)
+        'product.template',
+        'product_optional_rel',
+        'src_id',
+        'dest_id',
+        'Optional Products',
+        check_company=True,
+        help='Optional Products are suggested '
+             'whenever the customer hits *Add to Cart* (cross-sell strategy, '
+             'e.g. for computers: warranty, software, etc.).',
+    )
+    sales_count = fields.Float(
+        string='Sold',
+        digits='Product Unit of Measure',
+        compute='_compute_sales_count',
+    )
+
 
     @api.depends('invoice_policy', 'sale_ok', 'service_tracking')
     def _compute_product_tooltip(self):
@@ -71,27 +87,24 @@ class ProductTemplate(models.Model):
             return tooltip
 
         invoicing_tooltip = self._prepare_invoicing_tooltip()
-
         tooltip = f'{tooltip} {invoicing_tooltip}' if tooltip else invoicing_tooltip
-
         if self.type == 'service':
             additional_tooltip = self._prepare_service_tracking_tooltip()
             tooltip = f'{tooltip} {additional_tooltip}' if additional_tooltip else tooltip
-
         return tooltip
 
     def _prepare_invoicing_tooltip(self):
         if self.invoice_policy == 'delivery':
-            return _("Invoice after delivery, based on quantities delivered, not ordered.")
+            return _('Invoice after delivery, based on quantities delivered, not ordered.')
         elif self.invoice_policy == 'order':
             if self.type == 'consu':
-                return _("You can invoice goods before they are delivered.")
+                return _('You can invoice goods before they are delivered.')
             elif self.type == 'service':
-                return _("Invoice ordered quantities as soon as this service is sold.")
-        return ""
+                return _('Invoice ordered quantities as soon as this service is sold.')
+        return ''
 
     def _prepare_service_tracking_tooltip(self):
-        return ""
+        return ''
 
     @api.depends('sale_ok')
     def _compute_service_tracking(self):
@@ -111,12 +124,17 @@ class ProductTemplate(models.Model):
     @api.depends('product_variant_ids.sales_count')
     def _compute_sales_count(self):
         for product in self:
-            product.sales_count = float_round(sum([p.sales_count for p in product.with_context(active_test=False).product_variant_ids]), precision_rounding=product.uom_id.rounding)
+            product.sales_count = float_round(
+                sum([p.sales_count for p in product.with_context(active_test=False).product_variant_ids]),
+                precision_rounding=product.uom_id.rounding
+            )
 
     @api.constrains('company_id')
     def _check_sale_product_company(self):
-        """Ensure the product is not being restricted to a single company while
-        having been sold in another one in the past, as this could cause issues."""
+        '''
+        Ensure the product is not being restricted to a single company while
+        having been sold in another one in the past, as this could cause issues.
+        '''
         products_by_compagny = defaultdict(lambda: self.env['product.template'])
         for product in self:
             if not product.product_variant_ids or not product.company_id:
@@ -126,18 +144,25 @@ class ProductTemplate(models.Model):
             products_by_compagny[product.company_id] |= product
 
         for target_company, products in products_by_compagny.items():
-            subquery_products = self.env['product.product'].sudo().with_context(active_test=False)._search([('product_tmpl_id', 'in', products.ids)])
+            subquery_products = self.env['product.product'].sudo().with_context(active_test=False)._search(
+                [('product_tmpl_id', 'in', products.ids)]
+            )
             so_lines = self.env['sale.order.line'].sudo().search_read(
                 [('product_id', 'in', subquery_products), '!', ('company_id', 'child_of', target_company.id)],
-                fields=['id', 'product_id'])
+                fields=['id', 'product_id']
+            )
             if so_lines:
                 used_products = [sol['product_id'][1] for sol in so_lines]
-                raise ValidationError(_('The following products cannot be restricted to the company'
-                                        ' %(company)s because they have already been used in quotations or '
-                                        'sales orders in another company:\n%(used_products)s\n'
-                                        'You can archive these products and recreate them '
-                                        'with your company restriction instead, or leave them as '
-                                        'shared product.', company=target_company.name, used_products=', '.join(used_products)))
+                raise ValidationError(_(
+                    'The following products cannot be restricted to the company'
+                    ' %(company)s because they have already been used in quotations or '
+                    'sales orders in another company:\n%(used_products)s\n'
+                    'You can archive these products and recreate them '
+                    'with your company restriction instead, or leave them as '
+                    'shared product.',
+                    company=target_company.name,
+                    used_products=', '.join(used_products)
+                ))
 
     def action_view_sales(self):
         action = self.env['ir.actions.actions']._for_xml_id('sale.report_all_channels_sales_action')
@@ -157,8 +182,11 @@ class ProductTemplate(models.Model):
         res = super()._onchange_type()
         if self._origin and self.sales_count > 0:
             res['warning'] = {
-                'title': _("Warning"),
-                'message': _("You cannot change the product's type because it is already used in sales orders.")
+                'title': _('Warning'),
+                'message': _(
+                    'You cannot change the product\'s type because it is already '
+                    'used in sales orders.'
+                )
             }
         return res
 
@@ -179,7 +207,7 @@ class ProductTemplate(models.Model):
         if self.env.context.get('sale_multi_pricelist_product_template'):
             if self.env.user.has_group('product.group_product_pricelist'):
                 return [{
-                    'label': _("Import Template for Products"),
+                    'label': _('Import Template for Products'),
                     'template': '/product/static/xls/product_template.xls'
                 }]
         return res
@@ -203,17 +231,19 @@ class ProductTemplate(models.Model):
             incompatible_fields = [f for f in incompatible_types if val[f]]
             if len(incompatible_fields) > 1:
                 raise ValidationError(_(
-                    "The product (%(product)s) has incompatible values: %(value_list)s",
+                    'The product (%(product)s) has incompatible values: %(value_list)s',
                     product=val['name'],
                     value_list=format_list(self.env, [field_descriptions[v] for v in incompatible_fields]),
                 ))
 
     def get_single_product_variant(self):
-        """ Method used by the product configurator to check if the product is configurable or not.
+        '''
+        Method used by the product configurator to check if the product is configurable or not.
 
         We need to open the product configurator if the product:
         - is configurable (see has_configurable_attributes)
-        - has optional products """
+        - has optional products
+        '''
         res = super().get_single_product_variant()
         if res.get('product_id', False):
             has_optional_products = False
@@ -230,17 +260,17 @@ class ProductTemplate(models.Model):
         if self.sale_line_warn != 'no-message':
             res['sale_warning'] = {
                 'type': self.sale_line_warn,
-                'title': _("Warning for %s", self.name),
+                'title': _('Warning for %s', self.name),
                 'message': self.sale_line_warn_msg,
             }
         return res
 
     @api.model
     def _get_saleable_tracking_types(self):
-        """Return list of salealbe service_tracking types.
+        '''Return list of salealbe service_tracking types.
 
         :rtype: list
-        """
+        '''
         return ['no']
 
     def _get_product_accounts(self):
@@ -256,7 +286,8 @@ class ProductTemplate(models.Model):
     def _get_configurator_display_price(
         self, product_or_template, quantity, date, currency, pricelist, **kwargs
     ):
-        """ Return the specified product's display price, to be used by the product and combo
+        '''
+        Return the specified product's display price, to be used by the product and combo
         configurators.
 
         This is a hook meant to customize the display price computation in overriding modules.
@@ -268,9 +299,9 @@ class ProductTemplate(models.Model):
         :param res.currency currency: The currency to use to compute the price.
         :param product.pricelist pricelist: The pricelist to use to compute the price.
         :param dict kwargs: Locally unused data passed to `_get_configurator_price`.
-        :rtype: tuple(float, int or False)
-        :return: The specified product's display price (and the applied pricelist rule)
-        """
+        :rtype: float
+        :return: The specified product's display price.
+        '''
         return self._get_configurator_price(
             product_or_template, quantity, date, currency, pricelist, **kwargs
         )
@@ -279,7 +310,8 @@ class ProductTemplate(models.Model):
     def _get_configurator_price(
         self, product_or_template, quantity, date, currency, pricelist, **kwargs
     ):
-        """ Return the specified product's price, to be used by the product and combo configurators.
+        '''
+        Return the specified product's price, to be used by the product and combo configurators.
 
         This is a hook meant to customize the price computation in overriding modules.
 
@@ -301,10 +333,10 @@ class ProductTemplate(models.Model):
         :param res.currency currency: The currency to use to compute the price.
         :param product.pricelist pricelist: The pricelist to use to compute the price.
         :param dict kwargs: Locally unused data passed to `_get_product_price`.
-        :rtype: tuple(float, int or False)
-        :return: The specified product's price (and the applied pricelist rule)
-        """
-        return pricelist._get_product_price_rule(
+        :rtype: float
+        :return: The specified product's price.
+        '''
+        return pricelist._get_product_price(
             product_or_template, quantity=quantity, currency=currency, date=date, **kwargs
         )
 
@@ -312,7 +344,8 @@ class ProductTemplate(models.Model):
     def _get_additional_configurator_data(
         self, product_or_template, date, currency, pricelist, **kwargs
     ):
-        """ Return additional data about the specified product, to be used by the product and combo
+        '''
+        Return additional data about the specified product, to be used by the product and combo
         configurators.
 
         This is a hook meant to append module-specific data in overriding modules.
@@ -325,5 +358,5 @@ class ProductTemplate(models.Model):
         :param dict kwargs: Locally unused data passed to overrides.
         :rtype: dict
         :return: A dict containing additional data about the specified product.
-        """
+        '''
         return {}

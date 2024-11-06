@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import api, fields, models
 from odoo.addons.base.models.res_partner import WARNING_MESSAGE, WARNING_HELP
 from odoo.osv import expression
@@ -8,14 +6,21 @@ from odoo.osv import expression
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
+
     sale_order_count = fields.Integer(
-        string="Sale Order Count",
-        groups='sales_team.group_sale_salesman',
+        string='Sale Order Count',
         compute='_compute_sale_order_count',
+        groups='sales_team.group_sale_salesman',
     )
     sale_order_ids = fields.One2many('sale.order', 'partner_id', 'Sales Order')
-    sale_warn = fields.Selection(WARNING_MESSAGE, 'Sales Warnings', default='no-message', help=WARNING_HELP)
+    sale_warn = fields.Selection(
+        WARNING_MESSAGE,
+        'Sales Warnings',
+        default='no-message',
+        help=WARNING_HELP,
+    )
     sale_warn_msg = fields.Text('Message for Sales Order')
+
 
     @api.model
     def _get_sale_order_domain_count(self):
@@ -36,7 +41,6 @@ class ResPartner(models.Model):
             groupby=['partner_id'], aggregates=['__count']
         )
         self_ids = set(self._ids)
-
         for partner, count in sale_order_groups:
             while partner:
                 if partner.id in self_ids:
@@ -57,7 +61,7 @@ class ResPartner(models.Model):
         return bool(sale_order)
 
     def _can_edit_name(self):
-        """ Can't edit `name` if there is (non draft) issued SO. """
+        ''' Can't edit `name` if there is (non draft) issued SO. '''
         return super()._can_edit_name() and not self._has_order(
             [
                 ('partner_invoice_id', '=', self.id),
@@ -66,7 +70,7 @@ class ResPartner(models.Model):
         )
 
     def can_edit_vat(self):
-        """ Can't edit `vat` if there is (non draft) issued SO. """
+        ''' Can't edit `vat` if there is (non draft) issued SO. '''
         return super().can_edit_vat() and not self._has_order(
             [('partner_id', 'child_of', self.commercial_partner_id.id)]
         )
@@ -74,7 +78,7 @@ class ResPartner(models.Model):
     def action_view_sale_order(self):
         action = self.env['ir.actions.act_window']._for_xml_id('sale.act_res_partner_2_sale_order')
         all_child = self.with_context(active_test=False).search([('id', 'child_of', self.ids)])
-        action["domain"] = [("partner_id", "in", all_child.ids)]
+        action['domain'] = [('partner_id', 'in', all_child.ids)]
         return action
 
     def _compute_credit_to_invoice(self):

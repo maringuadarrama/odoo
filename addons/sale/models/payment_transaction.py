@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from datetime import datetime
 from dateutil import relativedelta
 
@@ -10,9 +8,21 @@ from odoo.tools import str2bool
 class PaymentTransaction(models.Model):
     _inherit = 'payment.transaction'
 
-    sale_order_ids = fields.Many2many('sale.order', 'sale_order_transaction_rel', 'transaction_id', 'sale_order_id',
-                                      string='Sales Orders', copy=False, readonly=True)
-    sale_order_ids_nbr = fields.Integer(compute='_compute_sale_order_ids_nbr', string='# of Sales Orders')
+
+    sale_order_ids = fields.Many2many(
+        'sale.order',
+        'sale_order_transaction_rel',
+        'transaction_id',
+        'sale_order_id',
+        'Sales Orders',
+        copy=False,
+        readonly=True,
+    )
+    sale_order_ids_nbr = fields.Integer(
+        string='# of Sales Orders',
+        compute='_compute_sale_order_ids_nbr',
+    )
+
 
     def _compute_sale_order_reference(self, order):
         self.ensure_one()
@@ -37,12 +47,13 @@ class PaymentTransaction(models.Model):
             trans.sale_order_ids_nbr = len(trans.sale_order_ids)
 
     def _post_process(self):
-        """ Override of `payment` to add Sales-specific logic to the post-processing.
+        '''
+        Override of `payment` to add Sales-specific logic to the post-processing.
 
         In particular, for pending transactions, we send the quotation by email; for authorized
         transactions, we confirm the quotation; for confirmed transactions, we automatically confirm
         the quotation and generate invoices.
-        """
+        '''
         for pending_tx in self.filtered(lambda tx: tx.state == 'pending'):
             super(PaymentTransaction, pending_tx)._post_process()
             sales_orders = pending_tx.sale_order_ids.filtered(
@@ -95,7 +106,8 @@ class PaymentTransaction(models.Model):
                 self._send_invoice()
 
     def _check_amount_and_confirm_order(self):
-        """ Confirm the sales order based on the amount of a transaction.
+        '''
+        Confirm the sales order based on the amount of a transaction.
 
         Confirm the sales orders only if the transaction amount (or the sum of the partial
         transaction amounts) is equal to or greater than the required amount for order confirmation
@@ -104,7 +116,7 @@ class PaymentTransaction(models.Model):
 
         :return: The confirmed sales orders.
         :rtype: a `sale.order` recordset
-        """
+        '''
         confirmed_orders = self.env['sale.order']
         for tx in self:
             # We only support the flow where exactly one quotation is linked to a transaction.
@@ -116,13 +128,14 @@ class PaymentTransaction(models.Model):
         return confirmed_orders
 
     def _log_message_on_linked_documents(self, message):
-        """ Override of payment to log a message on the sales orders linked to the transaction.
+        '''
+        Override of payment to log a message on the sales orders linked to the transaction.
 
         Note: self.ensure_one()
 
         :param str message: The message to be logged
         :return: None
-        """
+        '''
         super()._log_message_on_linked_documents(message)
         author = self.env.user.partner_id if self.env.uid == SUPERUSER_ID else self.partner_id
         for order in self.sale_order_ids or self.source_transaction_id.sale_order_ids:
@@ -144,9 +157,9 @@ class PaymentTransaction(models.Model):
             )
 
     def _cron_send_invoice(self):
-        """
-            Cron to send invoice that where not ready to be send directly after posting
-        """
+        '''
+        Cron to send invoice that where not ready to be send directly after posting
+        '''
         if not self.env['ir.config_parameter'].sudo().get_param('sale.automatic_invoice'):
             return
 
@@ -193,7 +206,8 @@ class PaymentTransaction(models.Model):
 
     @api.model
     def _compute_reference_prefix(self, provider_code, separator, **values):
-        """ Override of payment to compute the reference prefix based on Sales-specific values.
+        '''
+        Override of payment to compute the reference prefix based on Sales-specific values.
 
         If the `values` parameter has an entry with 'sale_order_ids' as key and a list of (4, id, O)
         or (6, 0, ids) X2M command as value, the prefix is computed based on the sales order name(s)
@@ -205,7 +219,7 @@ class PaymentTransaction(models.Model):
                             have the structure {'sale_order_ids': [(X2M command), ...], ...}.
         :return: The computed reference prefix if order ids are found, the one of `super` otherwise
         :rtype: str
-        """
+        '''
         command_list = values.get('sale_order_ids')
         if command_list:
             # Extract sales order id(s) from the X2M commands

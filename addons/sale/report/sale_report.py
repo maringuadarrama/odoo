@@ -1,99 +1,104 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import api, fields, models
-
 from odoo.addons.sale.models.sale_order import SALE_ORDER_STATE
 
 
 class SaleReport(models.Model):
-    _name = "sale.report"
-    _description = "Sales Analysis Report"
+    _name = 'sale.report'
+    _description = 'Sales Analysis Report'
     _auto = False
     _rec_name = 'date'
     _order = 'date desc'
+
 
     @api.model
     def _get_done_states(self):
         return ['sale']
 
+
     # sale.order fields
-    name = fields.Char(string="Order Reference", readonly=True)
-    date = fields.Datetime(string="Order Date", readonly=True)
-    partner_id = fields.Many2one(comodel_name='res.partner', string="Customer", readonly=True)
     company_id = fields.Many2one(comodel_name='res.company', readonly=True)
+    currency_id = fields.Many2one('res.currency', compute='_compute_currency_id')
+    partner_id = fields.Many2one(comodel_name='res.partner', string='Customer', readonly=True)
     pricelist_id = fields.Many2one(comodel_name='product.pricelist', readonly=True)
-    team_id = fields.Many2one(comodel_name='crm.team', string="Sales Team", readonly=True)
-    user_id = fields.Many2one(comodel_name='res.users', string="Salesperson", readonly=True)
-    state = fields.Selection(selection=SALE_ORDER_STATE, string="Status", readonly=True)
+    team_id = fields.Many2one(comodel_name='crm.team', string='Sales Team', readonly=True)
+    user_id = fields.Many2one(comodel_name='res.users', string='Salesperson', readonly=True)
+    state = fields.Selection(selection=SALE_ORDER_STATE, string='Status', readonly=True)
     invoice_status = fields.Selection(
         selection=[
-            ('upselling', "Upselling Opportunity"),
-            ('invoiced', "Fully Invoiced"),
-            ('to invoice', "To Invoice"),
-            ('no', "Nothing to Invoice"),
-        ], string="Order Invoice Status", readonly=True)
+            ('upselling', 'Upselling Opportunity'),
+            ('invoiced', 'Fully Invoiced'),
+            ('to invoice', 'To Invoice'),
+            ('no', 'Nothing to Invoice'),
+        ],
+        string='Order Invoice Status',
+        readonly=True,
+    )
+    date = fields.Datetime(string='Order Date', readonly=True)
+    name = fields.Char(string='Order Reference', readonly=True)
 
-    campaign_id = fields.Many2one(comodel_name='utm.campaign', string="Campaign", readonly=True)
-    medium_id = fields.Many2one(comodel_name='utm.medium', string="Medium", readonly=True)
-    source_id = fields.Many2one(comodel_name='utm.source', string="Source", readonly=True)
+    campaign_id = fields.Many2one('utm.campaign', 'Campaign', readonly=True)
+    medium_id = fields.Many2one('utm.medium', 'Medium', readonly=True)
+    source_id = fields.Many2one('utm.source', 'Source', readonly=True)
 
-    # res.partner fields
-    commercial_partner_id = fields.Many2one(
-        comodel_name='res.partner', string="Customer Entity", readonly=True)
-    country_id = fields.Many2one(
-        comodel_name='res.country', string="Customer Country", readonly=True)
-    industry_id = fields.Many2one(
-        comodel_name='res.partner.industry', string="Customer Industry", readonly=True)
-    partner_zip = fields.Char(string="Customer ZIP", readonly=True)
-    state_id = fields.Many2one(comodel_name='res.country.state', string="Customer State", readonly=True)
+    commercial_partner_id = fields.Many2one('res.partner', 'Customer Entity', readonly=True)
+    country_id = fields.Many2one('res.country', 'Customer Country', readonly=True)
+    state_id = fields.Many2one('res.country.state', 'Customer State', readonly=True)
+    partner_zip = fields.Char('Customer ZIP', readonly=True)
+    industry_id = fields.Many2one('res.partner.industry', 'Customer Industry', readonly=True)
 
-    # sale.order.line fields
     order_reference = fields.Reference(
         string='Order',
         selection=[('sale.order', 'Sales Order')],
-        aggregator="count_distinct",
+        aggregator='count_distinct',
     )
 
-    categ_id = fields.Many2one(
-        comodel_name='product.category', string="Product Category", readonly=True)
-    product_id = fields.Many2one(
-        comodel_name='product.product', string="Product Variant", readonly=True)
-    product_tmpl_id = fields.Many2one(
-        comodel_name='product.template', string="Product", readonly=True)
-    product_uom = fields.Many2one(comodel_name='uom.uom', string="Unit of Measure", readonly=True)
-    product_uom_qty = fields.Float(string="Qty Ordered", readonly=True)
-    qty_to_deliver = fields.Float(string="Qty To Deliver", readonly=True)
-    qty_delivered = fields.Float(string="Qty Delivered", readonly=True)
-    qty_to_invoice = fields.Float(string="Qty To Invoice", readonly=True)
-    qty_invoiced = fields.Float(string="Qty Invoiced", readonly=True)
-    price_subtotal = fields.Monetary(string="Untaxed Total", readonly=True)
-    price_total = fields.Monetary(string="Total", readonly=True)
-    untaxed_amount_to_invoice = fields.Monetary(string="Untaxed Amount To Invoice", readonly=True)
-    untaxed_amount_invoiced = fields.Monetary(string="Untaxed Amount Invoiced", readonly=True)
+    categ_id = fields.Many2one('product.category', 'Product Category', readonly=True)
+    product_id = fields.Many2one('product.product', 'Product Variant', readonly=True)
+    product_tmpl_id = fields.Many2one('product.template', 'Product', readonly=True)
+    product_uom = fields.Many2one('uom.uom', 'Unit of Measure', readonly=True)
+    product_uom_qty = fields.Float(string='Qty Ordered', readonly=True)
+    price_unit = fields.Float(string='Unit Price', aggregator='avg', readonly=True)
+    discount = fields.Float(string='Discount %', readonly=True, aggregator='avg')
+    discount_amount = fields.Monetary(string='Discount Amount', readonly=True)
+    price_subtotal = fields.Monetary(string='Untaxed Total', readonly=True)
+    price_total = fields.Monetary(string='Total', readonly=True)
+    untaxed_amount_to_invoice = fields.Monetary(string='Untaxed Amount To Invoice', readonly=True)
+    untaxed_amount_invoiced = fields.Monetary(string='Untaxed Amount Invoiced', readonly=True)
+    qty_to_deliver = fields.Float(string='Qty To Deliver', readonly=True)
+    qty_delivered = fields.Float(string='Qty Delivered', readonly=True)
+    qty_to_invoice = fields.Float(string='Qty To Invoice', readonly=True)
+    qty_invoiced = fields.Float(string='Qty Invoiced', readonly=True)
     line_invoice_status = fields.Selection(
         selection=[
-            ('upselling', "Upselling Opportunity"),
-            ('invoiced', "Fully Invoiced"),
-            ('to invoice', "To Invoice"),
-            ('no', "Nothing to Invoice"),
-        ], string="Invoice Status", readonly=True)
-
-    weight = fields.Float(string="Gross Weight", readonly=True)
-    volume = fields.Float(string="Volume", readonly=True)
-    price_unit = fields.Float(string="Unit Price", aggregator='avg', readonly=True)
-    discount = fields.Float(string="Discount %", readonly=True, aggregator='avg')
-    discount_amount = fields.Monetary(string="Discount Amount", readonly=True)
+            ('upselling', 'Upselling Opportunity'),
+            ('invoiced', 'Fully Invoiced'),
+            ('to invoice', 'To Invoice'),
+            ('no', 'Nothing to Invoice'),
+        ], string='Invoice Status', readonly=True)
+    weight = fields.Float(string='Gross Weight', readonly=True)
+    volume = fields.Float(string='Volume', readonly=True)
 
     # aggregates or computed fields
-    nbr = fields.Integer(string="# of Lines", readonly=True)
-    currency_id = fields.Many2one(comodel_name='res.currency', compute='_compute_currency_id')
+    nbr = fields.Integer(string='# of Lines', readonly=True)
+
 
     @api.depends_context('allowed_company_ids')
     def _compute_currency_id(self):
         self.currency_id = self.env.company.currency_id
 
     def _with_sale(self):
-        return ""
+        return ''
+
+    def _case_value_or_one(self, value):
+        return f"""CASE COALESCE({value}, 0) WHEN 0 THEN 1.0 ELSE {value} END"""
+
+    def _select_additional_fields(self):
+        """Hook to return additional fields SQL specification for select part of the table query.
+
+        :returns: mapping field -> SQL computation of field, will be converted to '_ AS _field' in the final table definition
+        :rtype: dict
+        """
+        return {}
 
     def _select_sale(self):
         select_ = f"""
@@ -159,26 +164,14 @@ class SaleReport(models.Model):
                 * {self._case_value_or_one('account_currency_table.rate')}
                 ) ELSE 0
             END AS discount_amount,
-            concat('sale.order', ',', s.id) AS order_reference"""
-
+            concat('sale.order', ',', s.id) AS order_reference
+        """
         additional_fields_info = self._select_additional_fields()
         template = """,
             %s AS %s"""
         for fname, query_info in additional_fields_info.items():
             select_ += template % (query_info, fname)
-
         return select_
-
-    def _case_value_or_one(self, value):
-        return f"""CASE COALESCE({value}, 0) WHEN 0 THEN 1.0 ELSE {value} END"""
-
-    def _select_additional_fields(self):
-        """Hook to return additional fields SQL specification for select part of the table query.
-
-        :returns: mapping field -> SQL computation of field, will be converted to '_ AS _field' in the final table definition
-        :rtype: dict
-        """
-        return {}
 
     def _from_sale(self):
         currency_table = self.env['res.currency']._get_simple_currency_table(self.env.companies)

@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import UserError
 from odoo.fields import Command
@@ -8,35 +6,36 @@ from odoo.tools import format_date, frozendict
 
 class SaleAdvancePaymentInv(models.TransientModel):
     _name = 'sale.advance.payment.inv'
-    _description = "Sales Advance Payment Invoice"
+    _description = 'Sales Advance Payment Invoice'
+
 
     advance_payment_method = fields.Selection(
         selection=[
-            ('delivered', "Regular invoice"),
-            ('percentage', "Down payment (percentage)"),
-            ('fixed', "Down payment (fixed amount)"),
+            ('delivered', 'Regular invoice'),
+            ('percentage', 'Down payment (percentage)'),
+            ('fixed', 'Down payment (fixed amount)'),
         ],
-        string="Create Invoice",
+        string='Create Invoice',
         default='delivered',
         required=True,
-        help="A standard invoice is issued with all the order lines ready for invoicing,"
-            "according to their invoicing policy (based on ordered or delivered quantity).")
-    count = fields.Integer(string="Order Count", compute='_compute_count')
+        help='A standard invoice is issued with all the order lines ready for invoicing,'
+             'according to their invoicing policy (based on ordered or delivered quantity).')
+    count = fields.Integer(string='Order Count', compute='_compute_count')
     sale_order_ids = fields.Many2many(
         'sale.order', default=lambda self: self.env.context.get('active_ids'))
 
     # Down Payment logic
     has_down_payments = fields.Boolean(
-        string="Has down payments", compute="_compute_has_down_payments")
-    deduct_down_payments = fields.Boolean(string="Deduct down payments", default=True)
+        string='Has down payments', compute='_compute_has_down_payments')
+    deduct_down_payments = fields.Boolean(string='Deduct down payments', default=True)
 
     # New Down Payment
     amount = fields.Float(
-        string="Down Payment",
-        help="The percentage of amount to be invoiced in advance.")
+        string='Down Payment',
+        help='The percentage of amount to be invoiced in advance.')
     fixed_amount = fields.Monetary(
-        string="Down Payment Amount (Fixed)",
-        help="The fixed amount to be invoiced in advance.")
+        string='Down Payment Amount (Fixed)',
+        help='The fixed amount to be invoiced in advance.')
     currency_id = fields.Many2one(
         comodel_name='res.currency',
         compute='_compute_currency_id',
@@ -46,21 +45,22 @@ class SaleAdvancePaymentInv(models.TransientModel):
         compute='_compute_company_id',
         store=True)
     amount_invoiced = fields.Monetary(
-        string="Already invoiced",
-        compute="_compute_invoice_amounts",
-        help="Only confirmed down payments are considered.")
+        string='Already invoiced',
+        compute='_compute_invoice_amounts',
+        help='Only confirmed down payments are considered.')
     amount_to_invoice = fields.Monetary(
-        string="Amount to invoice",
-        compute="_compute_invoice_amounts",
-        help="The amount to invoice = Sale Order Total - Confirmed Down Payments.")
+        string='Amount to invoice',
+        compute='_compute_invoice_amounts',
+        help='The amount to invoice = Sale Order Total - Confirmed Down Payments.')
 
     # UI
-    display_draft_invoice_warning = fields.Boolean(compute="_compute_display_draft_invoice_warning")
-    display_invoice_amount_warning = fields.Boolean(compute="_compute_display_invoice_amount_warning")
+    display_draft_invoice_warning = fields.Boolean(compute='_compute_display_draft_invoice_warning')
+    display_invoice_amount_warning = fields.Boolean(compute='_compute_display_invoice_amount_warning')
     consolidated_billing = fields.Boolean(
-        string="Consolidated Billing", default=True,
-        help="Create one invoice for all orders related to same customer and same invoicing address"
+        string='Consolidated Billing', default=True,
+        help='Create one invoice for all orders related to same customer and same invoicing address'
     )
+
 
     #=== COMPUTE METHODS ===#
 
@@ -125,6 +125,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
         for wizard in self:
             if wizard.advance_payment_method == 'percentage' and wizard.amount <= 0.00:
                 raise UserError(_('The value of the down payment amount must be positive.'))
+
             elif wizard.advance_payment_method == 'fixed' and wizard.fixed_amount <= 0.00:
                 raise UserError(_('The value of the down payment amount must be positive.'))
 
@@ -213,9 +214,9 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 subtype_xmlid='mail.mt_note',
             )
 
-            title = _("Down payment invoice")
+            title = _('Down payment invoice')
             order.with_user(poster).message_post(
-                body=_("%s has been created", invoice._get_html_link(title=title)),
+                body=_('%s has been created', invoice._get_html_link(title=title)),
             )
 
             return invoice
@@ -230,12 +231,12 @@ class SaleAdvancePaymentInv(models.TransientModel):
         }
 
     def _prepare_down_payment_lines_values(self, order):
-        """ Create one down payment line per tax or unique taxes combination and per account.
+        ''' Create one down payment line per tax or unique taxes combination and per account.
             Apply the tax(es) to their respective lines.
 
             :param order: Order for which the down payment lines are created.
             :return:      An array of dicts with the down payment lines values.
-        """
+        '''
         self.ensure_one()
         AccountTax = self.env['account.tax']
 
@@ -306,6 +307,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
             # don't add line if price is 0 and prevent division by zero
             if order.currency_id.is_zero(line_vals['price_unit']):
                 continue
+
             # weight analytic account distribution
             if analytic_map.get(key):
                 line_analytic_distribution = {}
@@ -319,7 +321,6 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
             lines_values.append(line_vals)
             accounts.append(key['account_id'])
-
         return lines_values, accounts
 
     def _prepare_base_downpayment_line_values(self, order):
@@ -349,7 +350,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
         self.ensure_one()
         context = {'lang': order.partner_id.lang}
         if self.advance_payment_method == 'percentage':
-            name = _("Down payment of %s%%", self.amount)
+            name = _('Down payment of %s%%', self.amount)
         else:
             name = _('Down Payment')
         del context
