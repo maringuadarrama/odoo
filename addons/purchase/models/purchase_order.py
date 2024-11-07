@@ -1579,7 +1579,7 @@ class PurchaseOrder(models.Model):
             ]
         )
         # Calculated values ('avg order value', 'avg days to purchase', and 'total last 7 days')
-        # note that 'avg order value' and 'total last 7 days' takes into account exchange rate 
+        # note that 'avg order value' and 'total last 7 days' takes into account exchange rate
         # and current company's currency's precision. This is done via SQL for scalability reasons
         query = '''
             SELECT AVG(COALESCE(po.amount_total / NULLIF(po.currency_rate, 0), po.amount_total)),

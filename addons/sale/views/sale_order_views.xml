@@ -50,13 +50,13 @@
             <filter name="my_sale_orders_filter" position="replace">
                 <field name="campaign_id" />
                 <separator />
-                <filter string="My Quotations" name="my_quotation" domain="[('user_id', '=', uid)]" />
+                <filter name="my_quotation" string="My Quotations" domain="[('user_id', '=', uid)]" />
                 <separator />
-                <filter string="Quotations" name="draft"
+                <filter name="draft" string="Quotations"
                     domain="[('state', 'in', ('draft', 'sent'))]" />
-                <filter string="Sales Orders" name="sales" domain="[('state', '=', 'sale')]" />
+                <filter name="sales" string="Sales Orders" domain="[('state', '=', 'sale')]" />
                 <separator />
-                <filter string="Create Date" name="filter_create_date" date="create_date" />
+                <filter name="filter_create_date" string="Create Date" date="create_date" />
             </filter>
         </field>
     </record>
@@ -69,12 +69,12 @@
         <field name="arch" type="xml">
             <filter name="my_sale_orders_filter" position="after">
                 <separator />
-                <filter string="To Invoice" name="to_invoice"
+                <filter name="to_invoice" string="To Invoice"
                     domain="[('invoice_status','=','to invoice')]" />
-                <filter string="To Upsell" name="upselling"
+                <filter name="upselling" string="To Upsell"
                     domain="[('invoice_status','=','upselling')]" />
                 <separator />
-                <filter string="Order Date" name="order_date" date="date_order" />
+                <filter name="order_date" string="Order Date" date="date_order" />
             </filter>
         </field>
     </record>
@@ -215,61 +215,53 @@
                 <header>
                     <button name="%(sale.action_view_sale_advance_payment_inv)d"
                         string="Create Invoices"
-                        type="action" class="btn-secondary"
-                    />
+                        type="action" class="btn-secondary" />
                 </header>
                 <field name="message_needaction" column_invisible="True" />
                 <field name="currency_id" column_invisible="True" />
                 <field name="name" string="Number" readonly="1" decoration-bf="1" />
-                <field name="date_order" optional="show" readonly="state in ['cancel', 'sale']" />
+                <field name="date_order" readonly="state in ['cancel', 'sale']" optional="show" />
                 <field name="commitment_date" optional="hide" />
                 <field name="expected_date" optional="hide" />
                 <field name="partner_id" readonly="1" />
                 <field name="user_id" widget="many2one_avatar_user" optional="show" />
                 <field name="activity_ids" widget="list_activity" optional="show" />
                 <field name="team_id" optional="hide" />
-                <field name="company_id" groups="!base.group_multi_company" column_invisible="True" />
+                <field name="company_id" column_invisible="True" groups="!base.group_multi_company" />
                 <field name="company_id"
-                    optional="show"
                     readonly="1"
-                    groups="base.group_multi_company"
-                />
+                    optional="show"
+                    groups="base.group_multi_company" />
                 <field name="amount_untaxed"
                     widget="monetary"
                     sum="Total Tax Excluded"
-                    optional="hide"
-                />
+                    optional="hide" />
                 <field name="amount_tax"
                     widget="monetary"
                     sum="Tax Total"
-                    optional="hide"
-                />
+                    optional="hide" />
                 <field name="amount_total"
                     widget="monetary"
                     sum="Total Tax Included"
                     decoration-bf="1"
                     decoration-info="invoice_status == 'to invoice'"
-                    optional="show"
-                />
+                    optional="show" />
                 <field name="tag_ids"
                     widget="many2many_tags"
                     options="{'color_field': 'color'}"
-                    optional="hide"
-                />
+                    optional="hide" />
                 <field name="state"
                     widget="badge"
                     decoration-success="state == 'sale'"
                     decoration-info="state == 'draft'"
                     decoration-primary="state == 'sent'"
-                    optional="hide"
-                />
+                    optional="hide" />
                 <field name="invoice_status"
                     widget="badge"
                     decoration-success="invoice_status == 'invoiced'"
                     decoration-info="invoice_status == 'to invoice'"
                     decoration-warning="invoice_status == 'upselling'"
-                    optional="show"
-                />
+                    optional="show" />
                 <field name="client_order_ref" optional="hide" />
                 <field name="validity_date" optional="hide" />
             </list>
@@ -346,14 +338,13 @@
                     <field name="locked" invisible="1" />
                     <field name="authorized_transaction_ids" invisible="1" />
                     <button name="payment_action_capture" string="Capture Transaction"
-                        type="object"
-                        class="oe_highlight"
+                        type="object" class="oe_highlight"
                         data-hotkey="shift+g"
                         invisible="not authorized_transaction_ids" />
                     <button name="payment_action_void" string="Void Transaction"
                         type="object"
-                        confirm="Are you sure you want to void the authorized transaction? This action can't be undone."
                         data-hotkey="shift+v"
+                        confirm="Are you sure you want to void the authorized transaction? This action can't be undone."
                         invisible="not authorized_transaction_ids" />
                     <button id="create_invoice" name="%(sale.action_view_sale_advance_payment_inv)d"
                         string="Create Invoice"
@@ -380,15 +371,14 @@
                         groups="sale.group_proforma_sales" />
                     <button id="action_confirm" name="action_confirm"
                         string="Confirm"
-                        type="object"
-                        class="btn-primary"
+                        type="object" class="btn-primary"
                         data-hotkey="q"
                         context="{'validate_analytic': True}"
                         invisible="state != 'sent'" />
                     <button name="action_confirm" string="Confirm"
                         type="object"
-                        data-hotkey="q"
                         context="{'validate_analytic': True}"
+                        data-hotkey="q"
                         invisible="state != 'draft'" />
                     <button id="send_proforma" name="action_quotation_send"
                         string="Send PRO-FORMA Invoice"
@@ -402,7 +392,6 @@
                         data-hotkey="g"
                         context="{'validate_analytic': True, 'check_document_layout': True}"
                         invisible="state not in ('sent', 'sale')" />
-
                     <!-- allow to unlock locked orders even if setting is not enabled (e.g. orders
                     synchronized from connectors) -->
                     <button name="action_unlock" string="Unlock"
@@ -429,7 +418,8 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,sent,sale" />
                 </header>
                 <div
-                    class="alert alert-warning" role="alert"
+                    class="alert alert-warning"
+                    role="alert"
                     invisible="partner_credit_warning == ''">
                     <field name="partner_credit_warning" />
                 </div>
@@ -440,13 +430,11 @@
                 <div
                     class="alert alert-warning w-100 d-flex align-items-center gap-1"
                     role="alert"
-                    invisible="state != 'draft' or not duplicated_order_ids"
-                >
+                    invisible="state != 'draft' or not duplicated_order_ids">
                     <span>Warning: this order might be a duplicate of</span>
                     <field name="duplicated_order_ids"
                         string="Duplicated Documents"
-                        widget="x2many_buttons"
-                    />
+                        widget="x2many_buttons"/>
                 </div>
                 <sheet>
                     <div name="button_box" class="oe_button_box">
@@ -535,8 +523,7 @@
                     </group>
                     <notebook>
                         <page name="order_lines" string="Order Lines">
-                            <field
-                                name="order_line"
+                            <field name="order_line"
                                 widget="sol_o2m"
                                 mode="list,kanban"
                                 readonly="state == 'cancel' or locked">
@@ -821,8 +808,8 @@
                                     <button name="action_add_from_catalog"
                                             context="{'order_id': parent.id}"
                                             string="Catalog"
-                                            context="{'order_id': parent.id}"
-                                            type="object" class="btn-secondary" />
+                                            type="object" class="btn-secondary"
+                                            context="{'order_id': parent.id}" />
                                     </control>
                                     <templates>
                                         <t t-name="card" class="row g-0 ps-0 pe-0">
@@ -836,17 +823,16 @@
                                                 <main class="col">
                                                     <div class="row">
                                                         <div class="col">
-                                                            <span
+                                                            <span title="This product is archived"
                                                                 class="fa fa-exclamation-triangle text-warning me-1"
-                                                                title="This product is archived"
                                                                 invisible="state not in ['draft', 'sent'] or not is_product_archived"
                                                             />
                                                             <field name="product_id" class="fw-bold" />
                                                         </div>
                                                         <div class="col-auto">
                                                             <field name="price_subtotal"
-                                                                class="fw-bolder float-end pe-1"
-                                                                widget="monetary" />
+                                                                widget="monetary"
+                                                                class="fw-bolder float-end pe-1" />
                                                         </div>
                                                     </div>
                                                     <div class="text-muted"> Quantity: <field
@@ -910,10 +896,10 @@
                                             readonly="state in ['cancel', 'sale']" />
                                         <span class="mx-3" invisible="not require_payment">of</span>
                                         <field name="prepayment_percent"
-                                            readonly="state in ['cancel', 'sale']"
-                                            invisible="not require_payment"
                                             widget="percentage"
-                                            style="width: 3rem" />
+                                            readonly="state in ['cancel', 'sale']"
+                                            style="width: 3rem"
+                                            invisible="not require_payment" />
                                     </div>
                                     <field name="reference" readonly="1" invisible="not reference" />
                                     <field name="client_order_ref" />
@@ -955,7 +941,7 @@
                                                 name="expected_date" class="oe_inline" /></span>
                                     </div>
                                 </group>
-                                <group string="Tracking" name="sale_reporting">
+                                <group name="sale_reporting" string="Tracking">
                                     <field name="origin" />
                                     <field name="campaign_id"
                                         options="{'create_name_field': 'title'}" />
