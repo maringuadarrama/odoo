@@ -79,8 +79,7 @@
                             id="product_matrix"
                             title="If installed, the product variants will be added to purchase orders through a grid entry."
                             string="Variant Grid Entry"
-                            help="Add several variants to the purchase order from a grid"
-                        >
+                            help="Add several variants to the purchase order from a grid">
                             <field name="module_purchase_product_matrix" />
                         </setting>
                         <setting id="stock_packaging_purchase"
@@ -120,6 +119,5 @@
         parent="menu_purchase_config"
         sequence="0"
         action="action_purchase_configuration"
-        groups="base.group_system"
-    />
+        groups="base.group_system" />
 </odoo>
