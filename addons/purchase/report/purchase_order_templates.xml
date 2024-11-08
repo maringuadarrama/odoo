@@ -121,8 +121,7 @@
                                     </td>
                                     <td class="text-end">
                                         <span
-                                            t-esc="', '.join([(tax.invoice_label or tax.name) for tax in line.taxes_id])"
-                                        />
+                                            t-esc="', '.join([(tax.invoice_label or tax.name) for tax in line.taxes_id])" />
                                     </td>
                                     <td class="text-end">
                                         <span
