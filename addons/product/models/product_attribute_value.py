@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from random import randint
 
 from odoo import _, api, fields, models
@@ -11,16 +9,16 @@ class ProductAttributeValue(models.Model):
     # if you change this _order, keep it in sync with the method
     # `_sort_key_variant` in `product.template'
     _order = 'attribute_id, sequence, id'
-    _description = "Attribute Value"
+    _description = 'Attribute Value'
 
     def _get_default_color(self):
         return randint(1, 11)
 
-    name = fields.Char(string="Value", required=True, translate=True)
-    sequence = fields.Integer(string="Sequence", help="Determine the display order", index=True)
+    name = fields.Char(string='Value', required=True, translate=True)
+    sequence = fields.Integer(string='Sequence', help='Determine the display order', index=True)
     attribute_id = fields.Many2one(
         comodel_name='product.attribute',
-        string="Attribute",
+        string='Attribute',
         help="The attribute cannot be changed once the value is used on at least one product.",
         ondelete='cascade',
         required=True,

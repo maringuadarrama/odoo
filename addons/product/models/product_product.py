@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import re
 from operator import itemgetter
 
@@ -20,80 +17,73 @@ class ProductProduct(models.Model):
     _order = 'is_favorite desc, default_code, name, id'
     _check_company_domain = models.check_company_domain_parent_of
 
+
+    product_tmpl_id = fields.Many2one(
+        'product.template',
+        'Product Template',
+        required=True,
+        auto_join=True,
+        ondelete="cascade",
+        index=True,
+    )
+    write_date = fields.Datetime(compute='_compute_write_date', store=True)
+    active = fields.Boolean(
+        'Active',
+        default=True,
+        help="If unchecked, it will allow you to hide the product without removing it.",
+    )
     # price_extra: catalog extra value only, sum of variant extra attributes
     price_extra = fields.Float(
-        'Variant Price Extra', compute='_compute_product_price_extra',
+        'Variant Price Extra',
         digits='Product Price',
-        help="This is the sum of the extra price of all attributes")
+        compute='_compute_product_price_extra',
+        help="This is the sum of the extra price of all attributes",
+    )
     # lst_price: catalog value + extra, context dependent (uom)
     lst_price = fields.Float(
-        'Sales Price', compute='_compute_product_lst_price',
-        digits='Product Price', inverse='_set_product_lst_price',
-        help="The sale price is managed from the product template. Click on the 'Configure Variants' button to set the extra attribute prices.")
-
-    default_code = fields.Char('Internal Reference', index=True)
-    code = fields.Char('Reference', compute='_compute_product_code')
-    partner_ref = fields.Char('Customer Ref', compute='_compute_partner_ref')
-
-    active = fields.Boolean(
-        'Active', default=True,
-        help="If unchecked, it will allow you to hide the product without removing it.")
-    product_tmpl_id = fields.Many2one(
-        'product.template', 'Product Template',
-        auto_join=True, index=True, ondelete="cascade", required=True)
-    barcode = fields.Char(
-        'Barcode', copy=False, index='btree_not_null',
-        help="International Article Number used for product identification.")
-    product_template_attribute_value_ids = fields.Many2many('product.template.attribute.value', relation='product_variant_combination', string="Attribute Values", ondelete='restrict')
-    product_template_variant_value_ids = fields.Many2many('product.template.attribute.value', relation='product_variant_combination',
-                                                          domain=[('attribute_line_id.value_count', '>', 1)], string="Variant Values", ondelete='restrict')
-    combination_indices = fields.Char(compute='_compute_combination_indices', store=True, index=True)
-    is_product_variant = fields.Boolean(compute='_compute_is_product_variant')
-
-    standard_price = fields.Float(
-        'Cost', company_dependent=True,
+        'Sales Price',
         digits='Product Price',
+        compute='_compute_product_lst_price',
+        inverse='_set_product_lst_price',
+        help="The sale price is managed from the product template. "
+             "Click on the 'Configure Variants' button to set the extra attribute prices.",
+    )
+    standard_price = fields.Float(
+        'Cost',
+        digits='Product Price',
+        company_dependent=True,
         groups="base.group_user",
-        help="""Value of the product (automatically computed in AVCO).
-        Used to value the product when the purchase cost is not known (e.g. inventory adjustment).
-        Used to compute margins on sale orders.""")
+        help='Value of the product (automatically computed in AVCO). '
+             'Used to value the product when the purchase cost is not known '
+             '(e.g. inventory adjustment). '
+             'Used to compute margins on sale orders.',
+    )
     volume = fields.Float('Volume', digits='Volume')
     weight = fields.Float('Weight', digits='Stock Weight')
-
-    pricelist_item_count = fields.Integer("Number of price rules", compute="_compute_variant_item_count")
-
-    product_document_ids = fields.One2many(
-        string="Documents",
-        comodel_name='product.document',
-        inverse_name='res_id',
-        domain=lambda self: [('res_model', '=', self._name)])
-    product_document_count = fields.Integer(
-        string="Documents Count", compute='_compute_product_document_count')
-
-    packaging_ids = fields.One2many(
-        'product.packaging', 'product_id', 'Product Packages',
-        help="Gives the different ways to package the same product.")
-
-    additional_product_tag_ids = fields.Many2many(
-        string="Variant Tags",
-        comodel_name='product.tag',
-        relation='product_tag_product_product_rel',
-        domain="[('id', 'not in', product_tag_ids)]",
+    color = fields.Integer('Color Index')
+    code = fields.Char('Reference', compute='_compute_product_code')
+    default_code = fields.Char('Internal Reference', index=True)
+    barcode = fields.Char(
+        'Barcode',
+        copy=False,
+        index='btree_not_null',
+        help="International Article Number used for product identification.",
     )
-    all_product_tag_ids = fields.Many2many('product.tag', compute='_compute_all_product_tag_ids', search='_search_all_product_tag_ids')
+    partner_ref = fields.Char('Customer Ref', compute='_compute_partner_ref')
 
     # all image fields are base64 encoded and PIL-supported
-
     # all image_variant fields are technical and should not be displayed to the user
+    can_image_1024_be_zoomed = fields.Boolean(
+        "Can Image 1024 be zoomed",
+        compute='_compute_can_image_1024_be_zoomed',
+    )
     image_variant_1920 = fields.Image("Variant Image", max_width=1920, max_height=1920)
-
     # resized fields stored (as attachment) for performance
     image_variant_1024 = fields.Image("Variant Image 1024", related="image_variant_1920", max_width=1024, max_height=1024, store=True)
     image_variant_512 = fields.Image("Variant Image 512", related="image_variant_1920", max_width=512, max_height=512, store=True)
     image_variant_256 = fields.Image("Variant Image 256", related="image_variant_1920", max_width=256, max_height=256, store=True)
     image_variant_128 = fields.Image("Variant Image 128", related="image_variant_1920", max_width=128, max_height=128, store=True)
     can_image_variant_1024_be_zoomed = fields.Boolean("Can Variant Image 1024 be zoomed", compute='_compute_can_image_variant_1024_be_zoomed', store=True)
-
     # Computed fields that are used to create a fallback to the template if
     # necessary, it's recommended to display those fields to the user.
     image_1920 = fields.Image("Image", compute='_compute_image_1920', inverse='_set_image_1920')
@@ -101,8 +91,68 @@ class ProductProduct(models.Model):
     image_512 = fields.Image("Image 512", compute='_compute_image_512')
     image_256 = fields.Image("Image 256", compute='_compute_image_256')
     image_128 = fields.Image("Image 128", compute='_compute_image_128')
-    can_image_1024_be_zoomed = fields.Boolean("Can Image 1024 be zoomed", compute='_compute_can_image_1024_be_zoomed')
-    write_date = fields.Datetime(compute='_compute_write_date', store=True)
+
+    product_template_attribute_value_ids = fields.Many2many(
+        comodel_name='product.template.attribute.value',
+        relation='product_variant_combination',
+        string="Attribute Values",
+        ondelete='restrict',
+    )
+    product_template_variant_value_ids = fields.Many2many(
+        comodel_name='product.template.attribute.value',
+        relation='product_variant_combination',
+        domain=[('attribute_line_id.value_count', '>', 1)],
+        string="Variant Values",
+        ondelete='restrict',
+    )
+    combination_indices = fields.Char(
+        compute='_compute_combination_indices', store=True,
+        index=True,
+    )
+    is_product_variant = fields.Boolean(compute='_compute_is_product_variant')
+
+    additional_product_tag_ids = fields.Many2many(
+        string="Variant Tags",
+        comodel_name='product.tag',
+        relation='product_tag_product_product_rel',
+        domain="[('id', 'not in', product_tag_ids)]",
+    )
+    all_product_tag_ids = fields.Many2many(
+        'product.tag',
+        compute='_compute_all_product_tag_ids',
+        search='_search_all_product_tag_ids',
+    )
+
+    packaging_ids = fields.One2many(
+        'product.packaging',
+        'product_id',
+        'Product Packages',
+        help="Gives the different ways to package the same product.",
+    )
+    pricelist_item_count = fields.Integer(
+        "Number of price rules",
+        compute="_compute_variant_item_count",
+    )
+    product_document_ids = fields.One2many(
+        comodel_name='product.document',
+        inverse_name='res_id',
+        string="Documents",
+        domain=lambda self: [('res_model', '=', self._name)],
+    )
+    product_document_count = fields.Integer(
+        string="Documents Count",
+        compute='_compute_product_document_count',
+    )
+
+
+    @api.constrains('barcode')
+    def _check_barcode_uniqueness(self):
+        """ With GS1 nomenclature, products and packagings use the same pattern. Therefore, we need
+        to ensure the uniqueness between products' barcodes and packagings' ones"""
+        # Barcodes should only be unique within a company
+        for company_id, barcodes_within_company in self._get_barcodes_by_company():
+            self._check_duplicated_product_barcodes(barcodes_within_company, company_id)
+            self._check_duplicated_packaging_barcodes(barcodes_within_company, company_id)
 
     @api.depends('image_variant_1920', 'image_variant_1024')
     def _compute_can_image_variant_1024_be_zoomed(self):
@@ -232,15 +282,6 @@ class ProductProduct(models.Model):
         packaging_domain = self._get_barcode_search_domain(barcodes_within_company, company_id)
         if self.env['product.packaging'].sudo().search_count(packaging_domain, limit=1):
             raise ValidationError(_("A packaging already uses the barcode"))
-
-    @api.constrains('barcode')
-    def _check_barcode_uniqueness(self):
-        """ With GS1 nomenclature, products and packagings use the same pattern. Therefore, we need
-        to ensure the uniqueness between products' barcodes and packagings' ones"""
-        # Barcodes should only be unique within a company
-        for company_id, barcodes_within_company in self._get_barcodes_by_company():
-            self._check_duplicated_product_barcodes(barcodes_within_company, company_id)
-            self._check_duplicated_packaging_barcodes(barcodes_within_company, company_id)
 
     def _get_invoice_policy(self):
         return False
