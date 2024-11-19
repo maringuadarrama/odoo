@@ -14,19 +14,14 @@ from odoo.tools.float_utils import float_is_zero
 
 class PurchaseOrder(models.Model):
     _name = 'purchase.order'
-    _inherit = ['portal.mixin', 'product.catalog.mixin', 'mail.thread', 'mail.activity.mixin']
+    _inherit = [
+        'portal.mixin', 'product.catalog.mixin', 'mail.thread', 'mail.activity.mixin'
+    ]
     _description = 'Purchase Order'
     _rec_names_search = ['name', 'partner_ref']
     _order = 'priority desc, id desc'
 
 
-    name = fields.Char(
-        'Order Reference',
-        required=True,
-        default='New',
-        copy=False,
-        index='trigram',
-    )
     company_id = fields.Many2one(
         'res.company',
         'Company',
@@ -66,6 +61,29 @@ class PurchaseOrder(models.Model):
         help='Technical field to filter the available taxes depending on the fiscal '
              'country and fiscal position.',
     )
+    state = fields.Selection(
+        [
+            ('draft', 'RFQ'),
+            ('sent', 'RFQ Sent'),
+            ('to approve', 'To Approve'),
+            ('purchase', 'Purchase Order'),
+            ('done', 'Locked'),
+            ('cancel', 'Cancelled')
+        ],
+        string='Status',
+        default='draft',
+        readonly=True,
+        copy=False,
+        tracking=True,
+        index=True,
+    )
+    name = fields.Char(
+        'Order Reference',
+        required=True,
+        default='New',
+        copy=False,
+        index='trigram',
+    )
     date_order = fields.Datetime(
         'Order Deadline',
         required=True,
@@ -93,22 +111,6 @@ class PurchaseOrder(models.Model):
     date_calendar_start = fields.Datetime(
         compute='_compute_date_calendar_start', store=True,
         readonly=True,
-    )
-    state = fields.Selection(
-        [
-            ('draft', 'RFQ'),
-            ('sent', 'RFQ Sent'),
-            ('to approve', 'To Approve'),
-            ('purchase', 'Purchase Order'),
-            ('done', 'Locked'),
-            ('cancel', 'Cancelled')
-        ],
-        string='Status',
-        default='draft',
-        readonly=True,
-        copy=False,
-        tracking=True,
-        index=True,
     )
     priority = fields.Selection(
         [('0', 'Normal'), ('1', 'Urgent')],
@@ -189,10 +191,6 @@ class PurchaseOrder(models.Model):
         readonly=True,
         tracking=True,
     )
-    tax_totals = fields.Binary(
-        compute='_compute_tax_totals',
-        exportable=False,
-    )
     amount_tax = fields.Monetary(
         string='Taxes',
         compute='_amount_all', store=True,
@@ -209,30 +207,11 @@ class PurchaseOrder(models.Model):
         compute='_amount_all', store=True,
         readonly=True,
     )
-    invoice_ids = fields.Many2many(
-        'account.move',
-        string='Bills',
-        compute='_compute_invoice', store=True,
-        copy=False,
+    tax_totals = fields.Binary(
+        compute='_compute_tax_totals',
+        exportable=False,
     )
-    invoice_count = fields.Integer(
-        string='Bill Count',
-        default=0,
-        compute='_compute_invoice', store=True,
-        copy=False,
-    )
-    invoice_status = fields.Selection(
-        [
-            ('no', 'Nothing to Bill'),
-            ('to invoice', 'Waiting Bills'),
-            ('invoiced', 'Fully Billed'),
-        ],
-        string='Billing Status',
-        default='no',
-        compute='_get_invoiced', store=True,
-        readonly=True,
-        copy=False,
-    )
+
     mail_reminder_confirmed = fields.Boolean(
         'Reminder Confirmed',
         default=False,
@@ -262,6 +241,30 @@ class PurchaseOrder(models.Model):
         compute='_compute_receipt_reminder_email',
     )
 
+    invoice_ids = fields.Many2many(
+        'account.move',
+        string='Bills',
+        compute='_compute_invoice', store=True,
+        copy=False,
+    )
+    invoice_count = fields.Integer(
+        string='Bill Count',
+        default=0,
+        compute='_compute_invoice', store=True,
+        copy=False,
+    )
+    invoice_status = fields.Selection(
+        [
+            ('no', 'Nothing to Bill'),
+            ('to invoice', 'Waiting Bills'),
+            ('invoiced', 'Fully Billed'),
+        ],
+        string='Billing Status',
+        default='no',
+        compute='_get_invoiced', store=True,
+        readonly=True,
+        copy=False,
+    )
 
     # ------------------------------------------------------------
     # CONSTRAINT METHODS
@@ -637,44 +640,6 @@ class PurchaseOrder(models.Model):
             'context': ctx,
         }
 
-    def print_quotation(self):
-        self.write({'state': 'sent'})
-        return self.env.ref('purchase.report_purchase_quotation').report_action(self)
-
-    def button_approve(self, force=False):
-        self = self.filtered(lambda order: order._approval_allowed())
-        self.write({'state': 'purchase', 'date_approve': fields.Datetime.now()})
-        self.filtered(lambda p: p.company_id.po_lock == 'lock').write({'state': 'done'})
-        return {}
-
-    def button_confirm(self):
-        for order in self:
-            if order.state not in ['draft', 'sent']:
-                continue
-
-            order.order_line._validate_analytic_distribution()
-            order._add_supplier_to_product()
-            # Deal with double validation process
-            if order._approval_allowed():
-                order.button_approve()
-            else:
-                order.write({'state': 'to approve'})
-            if order.partner_id not in order.message_partner_ids:
-                order.message_subscribe([order.partner_id.id])
-        return True
-
-    def button_cancel(self):
-        purchase_orders_with_invoices = self.filtered(
-            lambda po: any(i.state not in ('cancel', 'draft') for i in po.invoice_ids)
-        )
-        if purchase_orders_with_invoices:
-            raise UserError(_(
-                'Unable to cancel purchase order(s): %s. You must first cancel their '
-                'related vendor bills.',
-                format_list(self.env, purchase_orders_with_invoices.mapped('display_name'))
-            ))
-        self.write({'state': 'cancel', 'mail_reminder_confirmed': False})
-
     def button_draft(self):
         self.write({'state': 'draft'})
         return {}
@@ -729,6 +694,55 @@ class PurchaseOrder(models.Model):
                 # supplier info should be added regardless of the user access rights
                 line.product_id.product_tmpl_id.sudo().write(vals)
 
+    def _approval_allowed(self):
+        '''Returns whether the order qualifies to be approved by the current user'''
+        self.ensure_one()
+        return (
+            self.company_id.po_double_validation == 'one_step'
+            or (self.company_id.po_double_validation == 'two_step'
+                and self.amount_total < self.env.company.currency_id._convert(
+                    self.company_id.po_double_validation_amount, self.currency_id, self.company_id,
+                    self.date_order or fields.Date.today()))
+            or self.env.user.has_group('purchase.group_purchase_manager'))
+
+    def button_approve(self, force=False):
+        self = self.filtered(lambda order: order._approval_allowed())
+        self.write({'state': 'purchase', 'date_approve': fields.Datetime.now()})
+        self.filtered(lambda p: p.company_id.po_lock == 'lock').write({'state': 'done'})
+        return {}
+
+    def button_confirm(self):
+        for order in self:
+            if order.state not in ['draft', 'sent']:
+                continue
+
+            order.order_line._validate_analytic_distribution()
+            order._add_supplier_to_product()
+            # Deal with double validation process
+            if order._approval_allowed():
+                order.button_approve()
+            else:
+                order.write({'state': 'to approve'})
+            if order.partner_id not in order.message_partner_ids:
+                order.message_subscribe([order.partner_id.id])
+        return True
+
+    def button_cancel(self):
+        purchase_orders_with_invoices = self.filtered(
+            lambda po: any(i.state not in ('cancel', 'draft') for i in po.invoice_ids)
+        )
+        if purchase_orders_with_invoices:
+            raise UserError(_(
+                'Unable to cancel purchase order(s): %s. You must first cancel their '
+                'related vendor bills.',
+                format_list(self.env, purchase_orders_with_invoices.mapped('display_name'))
+            ))
+        self.write({'state': 'cancel', 'mail_reminder_confirmed': False})
+
+    def print_quotation(self):
+        self.write({'state': 'sent'})
+        return self.env.ref('purchase.report_purchase_quotation').report_action(self)
+
     def action_bill_matching(self):
         self.ensure_one()
         return {
@@ -780,77 +794,11 @@ class PurchaseOrder(models.Model):
         ]  # a simple concatenation would cause all order_line to recompute, we do not want it to happen
         return downpayment_lines
 
-    def action_create_invoice(self):
-        '''Create the invoice associated to the PO.'''
-        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
-        # 1) Prepare invoice vals and clean-up the section lines
-        invoice_vals_list = []
-        sequence = 10
-        for order in self:
-            if order.invoice_status != 'to invoice':
-                continue
+    def _prepare_grouped_data(self, rfq):
+        return (rfq.partner_id.id, rfq.currency_id.id, rfq.dest_address_id.id)
 
-            order = order.with_company(order.company_id)
-            pending_section = None
-            # Invoice values.
-            invoice_vals = order._prepare_invoice()
-            # Invoice line values (keep only necessary sections).
-            for line in order.order_line:
-                if line.display_type == 'line_section':
-                    pending_section = line
-                    continue
-                if not float_is_zero(line.qty_to_invoice, precision_digits=precision):
-                    if pending_section:
-                        line_vals = pending_section._prepare_account_move_line()
-                        line_vals.update({'sequence': sequence})
-                        invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
-                        sequence += 1
-                        pending_section = None
-                    line_vals = line._prepare_account_move_line()
-                    line_vals.update({'sequence': sequence})
-                    invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
-                    sequence += 1
-            invoice_vals_list.append(invoice_vals)
-        if not invoice_vals_list:
-            raise UserError(_(
-                'There is no invoiceable line. If a product has a control policy based '
-                'on received quantity, please make sure that a quantity has been received.'
-            ))
-
-        # 2) group by (company_id, partner_id, currency_id) for batch creation
-        new_invoice_vals_list = []
-        for grouping_keys, invoices in groupby(invoice_vals_list, key=lambda x: (x.get('company_id'), x.get('partner_id'), x.get('currency_id'))):
-            origins = set()
-            payment_refs = set()
-            refs = set()
-            ref_invoice_vals = None
-            for invoice_vals in invoices:
-                if not ref_invoice_vals:
-                    ref_invoice_vals = invoice_vals
-                else:
-                    ref_invoice_vals['invoice_line_ids'] += invoice_vals['invoice_line_ids']
-                origins.add(invoice_vals['invoice_origin'])
-                payment_refs.add(invoice_vals['payment_reference'])
-                refs.add(invoice_vals['ref'])
-            ref_invoice_vals.update({
-                'ref': ', '.join(refs)[:2000],
-                'invoice_origin': ', '.join(origins),
-                'payment_reference': len(payment_refs) == 1 and payment_refs.pop() or False,
-            })
-            new_invoice_vals_list.append(ref_invoice_vals)
-        invoice_vals_list = new_invoice_vals_list
-
-        # 3) Create invoices.
-        moves = self.env['account.move']
-        AccountMove = self.env['account.move'].with_context(default_move_type='in_invoice')
-        for vals in invoice_vals_list:
-            moves |= AccountMove.with_company(vals['company_id']).create(vals)
-
-        # 4) Some moves might actually be refunds: convert them if the total amount is negative
-        # We do this after the moves have been created since we need taxes, etc. to know if the
-        #  total is actually negative or not
-        moves.filtered(lambda m: m.currency_id.round(m.amount_total) < 0).action_switch_move_type()
-        return self.action_view_invoice(moves)
+    def _merge_alternative_po(self, rfqs):
+        pass
 
     def action_merge(self):
         all_origin = []
@@ -932,71 +880,9 @@ class PurchaseOrder(models.Model):
             }
         }
 
-    def _merge_alternative_po(self, rfqs):
-        pass
-
-    def _prepare_grouped_data(self, rfq):
-        return (rfq.partner_id.id, rfq.currency_id.id, rfq.dest_address_id.id)
-
-    def _prepare_invoice(self):
-        '''
-        Prepare the dict of values to create the new invoice for a purchase order.
-        '''
-        self.ensure_one()
-        move_type = self._context.get('default_move_type', 'in_invoice')
-        partner_invoice = self.env['res.partner'].browse(
-            self.partner_id.address_get(['invoice'])['invoice']
-        )
-        partner_bank_id = self.partner_id.commercial_partner_id.bank_ids.filtered_domain(
-            ['|', ('company_id', '=', False), ('company_id', '=', self.company_id.id)]
-        )[:1]
-        invoice_vals = {
-            'ref': self.partner_ref or '',
-            'move_type': move_type,
-            'narration': self.notes,
-            'currency_id': self.currency_id.id,
-            'partner_id': partner_invoice.id,
-            'fiscal_position_id': (
-                self.fiscal_position_id
-                or self.fiscal_position_id._get_fiscal_position(partner_invoice)
-            ).id,
-            'payment_reference': self.partner_ref or '',
-            'partner_bank_id': partner_bank_id.id,
-            'invoice_origin': self.name,
-            'invoice_payment_term_id': self.payment_term_id.id,
-            'invoice_line_ids': [],
-            'company_id': self.company_id.id,
-        }
-        return invoice_vals
-
-    def action_view_invoice(self, invoices=False):
-        '''
-        This function returns an action that display existing vendor bills of
-        given purchase order ids. When only one found, show the vendor bill
-        immediately.
-        '''
-        if not invoices:
-            self.invalidate_model(['invoice_ids'])
-            invoices = self.invoice_ids
-
-        result = self.env['ir.actions.act_window']._for_xml_id(
-            'account.action_move_in_invoice_type'
-        )
-        # choose the view_mode accordingly
-        if len(invoices) > 1:
-            result['domain'] = [('id', 'in', invoices.ids)]
-        elif len(invoices) == 1:
-            res = self.env.ref('account.view_move_form', False)
-            form_view = [(res and res.id or False, 'form')]
-            if 'views' in result:
-                result['views'] = form_view + [(state, view) for state, view in result['views'] if view != 'form']
-            else:
-                result['views'] = form_view
-            result['res_id'] = invoices.id
-        else:
-            result = {'type': 'ir.actions.act_window_close'}
-
-        return result
+    # ------------------------------------------------------------
+    # CATALOG
+    # ------------------------------------------------------------
 
     def _default_order_line_values(self, child_field=False):
         default_data = super()._default_order_line_values(child_field)
@@ -1023,20 +909,6 @@ class PurchaseOrder(models.Model):
 
     def _get_product_catalog_domain(self):
         return expression.AND([super()._get_product_catalog_domain(), [('purchase_ok', '=', True)]])
-
-    def _get_product_catalog_order_data(self, products, **kwargs):
-        res = super()._get_product_catalog_order_data(products, **kwargs)
-        for product in products:
-            res[product.id] |= self._get_product_price_and_data(product)
-        return res
-
-    def _get_product_catalog_record_lines(self, product_ids, child_field=False):
-        grouped_lines = defaultdict(lambda: self.env['purchase.order.line'])
-        for line in self.order_line:
-            if line.display_type or line.product_id.id not in product_ids:
-                continue
-            grouped_lines[line.product_id] |= line
-        return grouped_lines
 
     def _get_product_price_and_data(self, product):
         '''
@@ -1093,124 +965,159 @@ class PurchaseOrder(models.Model):
             )
         return product_infos
 
-    def _approval_allowed(self):
-        '''Returns whether the order qualifies to be approved by the current user'''
-        self.ensure_one()
-        return (
-            self.company_id.po_double_validation == 'one_step'
-            or (self.company_id.po_double_validation == 'two_step'
-                and self.amount_total < self.env.company.currency_id._convert(
-                    self.company_id.po_double_validation_amount, self.currency_id, self.company_id,
-                    self.date_order or fields.Date.today()))
-            or self.env.user.has_group('purchase.group_purchase_manager'))
+    def _get_product_catalog_order_data(self, products, **kwargs):
+        res = super()._get_product_catalog_order_data(products, **kwargs)
+        for product in products:
+            res[product.id] |= self._get_product_price_and_data(product)
+        return res
 
-    def _update_date_planned_for_lines(self, updated_dates):
-        # create or update the activity
-        activity = self.env['mail.activity'].search([
-            ('summary', '=', _('Date Updated')),
-            ('res_model_id', '=', 'purchase.order'),
-            ('res_id', '=', self.id),
-            ('user_id', '=', self.user_id.id)], limit=1)
-        if activity:
-            self._update_update_date_activity(updated_dates, activity)
-        else:
-            self._create_update_date_activity(updated_dates)
+    def _get_product_catalog_record_lines(self, product_ids, child_field=False):
+        grouped_lines = defaultdict(lambda: self.env['purchase.order.line'])
+        for line in self.order_line:
+            if line.display_type or line.product_id.id not in product_ids:
+                continue
+            grouped_lines[line.product_id] |= line
+        return grouped_lines
 
-        # update the date on PO line
-        for line, date in updated_dates:
-            line._update_date_planned(date)
+    # ------------------------------------------------------------
+    # INVOICING
+    # ------------------------------------------------------------
 
-    def _update_order_line_info(self, product_id, quantity, **kwargs):
+    def _prepare_invoice(self):
         '''
-        Update purchase order line information for a given product or create
-        a new one if none exists yet.
-        :param int product_id: The product, as a `product.product` id.
-        :return: The unit price of the product, based on the pricelist of the
-                 purchase order and the quantity selected.
-        :rtype: float
+        Prepare the dict of values to create the new invoice for a purchase order.
         '''
         self.ensure_one()
-        product_packaging_qty = kwargs.get('product_packaging_qty', False)
-        product_packaging_id = kwargs.get('product_packaging_id', False)
-        pol = self.order_line.filtered(lambda line: line.product_id.id == product_id)
-        if pol:
-            if product_packaging_qty:
-                pol.product_packaging_id = product_packaging_id
-                pol.product_packaging_qty = product_packaging_qty
-            elif quantity != 0:
-                pol.product_qty = quantity
-            elif self.state in ['draft', 'sent']:
-                price_unit = self._get_product_price_and_data(pol.product_id)['price']
-                pol.unlink()
-                return price_unit
-            else:
-                pol.product_qty = 0
-        elif quantity > 0:
-            pol = self.env['purchase.order.line'].create({
-                'order_id': self.id,
-                'product_id': product_id,
-                'product_qty': quantity,
-                'sequence': (
-                    (self.order_line and self.order_line[-1].sequence + 1)
-                    or 10
-                ),  # put it at the end of the order
+        move_type = self._context.get('default_move_type', 'in_invoice')
+        partner_invoice = self.env['res.partner'].browse(
+            self.partner_id.address_get(['invoice'])['invoice']
+        )
+        partner_bank_id = self.partner_id.commercial_partner_id.bank_ids.filtered_domain(
+            ['|', ('company_id', '=', False), ('company_id', '=', self.company_id.id)]
+        )[:1]
+        invoice_vals = {
+            'ref': self.partner_ref or '',
+            'move_type': move_type,
+            'narration': self.notes,
+            'currency_id': self.currency_id.id,
+            'partner_id': partner_invoice.id,
+            'fiscal_position_id': (
+                self.fiscal_position_id
+                or self.fiscal_position_id._get_fiscal_position(partner_invoice)
+            ).id,
+            'payment_reference': self.partner_ref or '',
+            'partner_bank_id': partner_bank_id.id,
+            'invoice_origin': self.name,
+            'invoice_payment_term_id': self.payment_term_id.id,
+            'invoice_line_ids': [],
+            'company_id': self.company_id.id,
+        }
+        return invoice_vals
+
+    def action_create_invoice(self):
+        '''Create the invoice associated to the PO.'''
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        # 1) Prepare invoice vals and clean-up the section lines
+        invoice_vals_list = []
+        sequence = 10
+        for order in self:
+            if order.invoice_status != 'to invoice':
+                continue
+
+            order = order.with_company(order.company_id)
+            pending_section = None
+            # Invoice values.
+            invoice_vals = order._prepare_invoice()
+            # Invoice line values (keep only necessary sections).
+            for line in order.order_line:
+                if line.display_type == 'line_section':
+                    pending_section = line
+                    continue
+                if not float_is_zero(line.qty_to_invoice, precision_digits=precision):
+                    if pending_section:
+                        line_vals = pending_section._prepare_account_move_line()
+                        line_vals.update({'sequence': sequence})
+                        invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
+                        sequence += 1
+                        pending_section = None
+                    line_vals = line._prepare_account_move_line()
+                    line_vals.update({'sequence': sequence})
+                    invoice_vals['invoice_line_ids'].append((0, 0, line_vals))
+                    sequence += 1
+            invoice_vals_list.append(invoice_vals)
+        if not invoice_vals_list:
+            raise UserError(_(
+                'There is no invoiceable line. If a product has a control policy based '
+                'on received quantity, please make sure that a quantity has been received.'
+            ))
+
+        # 2) group by (company_id, partner_id, currency_id) for batch creation
+        new_invoice_vals_list = []
+        for grouping_keys, invoices in groupby(invoice_vals_list, key=lambda x: (x.get('company_id'), x.get('partner_id'), x.get('currency_id'))):
+            origins = set()
+            payment_refs = set()
+            refs = set()
+            ref_invoice_vals = None
+            for invoice_vals in invoices:
+                if not ref_invoice_vals:
+                    ref_invoice_vals = invoice_vals
+                else:
+                    ref_invoice_vals['invoice_line_ids'] += invoice_vals['invoice_line_ids']
+                origins.add(invoice_vals['invoice_origin'])
+                payment_refs.add(invoice_vals['payment_reference'])
+                refs.add(invoice_vals['ref'])
+            ref_invoice_vals.update({
+                'ref': ', '.join(refs)[:2000],
+                'invoice_origin': ', '.join(origins),
+                'payment_reference': len(payment_refs) == 1 and payment_refs.pop() or False,
             })
-            seller = pol.product_id._select_seller(
-                partner_id=pol.partner_id,
-                quantity=pol.product_qty,
-                date=pol.order_id.date_order and pol.order_id.date_order.date() or fields.Date.context_today(pol),
-                uom_id=pol.product_uom)
-            if seller:
-                # Fix the PO line's price on the seller's one.
-                pol.price_unit = seller.price_discounted
-        return pol.price_unit_discounted
+            new_invoice_vals_list.append(ref_invoice_vals)
+        invoice_vals_list = new_invoice_vals_list
 
-    def _create_update_date_activity(self, updated_dates):
-        note = Markup('<p>%s</p>\n') % _(
-            '%s modified receipt dates for the following products:',
-            self.partner_id.name
-        )
-        for line, date in updated_dates:
-            note += Markup('<p> - %s</p>\n') % _(
-                '%(product)s from %(original_receipt_date)s to %(new_receipt_date)s',
-                product=line.product_id.display_name,
-                original_receipt_date=line.date_planned.date(),
-                new_receipt_date=date.date()
-            )
-        activity = self.activity_schedule(
-            'mail.mail_activity_data_warning',
-            summary=_('Date Updated'),
-            user_id=self.user_id.id
-        )
-        # add the note after we post the activity because the note can be soon
-        # changed when updating the date of the next PO line. So instead of
-        # sending a mail with incomplete note, we send one with no note.
-        activity.note = note
-        return activity
+        # 3) Create invoices.
+        moves = self.env['account.move']
+        AccountMove = self.env['account.move'].with_context(default_move_type='in_invoice')
+        for vals in invoice_vals_list:
+            moves |= AccountMove.with_company(vals['company_id']).create(vals)
 
-    def _update_update_date_activity(self, updated_dates, activity):
-        for line, date in updated_dates:
-            activity.note += Markup('<p> - %s</p>\n') %  _(
-                '%(product)s from %(original_receipt_date)s to %(new_receipt_date)s',
-                product=line.product_id.display_name,
-                original_receipt_date=line.date_planned.date(),
-                new_receipt_date=date.date()
-            )
+        # 4) Some moves might actually be refunds: convert them if the total amount is negative
+        # We do this after the moves have been created since we need taxes, etc. to know if the
+        #  total is actually negative or not
+        moves.filtered(lambda m: m.currency_id.round(m.amount_total) < 0).action_switch_move_type()
+        return self.action_view_invoice(moves)
 
-    def _is_readonly(self):
+    def action_view_invoice(self, invoices=False):
         '''
-        Return whether the purchase order is read-only or not based on the state.
-        A purchase order is considered read-only if its state is 'cancel'.
-
-        :return: Whether the purchase order is read-only or not.
-        :rtype: bool
+        This function returns an action that display existing vendor bills of
+        given purchase order ids. When only one found, show the vendor bill
+        immediately.
         '''
-        self.ensure_one()
-        return self.state == 'cancel'
+        if not invoices:
+            self.invalidate_model(['invoice_ids'])
+            invoices = self.invoice_ids
 
-    def _get_report_base_filename(self):
-        self.ensure_one()
-        return 'Purchase Order-%s' % (self.name)
+        result = self.env['ir.actions.act_window']._for_xml_id(
+            'account.action_move_in_invoice_type'
+        )
+        # choose the view_mode accordingly
+        if len(invoices) > 1:
+            result['domain'] = [('id', 'in', invoices.ids)]
+        elif len(invoices) == 1:
+            res = self.env.ref('account.view_move_form', False)
+            form_view = [(res and res.id or False, 'form')]
+            if 'views' in result:
+                result['views'] = form_view + [(state, view) for state, view in result['views'] if view != 'form']
+            else:
+                result['views'] = form_view
+            result['res_id'] = invoices.id
+        else:
+            result = {'type': 'ir.actions.act_window_close'}
+
+        return result
+
+    # ------------------------------------------------------------
+    # EDI
+    # ------------------------------------------------------------
 
     def _get_edi_builders(self):
         return []
@@ -1227,6 +1134,20 @@ class PurchaseOrder(models.Model):
         if self.env.context.get('mark_rfq_as_sent') and 'notify_author' not in kwargs:
             kwargs['notify_author'] = self.env.user.partner_id.id in (kwargs.get('partner_ids') or [])
         return super(PurchaseOrder, self.with_context(**po_ctx)).message_post(**kwargs)
+
+    def _track_subtype(self, init_values):
+        self.ensure_one()
+        if 'state' in init_values and self.state == 'purchase':
+            if init_values['state'] == 'to approve':
+                return self.env.ref('purchase.mt_rfq_approved')
+            return self.env.ref('purchase.mt_rfq_confirmed')
+        elif 'state' in init_values and self.state == 'to approve':
+            return self.env.ref('purchase.mt_rfq_confirmed')
+        elif 'state' in init_values and self.state == 'done':
+            return self.env.ref('purchase.mt_rfq_done')
+        elif 'state' in init_values and self.state == 'sent':
+            return self.env.ref('purchase.mt_rfq_sent')
+        return super(PurchaseOrder, self)._track_subtype(init_values)
 
     def get_confirm_url(self, confirm_type=None):
         '''
@@ -1303,20 +1224,6 @@ class PurchaseOrder(models.Model):
             )
         render_context['subtitles'] = subtitles
         return render_context
-
-    def _track_subtype(self, init_values):
-        self.ensure_one()
-        if 'state' in init_values and self.state == 'purchase':
-            if init_values['state'] == 'to approve':
-                return self.env.ref('purchase.mt_rfq_approved')
-            return self.env.ref('purchase.mt_rfq_confirmed')
-        elif 'state' in init_values and self.state == 'to approve':
-            return self.env.ref('purchase.mt_rfq_confirmed')
-        elif 'state' in init_values and self.state == 'done':
-            return self.env.ref('purchase.mt_rfq_done')
-        elif 'state' in init_values and self.state == 'sent':
-            return self.env.ref('purchase.mt_rfq_sent')
-        return super(PurchaseOrder, self)._track_subtype(init_values)
 
     def get_order_timezone(self):
         '''
@@ -1596,3 +1503,115 @@ class PurchaseOrder(models.Model):
         result['all_avg_order_value'] = format_amount(self.env, res[0] or 0, currency)
         result['all_total_last_7_days'] = format_amount(self.env, res[2] or 0, currency)
         return result
+
+    # ------------------------------------------------------------
+    # BUSINESS METHODS
+    # ------------------------------------------------------------
+
+    def _update_update_date_activity(self, updated_dates, activity):
+        for line, date in updated_dates:
+            activity.note += Markup('<p> - %s</p>\n') %  _(
+                '%(product)s from %(original_receipt_date)s to %(new_receipt_date)s',
+                product=line.product_id.display_name,
+                original_receipt_date=line.date_planned.date(),
+                new_receipt_date=date.date()
+            )
+
+    def _create_update_date_activity(self, updated_dates):
+        note = Markup('<p>%s</p>\n') % _(
+            '%s modified receipt dates for the following products:',
+            self.partner_id.name
+        )
+        for line, date in updated_dates:
+            note += Markup('<p> - %s</p>\n') % _(
+                '%(product)s from %(original_receipt_date)s to %(new_receipt_date)s',
+                product=line.product_id.display_name,
+                original_receipt_date=line.date_planned.date(),
+                new_receipt_date=date.date()
+            )
+        activity = self.activity_schedule(
+            'mail.mail_activity_data_warning',
+            summary=_('Date Updated'),
+            user_id=self.user_id.id
+        )
+        # add the note after we post the activity because the note can be soon
+        # changed when updating the date of the next PO line. So instead of
+        # sending a mail with incomplete note, we send one with no note.
+        activity.note = note
+        return activity
+
+    def _update_date_planned_for_lines(self, updated_dates):
+        # create or update the activity
+        activity = self.env['mail.activity'].search([
+            ('summary', '=', _('Date Updated')),
+            ('res_model_id', '=', 'purchase.order'),
+            ('res_id', '=', self.id),
+            ('user_id', '=', self.user_id.id)], limit=1)
+        if activity:
+            self._update_update_date_activity(updated_dates, activity)
+        else:
+            self._create_update_date_activity(updated_dates)
+
+        # update the date on PO line
+        for line, date in updated_dates:
+            line._update_date_planned(date)
+
+    def _update_order_line_info(self, product_id, quantity, **kwargs):
+        '''
+        Update purchase order line information for a given product or create
+        a new one if none exists yet.
+        :param int product_id: The product, as a `product.product` id.
+        :return: The unit price of the product, based on the pricelist of the
+                 purchase order and the quantity selected.
+        :rtype: float
+        '''
+        self.ensure_one()
+        product_packaging_qty = kwargs.get('product_packaging_qty', False)
+        product_packaging_id = kwargs.get('product_packaging_id', False)
+        pol = self.order_line.filtered(lambda line: line.product_id.id == product_id)
+        if pol:
+            if product_packaging_qty:
+                pol.product_packaging_id = product_packaging_id
+                pol.product_packaging_qty = product_packaging_qty
+            elif quantity != 0:
+                pol.product_qty = quantity
+            elif self.state in ['draft', 'sent']:
+                price_unit = self._get_product_price_and_data(pol.product_id)['price']
+                pol.unlink()
+                return price_unit
+            else:
+                pol.product_qty = 0
+        elif quantity > 0:
+            pol = self.env['purchase.order.line'].create({
+                'order_id': self.id,
+                'product_id': product_id,
+                'product_qty': quantity,
+                'sequence': (
+                    (self.order_line and self.order_line[-1].sequence + 1)
+                    or 10
+                ),  # put it at the end of the order
+            })
+            seller = pol.product_id._select_seller(
+                partner_id=pol.partner_id,
+                quantity=pol.product_qty,
+                date=pol.order_id.date_order and pol.order_id.date_order.date() or fields.Date.context_today(pol),
+                uom_id=pol.product_uom)
+            if seller:
+                # Fix the PO line's price on the seller's one.
+                pol.price_unit = seller.price_discounted
+        return pol.price_unit_discounted
+
+    def _is_readonly(self):
+        '''
+        Return whether the purchase order is read-only or not based on the state.
+        A purchase order is considered read-only if its state is 'cancel'.
+
+        :return: Whether the purchase order is read-only or not.
+        :rtype: bool
+        '''
+        self.ensure_one()
+        return self.state == 'cancel'
+
+    def _get_report_base_filename(self):
+        self.ensure_one()
+        return 'Purchase Order-%s' % (self.name)
