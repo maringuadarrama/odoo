@@ -62,6 +62,7 @@ class SaleOrder(models.Model):
 
     company_id = fields.Many2one(
         'res.company',
+        'Company',
         required=True,
         default=lambda self: self.env.company,
         index=True,
@@ -101,14 +102,6 @@ class SaleOrder(models.Model):
         'Type Name',
         compute='_compute_type_name',
     )
-    name = fields.Char(
-        'Order Reference',
-        required=True,
-        default=lambda self: _('New'),
-        copy=False,
-        readonly=False,
-        index='trigram',
-    )
     state = fields.Selection(
         selection=SALE_ORDER_STATE,
         string='Status',
@@ -118,17 +111,18 @@ class SaleOrder(models.Model):
         tracking=3,
         index=True,
     )
+    name = fields.Char(
+        'Order Reference',
+        required=True,
+        default=lambda self: _('New'),
+        copy=False,
+        readonly=False,
+        index='trigram',
+    )
     create_date = fields.Datetime(  # Override of default create_date field from ORM
         string='Creation Date',
         readonly=True,
         index=True,
-    )
-    commitment_date = fields.Datetime(
-        string='Delivery Date',
-        copy=False,
-        help='This is the delivery date promised to the customer. '
-             'If set, the delivery order will be scheduled based on '
-             'this date rather than product lead times.',
     )
     date_order = fields.Datetime(
         string='Order Date',
@@ -136,6 +130,13 @@ class SaleOrder(models.Model):
         default=fields.Datetime.now,
         copy=False,
         help='Creation date of draft/sent orders,\nConfirmation date of confirmed orders.',
+    )
+    commitment_date = fields.Datetime(
+        string='Delivery Date',
+        copy=False,
+        help='This is the delivery date promised to the customer. '
+             'If set, the delivery order will be scheduled based on '
+             'this date rather than product lead times.',
     )
     validity_date = fields.Date(
         string='Expiration',
@@ -151,13 +152,27 @@ class SaleOrder(models.Model):
         help='Delivery date you can promise to the customer, computed from the minimum lead time '
              'of the order lines.'
     )
-    journal_id = fields.Many2one(
-        'account.journal', string='Invoicing Journal',
-        compute='_compute_journal_id', store=True, precompute=True,
+    user_id = fields.Many2one(
+        'res.users',
+        'Salesperson',
+        compute='_compute_user_id', store=True, precompute=True,
         readonly=False,
-        domain=[('type', '=', 'sale')], check_company=True,
-        help='If set, the SO will invoice in this journal; '
-             'otherwise the sales journal with the lowest sequence is used.',
+        domain=lambda self: "[('groups_id', '=', {}), ('share', '=', False), ('company_ids', '=', company_id)]".format(
+            self.env.ref('sales_team.group_sale_salesman').id
+        ),
+        tracking=2,
+        index=True,
+    )
+    team_id = fields.Many2one(
+        'crm.team',
+        'Sales Team',
+        compute='_compute_team_id', store=True, precompute=True,
+        readonly=False,
+        change_default=True,
+        check_company=True,  # Unrequired company
+        domain=[('company_id', 'in', (False, company_id))],
+        tracking=True,
+        ondelete='set null',
     )
     partner_id = fields.Many2one(
         'res.partner',
@@ -185,6 +200,17 @@ class SaleOrder(models.Model):
         readonly=False,
         check_company=True,
         index='btree_not_null',
+    )
+    partner_credit_warning = fields.Text(
+        compute='_compute_partner_credit_warning'
+    )
+    journal_id = fields.Many2one(
+        'account.journal', string='Invoicing Journal',
+        compute='_compute_journal_id', store=True, precompute=True,
+        readonly=False,
+        domain=[('type', '=', 'sale')], check_company=True,
+        help='If set, the SO will invoice in this journal; '
+             'otherwise the sales journal with the lowest sequence is used.',
     )
     fiscal_position_id = fields.Many2one(
         'account.fiscal.position',
@@ -214,39 +240,15 @@ class SaleOrder(models.Model):
         tracking=1,
         help='If you change the pricelist, only newly added lines will be affected.',
     )
-    user_id = fields.Many2one(
-        'res.users',
-        'Salesperson',
-        compute='_compute_user_id', store=True, precompute=True,
-        readonly=False,
-        domain=lambda self: "[('groups_id', '=', {}), ('share', '=', False), ('company_ids', '=', company_id)]".format(
-            self.env.ref('sales_team.group_sale_salesman').id
-        ),
-        tracking=2,
-        index=True,
-    )
-    team_id = fields.Many2one(
-        'crm.team',
-        'Sales Team',
-        compute='_compute_team_id', store=True, precompute=True,
-        readonly=False,
-        change_default=True,
-        check_company=True,  # Unrequired company
-        domain=[('company_id', 'in', (False, company_id))],
-        tracking=True,
-        ondelete='set null',
-    )
+    campaign_id = fields.Many2one(ondelete='set null')
+    medium_id = fields.Many2one(ondelete='set null')
+    source_id = fields.Many2one(ondelete='set null')
+
     locked = fields.Boolean(
         default=False,
         copy=False,
         tracking=True,
         help='Locked orders cannot be modified.',
-    )
-    require_signature = fields.Boolean(
-        string='Online signature',
-        compute='_compute_require_signature', store=True, precompute=True,
-        readonly=False,
-        help='Request a online signature from the customer to confirm the order.',
     )
     require_payment = fields.Boolean(
         string='Online payment',
@@ -260,6 +262,12 @@ class SaleOrder(models.Model):
         readonly=False,
         help='The percentage of the amount needed that must be paid by the customer '
              'to confirm the order.'
+    )
+    require_signature = fields.Boolean(
+        string='Online signature',
+        compute='_compute_require_signature', store=True, precompute=True,
+        readonly=False,
+        help='Request a online signature from the customer to confirm the order.',
     )
 
     signature = fields.Image(
@@ -303,6 +311,7 @@ class SaleOrder(models.Model):
         auto_join=True,
         copy=True,
     )
+
     amount_untaxed = fields.Monetary(
         'Untaxed Amount',
         compute='_compute_amounts', store=True,
@@ -321,15 +330,6 @@ class SaleOrder(models.Model):
         compute='_compute_tax_totals',
         exportable=False
     )
-    amount_to_invoice = fields.Monetary(
-        'Un-invoiced Balance',
-        compute='_compute_amount_to_invoice',
-    )
-    amount_invoiced = fields.Monetary(
-        'Already invoiced',
-        compute='_compute_amount_invoiced',
-    )
-    # Remaining non stored computed fields (hide/make fields readonly, ...)
     amount_undiscounted = fields.Float(
         'Amount Before Discount',
         digits=0,
@@ -351,6 +351,14 @@ class SaleOrder(models.Model):
         selection=INVOICE_STATUS,
         string='Invoice Status',
         compute='_compute_invoice_status', store=True,
+    )
+    amount_to_invoice = fields.Monetary(
+        'Un-invoiced Balance',
+        compute='_compute_amount_to_invoice',
+    )
+    amount_invoiced = fields.Monetary(
+        'Already invoiced',
+        compute='_compute_amount_invoiced',
     )
 
     # Payment fields
@@ -378,10 +386,6 @@ class SaleOrder(models.Model):
              ' \'done\' or \'authorized\' and linked to this order.',
     )
 
-    campaign_id = fields.Many2one(ondelete='set null')
-    medium_id = fields.Many2one(ondelete='set null')
-    source_id = fields.Many2one(ondelete='set null')
-
     # Followup ?
     tag_ids = fields.Many2many(
         'crm.tag',
@@ -395,13 +399,11 @@ class SaleOrder(models.Model):
         comodel_name='sale.order',
         compute='_compute_duplicated_order_ids',
     )
-    partner_credit_warning = fields.Text(
-        compute='_compute_partner_credit_warning'
-    )
 
     # Remaining ux fields (not computed, not stored)
     is_expired = fields.Boolean(
-        'Is Expired', compute='_compute_is_expired',
+        'Is Expired',
+        compute='_compute_is_expired',
     )
     has_active_pricelist = fields.Boolean(
         compute='_compute_has_active_pricelist'
@@ -411,16 +413,23 @@ class SaleOrder(models.Model):
     )
     # True if the fiscal position was changed
     show_update_fpos = fields.Boolean(
-        string='Has Fiscal Position Changed', store=False
+        string='Has Fiscal Position Changed',
+        store=False
     )
     # True if the pricelist was changed
     show_update_pricelist = fields.Boolean(
-        string='Has Pricelist Changed', store=False
+        string='Has Pricelist Changed',
+        store=False
     )
 
 
     def init(self):
-        create_index(self._cr, 'sale_order_date_order_id_idx', 'sale_order', ['date_order desc', 'id desc'])
+        create_index(
+            self._cr,
+            'sale_order_date_order_id_idx',
+            'sale_order',
+            ['date_order desc', 'id desc']
+        )
 
     # ------------------------------------------------------------
     # CONSTRAINT METHODS
@@ -476,6 +485,16 @@ class SaleOrder(models.Model):
                 ).next_by_code('sale.order', sequence_date=seq_date) or _('New')
         return super().create(vals_list)
 
+    def write(self, vals):
+        if 'pricelist_id' in vals and any(so.state == 'sale' for so in self):
+            raise UserError(_('You cannot change the pricelist of a confirmed order !'))
+        res = super().write(vals)
+        if vals.get('partner_id'):
+            self.filtered(lambda so: so.state in ('sent', 'sale')).message_subscribe(
+                partner_ids=[vals['partner_id']],
+            )
+        return res
+
     def _get_copiable_order_lines(self):
         '''Returns the order lines that can be copied to a new order.'''
         return self.order_line.filtered(lambda l: not l.is_downpayment)
@@ -501,16 +520,6 @@ class SaleOrder(models.Model):
                     'You can not delete a sent quotation or a confirmed sales order.'
                     ' You must first cancel it.'
                 ))
-
-    def write(self, vals):
-        if 'pricelist_id' in vals and any(so.state == 'sale' for so in self):
-            raise UserError(_('You cannot change the pricelist of a confirmed order !'))
-        res = super().write(vals)
-        if vals.get('partner_id'):
-            self.filtered(lambda so: so.state in ('sent', 'sale')).message_subscribe(
-                partner_ids=[vals['partner_id']],
-            )
-        return res
 
     # ------------------------------------------------------------
     # COMPUTE METHODS
@@ -564,6 +573,7 @@ class SaleOrder(models.Model):
         use_invoice_terms = self.env['ir.config_parameter'].sudo().get_param('account.use_invoice_terms')
         if not use_invoice_terms:
             return
+
         for order in self:
             order = order.with_company(order.company_id)
             if order.terms_type == 'html' and self.env.company.invoice_terms_html:
@@ -605,6 +615,77 @@ class SaleOrder(models.Model):
                     or (self.env.user.has_group('sales_team.group_sale_salesman') and self.env.user)
                 )
 
+    @api.depends('partner_id', 'user_id')
+    def _compute_team_id(self):
+        cached_teams = {}
+        for order in self:
+            default_team_id = self.env.context.get('default_team_id', False) or order.team_id.id
+            user_id = order.user_id.id
+            company_id = order.company_id.id
+            key = (default_team_id, user_id, company_id)
+            if key not in cached_teams:
+                cached_teams[key] = self.env['crm.team'].with_context(
+                    default_team_id=default_team_id,
+                )._get_default_team_id(
+                    user_id=user_id,
+                    domain=self.env['crm.team']._check_company_domain(company_id),
+                )
+            order.team_id = cached_teams[key]
+
+    def _fetch_duplicate_orders(self):
+        '''
+        Fectch duplicated orders.
+
+        :return: Dictionary mapping order to it's related duplicated orders.
+        :rtype: dict
+        '''
+        orders = self.filtered(lambda order: order.id and order.client_order_ref)
+        if not orders:
+            return {}
+
+        used_fields = (
+            'company_id',
+            'partner_id',
+            'client_order_ref',
+            'origin',
+            'date_order',
+            'state',
+        )
+        self.env['sale.order'].flush_model(used_fields)
+        result = self.env.execute_query(SQL(
+            '''
+            SELECT
+                sale_order.id AS order_id,
+                array_agg(duplicate_order.id) AS duplicate_ids
+            FROM
+                sale_order
+            JOIN sale_order AS duplicate_order
+                ON sale_order.company_id = duplicate_order.company_id
+                 AND sale_order.id != duplicate_order.id
+                 AND duplicate_order.state != 'cancel'
+                 AND sale_order.partner_id = duplicate_order.partner_id
+                 AND sale_order.date_order = duplicate_order.date_order
+                 AND sale_order.client_order_ref = duplicate_order.client_order_ref
+                 AND (
+                    sale_order.origin = duplicate_order.origin
+                    OR (sale_order.origin IS NULL AND duplicate_order.origin IS NULL)
+                )
+             WHERE sale_order.id IN %(orders)s
+             GROUP BY sale_order.id
+            ''',
+            orders=tuple(orders.ids),
+        ))
+        return {
+            order_id: set(duplicate_ids)
+            for order_id, duplicate_ids in result
+        }
+
+    @api.depends('partner_id', 'date_order', 'client_order_ref', 'origin',)
+    def _compute_duplicated_order_ids(self):
+        order_to_duplicate_orders = self._fetch_duplicate_orders()
+        for order in self:
+            order.duplicated_order_ids = [Command.set(order_to_duplicate_orders.get(order.id, []))]
+
     @api.depends('company_id', 'partner_id', 'partner_shipping_id')
     def _compute_fiscal_position_id(self):
         '''
@@ -615,6 +696,7 @@ class SaleOrder(models.Model):
             if not order.partner_id:
                 order.fiscal_position_id = False
                 continue
+
             fpos_id_before = order.fiscal_position_id.id
             key = (order.company_id.id, order.partner_id.id, order.partner_shipping_id.id)
             if key not in cache:
@@ -630,11 +712,26 @@ class SaleOrder(models.Model):
         for order in self:
             if order.state != 'draft':
                 continue
+
             if not order.partner_id:
                 order.pricelist_id = False
                 continue
+
             order = order.with_company(order.company_id)
             order.pricelist_id = order.partner_id.property_product_pricelist
+
+    @api.depends('company_id', 'partner_id', 'amount_total')
+    def _compute_partner_credit_warning(self):
+        for order in self:
+            order.with_company(order.company_id)
+            order.partner_credit_warning = ''
+            show_warning = order.state in ('draft', 'sent') and \
+                           order.company_id.account_use_credit_limit
+            if show_warning:
+                order.partner_credit_warning = self.env['account.move']._build_credit_warning_message(
+                    order,
+                    current_amount=(order.amount_total / order.currency_rate),
+                )
 
     @api.depends('company_id', 'pricelist_id')
     def _compute_currency_id(self):
@@ -658,23 +755,6 @@ class SaleOrder(models.Model):
                 record.tax_country_id = record.fiscal_position_id.country_id
             else:
                 record.tax_country_id = record.company_id.account_fiscal_country_id
-
-    @api.depends('partner_id', 'user_id')
-    def _compute_team_id(self):
-        cached_teams = {}
-        for order in self:
-            default_team_id = self.env.context.get('default_team_id', False) or order.team_id.id
-            user_id = order.user_id.id
-            company_id = order.company_id.id
-            key = (default_team_id, user_id, company_id)
-            if key not in cached_teams:
-                cached_teams[key] = self.env['crm.team'].with_context(
-                    default_team_id=default_team_id,
-                )._get_default_team_id(
-                    user_id=user_id,
-                    domain=self.env['crm.team']._check_company_domain(company_id),
-                )
-            order.team_id = cached_teams[key]
 
     @api.depends('company_id', 'currency_id', 'order_line.price_subtotal')
     def _compute_amounts(self):
@@ -725,6 +805,16 @@ class SaleOrder(models.Model):
             invoices = order.order_line.invoice_lines.move_id.filtered(lambda r: r.move_type in ('out_invoice', 'out_refund'))
             order.invoice_ids = invoices
             order.invoice_count = len(invoices)
+
+    @api.depends('order_line.amount_invoiced')
+    def _compute_amount_invoiced(self):
+        for order in self:
+            order.amount_invoiced = sum(order.order_line.mapped('amount_invoiced'))
+
+    @api.depends('order_line.amount_to_invoice')
+    def _compute_amount_to_invoice(self):
+        for order in self:
+            order.amount_to_invoice = sum(order.order_line.mapped('amount_to_invoice'))
 
     @api.depends('state')
     def _compute_type_name(self):
@@ -827,67 +917,13 @@ class SaleOrder(models.Model):
                 total += (line.price_subtotal * 100)/(100-line.discount) if line.discount != 100 else (line.price_unit * line.product_uom_qty)
             order.amount_undiscounted = total
 
-    def _compute_journal_id(self):
-        self.journal_id = False
-
     @api.depends('require_payment')
     def _compute_prepayment_percent(self):
         for order in self:
             order.prepayment_percent = order.company_id.prepayment_percent
 
-    def _fetch_duplicate_orders(self):
-        '''
-        Fectch duplicated orders.
-
-        :return: Dictionary mapping order to it's related duplicated orders.
-        :rtype: dict
-        '''
-        orders = self.filtered(lambda order: order.id and order.client_order_ref)
-        if not orders:
-            return {}
-
-        used_fields = (
-            'company_id',
-            'partner_id',
-            'client_order_ref',
-            'origin',
-            'date_order',
-            'state',
-        )
-        self.env['sale.order'].flush_model(used_fields)
-        result = self.env.execute_query(SQL(
-            '''
-            SELECT
-                sale_order.id AS order_id,
-                array_agg(duplicate_order.id) AS duplicate_ids
-            FROM
-                sale_order
-            JOIN sale_order AS duplicate_order
-                ON sale_order.company_id = duplicate_order.company_id
-                 AND sale_order.id != duplicate_order.id
-                 AND duplicate_order.state != 'cancel'
-                 AND sale_order.partner_id = duplicate_order.partner_id
-                 AND sale_order.date_order = duplicate_order.date_order
-                 AND sale_order.client_order_ref = duplicate_order.client_order_ref
-                 AND (
-                    sale_order.origin = duplicate_order.origin
-                    OR (sale_order.origin IS NULL AND duplicate_order.origin IS NULL)
-                )
-             WHERE sale_order.id IN %(orders)s
-             GROUP BY sale_order.id
-            ''',
-            orders=tuple(orders.ids),
-        ))
-        return {
-            order_id: set(duplicate_ids)
-            for order_id, duplicate_ids in result
-        }
-
-    @api.depends('partner_id', 'date_order', 'client_order_ref', 'origin',)
-    def _compute_duplicated_order_ids(self):
-        order_to_duplicate_orders = self._fetch_duplicate_orders()
-        for order in self:
-            order.duplicated_order_ids = [Command.set(order_to_duplicate_orders.get(order.id, []))]
+    def _compute_journal_id(self):
+        self.journal_id = False
 
     def _compute_is_expired(self):
         today = fields.Date.today()
@@ -897,29 +933,6 @@ class SaleOrder(models.Model):
                 and order.validity_date
                 and order.validity_date < today
             )
-
-    @api.depends('order_line.amount_to_invoice')
-    def _compute_amount_to_invoice(self):
-        for order in self:
-            order.amount_to_invoice = sum(order.order_line.mapped('amount_to_invoice'))
-
-    @api.depends('order_line.amount_invoiced')
-    def _compute_amount_invoiced(self):
-        for order in self:
-            order.amount_invoiced = sum(order.order_line.mapped('amount_invoiced'))
-
-    @api.depends('company_id', 'partner_id', 'amount_total')
-    def _compute_partner_credit_warning(self):
-        for order in self:
-            order.with_company(order.company_id)
-            order.partner_credit_warning = ''
-            show_warning = order.state in ('draft', 'sent') and \
-                           order.company_id.account_use_credit_limit
-            if show_warning:
-                order.partner_credit_warning = self.env['account.move']._build_credit_warning_message(
-                    order,
-                    current_amount=(order.amount_total / order.currency_rate),
-                )
 
     # ------------------------------------------------------------
     # ONCHANGE METHODS
@@ -1063,27 +1076,55 @@ class SaleOrder(models.Model):
                 self.order_line = delete_commands + create_commands + update_commands
 
     # ------------------------------------------------------------
-    # ACTION METHODS
+    # SEARCH
     # ------------------------------------------------------------
 
-    def action_open_discount_wizard(self):
-        self.ensure_one()
-        return {
-            'name': _('Discount'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order.discount',
-            'view_mode': 'form',
-            'target': 'new',
-        }
+    def _search_invoice_ids(self, operator, value):
+        if operator == 'in' and value:
+            self.env.cr.execute(
+                '''
+                SELECT
+                    array_agg(so.id)
+                FROM
+                    sale_order so
+                JOIN sale_order_line sol ON sol.order_id = so.id
+                JOIN sale_order_line_invoice_rel soli_rel ON soli_rel.order_line_id = sol.id
+                JOIN account_move_line aml ON aml.id = soli_rel.invoice_line_id
+                JOIN account_move am ON am.id = aml.move_id
+                WHERE
+                    am.move_type in ('out_invoice', 'out_refund') AND
+                    am.id = ANY(%s)
+                ''',
+                (list(value),)
+            )
+            so_ids = self.env.cr.fetchone()[0] or []
+            return [('id', 'in', so_ids)]
 
-    def action_draft(self):
-        orders = self.filtered(lambda s: s.state in ['cancel', 'sent'])
-        return orders.write({
-            'state': 'draft',
-            'signature': False,
-            'signed_by': False,
-            'signed_on': False,
-        })
+        elif operator == '=' and not value:
+            # special case for [('invoice_ids', '=', False)], i.e. 'Invoices is not set'
+            #
+            # We cannot just search [('order_line.invoice_lines', '=', False)]
+            # because it returns orders with uninvoiced lines, which is not
+            # same 'Invoices is not set' (some lines may have invoices and some
+            # doesn't)
+            #
+            # A solution is making inverted search first ('orders with invoiced
+            # lines') and then invert results ('get all other orders')
+            #
+            # Domain below returns subset of ('order_line.invoice_lines', '!=', False)
+            order_ids = self._search([
+                ('order_line.invoice_lines.move_id.move_type', 'in', ('out_invoice', 'out_refund'))
+            ])
+            return [('id', 'not in', order_ids)]
+
+        return [
+            ('order_line.invoice_lines.move_id.move_type', 'in', ('out_invoice', 'out_refund')),
+            ('order_line.invoice_lines.move_id', operator, value),
+        ]
+
+    # ------------------------------------------------------------
+    # ACTIONS
+    # ------------------------------------------------------------
 
     def _get_confirmation_template(self):
         '''
@@ -1178,7 +1219,6 @@ class SaleOrder(models.Model):
             action.pop('close_on_report_download', None)
             layout_action['context']['dialog_size'] = 'extra-large'
             return layout_action
-
         return action
 
     def action_quotation_sent(self):
@@ -1194,43 +1234,14 @@ class SaleOrder(models.Model):
             order.message_subscribe(partner_ids=order.partner_id.ids)
         self.write({'state': 'sent'})
 
-    def _confirmation_error_message(self):
-        '''Return whether order can be confirmed or not if not then returm error message.'''
-        self.ensure_one()
-        if self.state not in {'draft', 'sent'}:
-            return _('Some orders are not in a state requiring confirmation.')
-
-        if any(
-            not line.display_type
-            and not line.is_downpayment
-            and not line.product_id
-            for line in self.order_line
-        ):
-            return _('A line on these orders missing a product, you cannot confirm it.')
-
-        return False
-
-    def _prepare_confirmation_values(self):
-        '''
-        Prepare the sales order confirmation values.
-
-        Note: self can contain multiple records.
-
-        :return: Sales Order confirmation values
-        :rtype: dict
-        '''
-        return {
-            'state': 'sale',
-            'date_order': fields.Datetime.now()
-        }
-
-    def _action_confirm(self):
-        ''' 
-        Implementation of additional mechanism of Sales Order confirmation.
-        This method should be extended when the confirmation should generated
-        other documents. In this method, the SO are in 'sale' state (not yet 'done').
-        '''
-        pass
+    def action_draft(self):
+        orders = self.filtered(lambda s: s.state in ['cancel', 'sent'])
+        return orders.write({
+            'state': 'draft',
+            'signature': False,
+            'signed_by': False,
+            'signed_on': False,
+        })
 
     def action_lock(self):
         self.locked = True
@@ -1270,13 +1281,43 @@ class SaleOrder(models.Model):
             mail_template = order._get_confirmation_template()
             order._send_order_notification_mail(mail_template)
 
-    def _validate_order(self):
-        '''
-        Confirm the sale order and send a confirmation email.
+    def _confirmation_error_message(self):
+        '''Return whether order can be confirmed or not if not then returm error message.'''
+        self.ensure_one()
+        if self.state not in {'draft', 'sent'}:
+            return _('Some orders are not in a state requiring confirmation.')
 
-        :return: None
+        if any(
+            not line.display_type
+            and not line.is_downpayment
+            and not line.product_id
+            for line in self.order_line
+        ):
+            return _('A line on these orders missing a product, you cannot confirm it.')
+
+        return False
+
+    def _prepare_confirmation_values(self):
         '''
-        self.with_context(send_email=True).action_confirm()
+        Prepare the sales order confirmation values.
+
+        Note: self can contain multiple records.
+
+        :return: Sales Order confirmation values
+        :rtype: dict
+        '''
+        return {
+            'state': 'sale',
+            'date_order': fields.Datetime.now()
+        }
+
+    def _action_confirm(self):
+        ''' 
+        Implementation of additional mechanism of Sales Order confirmation.
+        This method should be extended when the confirmation should generated
+        other documents. In this method, the SO are in 'sale' state (not yet 'done').
+        '''
+        pass
 
     def action_confirm(self):
         '''
@@ -1313,17 +1354,13 @@ class SaleOrder(models.Model):
             self._send_order_confirmation_mail()
         return True
 
-    def _send_payment_succeeded_for_order_mail(self):
+    def _validate_order(self):
         '''
-        Send a mail to the SO customer to inform them that a payment has been initiated.
+        Confirm the sale order and send a confirmation email.
 
         :return: None
         '''
-        mail_template = self.env.ref(
-            'sale.mail_template_sale_payment_executed', raise_if_not_found=False
-        )
-        for order in self:
-            order._send_order_notification_mail(mail_template)
+        self.with_context(send_email=True).action_confirm()
 
     def _show_cancel_wizard(self):
         ''' Decide whether the sale.order.cancel wizard should be shown to cancel specified orders.
@@ -1392,12 +1429,7 @@ class SaleOrder(models.Model):
             'url': self.get_portal_url(),
         }
 
-    def _recompute_taxes(self):
-        lines_to_recompute = self.order_line.filtered(lambda line: not line.display_type)
-        lines_to_recompute._compute_tax_id()
-        self.show_update_fpos = False
-
-    def action_update_taxes(self):
+    def action_open_discount_wizard(self):
         self.ensure_one()
         self._recompute_taxes()
         if self.partner_id:
@@ -1447,6 +1479,10 @@ class SaleOrder(models.Model):
             'views': [(False, 'form')],
         }
 
+    # ------------------------------------------------------------
+    # CATALOG
+    # ------------------------------------------------------------
+
     def _default_order_line_values(self, child_field=False):
         default_data = super()._default_order_line_values(child_field)
         new_default_data = self.env['sale.order.line']._get_product_catalog_lines_data()
@@ -1462,44 +1498,35 @@ class SaleOrder(models.Model):
     def _get_product_catalog_domain(self):
         return expression.AND([super()._get_product_catalog_domain(), [('sale_ok', '=', True)]])
 
+    def _get_product_catalog_order_data(self, products, **kwargs):
+        pricelist = self.pricelist_id._get_products_price(
+            quantity=1.0,
+            products=products,
+            currency=self.currency_id,
+            date=self.date_order,
+            **kwargs,
+        )
+        res = super()._get_product_catalog_order_data(products, **kwargs)
+        for product in products:
+            res[product.id]['price'] = pricelist.get(product.id)
+            if product.sale_line_warn != 'no-message' and product.sale_line_warn_msg:
+                res[product.id]['warning'] = product.sale_line_warn_msg
+            if product.sale_line_warn == 'block':
+                res[product.id]['readOnly'] = True
+        return res
+
+    def _get_product_catalog_record_lines(self, product_ids, **kwargs):
+        grouped_lines = defaultdict(lambda: self.env['sale.order.line'])
+        for line in self.order_line:
+            if line.display_type or line.product_id.id not in product_ids:
+                continue
+
+            grouped_lines[line.product_id] |= line
+        return grouped_lines
 
     # ------------------------------------------------------------
     # INVOICING
     # ------------------------------------------------------------
-
-    def action_view_invoice(self, invoices=False):
-        if not invoices:
-            invoices = self.mapped('invoice_ids')
-        action = self.env['ir.actions.actions']._for_xml_id('account.action_move_out_invoice_type')
-        if len(invoices) > 1:
-            action['domain'] = [('id', 'in', invoices.ids)]
-        elif len(invoices) == 1:
-            form_view = [(self.env.ref('account.view_move_form').id, 'form')]
-            if 'views' in action:
-                action['views'] = form_view + [(state,view) for state,view in action['views'] if view != 'form']
-            else:
-                action['views'] = form_view
-            action['res_id'] = invoices.id
-        else:
-            action = {'type': 'ir.actions.act_window_close'}
-        context = {
-            'default_move_type': 'out_invoice',
-        }
-        if len(self) == 1:
-            context.update({
-                'default_partner_id': self.partner_id.id,
-                'default_partner_shipping_id': self.partner_shipping_id.id,
-                'default_invoice_payment_term_id': (
-                    self.payment_term_id.id
-                    or self.partner_id.property_payment_term_id.id
-                    or self.env['account.move'].default_get(['invoice_payment_term_id']).get(
-                        'invoice_payment_term_id'
-                    )
-                ),
-                'default_invoice_origin': self.name,
-            })
-        action['context'] = context
-        return action
 
     def _prepare_invoice(self):
         '''
@@ -1793,138 +1820,39 @@ class SaleOrder(models.Model):
             )
         return moves
 
-    # ------------------------------------------------------------
-    # MAIL
-    # ------------------------------------------------------------
-
-    def _discard_tracking(self):
-        self.ensure_one()
-        return (
-            self.state == 'draft'
-            and request and request.env.context.get('catalog_skip_tracking')
-        )
-
-    def _track_finalize(self):
-        ''' Override of `mail` to prevent logging changes when the SO is in a draft state. '''
-        if (len(self) == 1
-            # The method _track_finalize is sometimes called too early or too late and it
-            # might cause a desynchronization with the cache, thus this condition is needed.
-            and self.env.cache.contains(self, self._fields['state']) and self._discard_tracking()):
-            self.env.cr.precommit.data.pop(f'mail.tracking.{self._name}', {})
-            self.env.flush_all()
-            return
-        return super()._track_finalize()
-
-    @api.returns('mail.message', lambda value: value.id)
-    def message_post(self, **kwargs):
-        if self.env.context.get('mark_so_as_sent'):
-            self.filtered(
-                lambda o:
-                    o.state == 'draft').with_context(tracking_disable=True).write({'state': 'sent'}
-            )
-        so_ctx = {'mail_post_autofollow': self.env.context.get('mail_post_autofollow', True)}
-        if self.env.context.get('mark_so_as_sent') and 'mail_notify_author' not in kwargs:
-            kwargs['notify_author'] = self.env.user.partner_id.id in (kwargs.get('partner_ids') or [])
-        return super(SaleOrder, self.with_context(**so_ctx)).message_post(**kwargs)
-
-    def _notify_get_recipients_groups(self, message, model_description, msg_vals=None):
-        ''' Give access button to users and portal customer as portal is integrated
-        in sale. Customer and portal group have probably no right to see
-        the document so they don't have the access button. '''
-        groups = super()._notify_get_recipients_groups(
-            message, model_description, msg_vals=msg_vals
-        )
-        if not self:
-            return groups
-
-        self.ensure_one()
-        if self._context.get('proforma'):
-            for group in [g for g in groups if g[0] in ('portal_customer', 'portal', 'follower', 'customer')]:
-                group[2]['has_button_access'] = False
-            return groups
-
-        local_msg_vals = dict(msg_vals or {})
-
-        # portal customers have full access (existence not granted, depending on partner_id)
-        try:
-            customer_portal_group = next(group for group in groups if group[0] == 'portal_customer')
-        except StopIteration:
-            pass
+    def action_view_invoice(self, invoices=False):
+        if not invoices:
+            invoices = self.mapped('invoice_ids')
+        action = self.env['ir.actions.actions']._for_xml_id('account.action_move_out_invoice_type')
+        if len(invoices) > 1:
+            action['domain'] = [('id', 'in', invoices.ids)]
+        elif len(invoices) == 1:
+            form_view = [(self.env.ref('account.view_move_form').id, 'form')]
+            if 'views' in action:
+                action['views'] = form_view + [(state,view) for state,view in action['views'] if view != 'form']
+            else:
+                action['views'] = form_view
+            action['res_id'] = invoices.id
         else:
-            access_opt = customer_portal_group[2].setdefault('button_access', {})
-            is_tx_pending = self.get_portal_last_transaction().state == 'pending'
-            if self._has_to_be_signed():
-                if self._has_to_be_paid():
-                    access_opt['title'] = _('View Quotation') if is_tx_pending else _('Sign & Pay Quotation')
-                else:
-                    access_opt['title'] = _('Accept & Sign Quotation')
-            elif self._has_to_be_paid() and not is_tx_pending:
-                access_opt['title'] = _('Accept & Pay Quotation')
-            elif self.state in ('draft', 'sent'):
-                access_opt['title'] = _('View Quotation')
-
-        # enable followers that have access through portal
-        follower_group = next(group for group in groups if group[0] == 'follower')
-        follower_group[2]['active'] = True
-        follower_group[2]['has_button_access'] = True
-        access_opt = follower_group[2].setdefault('button_access', {})
-        if self.state in ('draft', 'sent'):
-            access_opt['title'] = _('View Quotation')
-        else:
-            access_opt['title'] = _('View Order')
-        access_opt['url'] = self._notify_get_action_link('view', **local_msg_vals)
-        return groups
-
-    def _notify_by_email_prepare_rendering_context(
-            self, message, msg_vals=False, model_description=False,
-            force_email_company=False, force_email_lang=False
-        ):
-        render_context = super()._notify_by_email_prepare_rendering_context(
-            message, msg_vals, model_description=model_description,
-            force_email_company=force_email_company, force_email_lang=force_email_lang
-        )
-        lang_code = render_context.get('lang')
-        record = render_context['record']
-        subtitles = [
-            f'{record.name} - {record.partner_id.name}'
-            if record.partner_id
-            else record.name
-        ]
-        if self.amount_total:
-            # Do not show the price in subtitles if zero (e.g. e-commerce orders are created empty)
-            subtitles.append(
-                format_amount(self.env, self.amount_total, self.currency_id, lang_code=lang_code),
-            )
-
-        if self.validity_date and self.state in ['draft', 'sent']:
-            formatted_date = format_date(self.env, self.validity_date, lang_code=lang_code)
-            subtitles.append(_('Expires on %(date)s', date=formatted_date))
-
-        render_context['subtitles'] = subtitles
-        return render_context
-
-    def _phone_get_number_fields(self):
-        ''' No phone or mobile field is available on sale model. Instead SMS will
-        fallback on partner-based computation using ``_mail_get_partner_fields``. '''
-        return []
-
-    def _track_subtype(self, init_values):
-        self.ensure_one()
-        if 'state' in init_values and self.state == 'sale':
-            return self.env.ref('sale.mt_order_confirmed')
-
-        elif 'state' in init_values and self.state == 'sent':
-            return self.env.ref('sale.mt_order_sent')
-
-        return super()._track_subtype(init_values)
-
-    def _message_get_suggested_recipients(self):
-        recipients = super()._message_get_suggested_recipients()
-        if self.partner_id:
-            self._message_add_suggested_recipient(
-                recipients, partner=self.partner_id, reason=_('Customer')
-            )
-        return recipients
+            action = {'type': 'ir.actions.act_window_close'}
+        context = {
+            'default_move_type': 'out_invoice',
+        }
+        if len(self) == 1:
+            context.update({
+                'default_partner_id': self.partner_id.id,
+                'default_partner_shipping_id': self.partner_shipping_id.id,
+                'default_invoice_payment_term_id': (
+                    self.payment_term_id.id
+                    or self.partner_id.property_payment_term_id.id
+                    or self.env['account.move'].default_get(['invoice_payment_term_id']).get(
+                        'invoice_payment_term_id'
+                    )
+                ),
+                'default_invoice_origin': self.name,
+            })
+        action['context'] = context
+        return action
 
     # ------------------------------------------------------------
     # PAYMENT
@@ -2017,6 +1945,18 @@ class SaleOrder(models.Model):
             'amount_paid': self.amount_paid,
         }
 
+    def _send_payment_succeeded_for_order_mail(self):
+        '''
+        Send a mail to the SO customer to inform them that a payment has been initiated.
+
+        :return: None
+        '''
+        mail_template = self.env.ref(
+            'sale.mail_template_sale_payment_executed', raise_if_not_found=False
+        )
+        for order in self:
+            order._send_order_notification_mail(mail_template)
+
     # ------------------------------------------------------------
     # EDI
     # ------------------------------------------------------------
@@ -2094,6 +2034,139 @@ class SaleOrder(models.Model):
         '''
         orders = self._create_order_from_attachment(attachment_ids)
         return orders._get_records_action(name=_('Generated Orders'))
+
+    # ------------------------------------------------------------
+    # MAIL.THREAD
+    # ------------------------------------------------------------
+
+    @api.returns('mail.message', lambda value: value.id)
+    def message_post(self, **kwargs):
+        if self.env.context.get('mark_so_as_sent'):
+            self.filtered(
+                lambda o:
+                    o.state == 'draft').with_context(tracking_disable=True).write({'state': 'sent'}
+            )
+        so_ctx = {'mail_post_autofollow': self.env.context.get('mail_post_autofollow', True)}
+        if self.env.context.get('mark_so_as_sent') and 'mail_notify_author' not in kwargs:
+            kwargs['notify_author'] = self.env.user.partner_id.id in (kwargs.get('partner_ids') or [])
+        return super(SaleOrder, self.with_context(**so_ctx)).message_post(**kwargs)
+
+    def _track_subtype(self, init_values):
+        self.ensure_one()
+        if 'state' in init_values and self.state == 'sale':
+            return self.env.ref('sale.mt_order_confirmed')
+
+        elif 'state' in init_values and self.state == 'sent':
+            return self.env.ref('sale.mt_order_sent')
+
+        return super()._track_subtype(init_values)
+
+    def _discard_tracking(self):
+        self.ensure_one()
+        return (
+            self.state == 'draft'
+            and request and request.env.context.get('catalog_skip_tracking')
+        )
+
+    def _track_finalize(self):
+        ''' Override of `mail` to prevent logging changes when the SO is in a draft state. '''
+        if (len(self) == 1
+            # The method _track_finalize is sometimes called too early or too late and it
+            # might cause a desynchronization with the cache, thus this condition is needed.
+            and self.env.cache.contains(self, self._fields['state']) and self._discard_tracking()):
+            self.env.cr.precommit.data.pop(f'mail.tracking.{self._name}', {})
+            self.env.flush_all()
+            return
+        return super()._track_finalize()
+
+    def _notify_get_recipients_groups(self, message, model_description, msg_vals=None):
+        ''' Give access button to users and portal customer as portal is integrated
+        in sale. Customer and portal group have probably no right to see
+        the document so they don't have the access button. '''
+        groups = super()._notify_get_recipients_groups(
+            message, model_description, msg_vals=msg_vals
+        )
+        if not self:
+            return groups
+
+        self.ensure_one()
+        if self._context.get('proforma'):
+            for group in [g for g in groups if g[0] in ('portal_customer', 'portal', 'follower', 'customer')]:
+                group[2]['has_button_access'] = False
+            return groups
+
+        local_msg_vals = dict(msg_vals or {})
+
+        # portal customers have full access (existence not granted, depending on partner_id)
+        try:
+            customer_portal_group = next(group for group in groups if group[0] == 'portal_customer')
+        except StopIteration:
+            pass
+        else:
+            access_opt = customer_portal_group[2].setdefault('button_access', {})
+            is_tx_pending = self.get_portal_last_transaction().state == 'pending'
+            if self._has_to_be_signed():
+                if self._has_to_be_paid():
+                    access_opt['title'] = _('View Quotation') if is_tx_pending else _('Sign & Pay Quotation')
+                else:
+                    access_opt['title'] = _('Accept & Sign Quotation')
+            elif self._has_to_be_paid() and not is_tx_pending:
+                access_opt['title'] = _('Accept & Pay Quotation')
+            elif self.state in ('draft', 'sent'):
+                access_opt['title'] = _('View Quotation')
+
+        # enable followers that have access through portal
+        follower_group = next(group for group in groups if group[0] == 'follower')
+        follower_group[2]['active'] = True
+        follower_group[2]['has_button_access'] = True
+        access_opt = follower_group[2].setdefault('button_access', {})
+        if self.state in ('draft', 'sent'):
+            access_opt['title'] = _('View Quotation')
+        else:
+            access_opt['title'] = _('View Order')
+        access_opt['url'] = self._notify_get_action_link('view', **local_msg_vals)
+        return groups
+
+    def _notify_by_email_prepare_rendering_context(
+            self, message, msg_vals=False, model_description=False,
+            force_email_company=False, force_email_lang=False
+        ):
+        render_context = super()._notify_by_email_prepare_rendering_context(
+            message, msg_vals, model_description=model_description,
+            force_email_company=force_email_company, force_email_lang=force_email_lang
+        )
+        lang_code = render_context.get('lang')
+        record = render_context['record']
+        subtitles = [
+            f'{record.name} - {record.partner_id.name}'
+            if record.partner_id
+            else record.name
+        ]
+        if self.amount_total:
+            # Do not show the price in subtitles if zero (e.g. e-commerce orders are created empty)
+            subtitles.append(
+                format_amount(self.env, self.amount_total, self.currency_id, lang_code=lang_code),
+            )
+
+        if self.validity_date and self.state in ['draft', 'sent']:
+            formatted_date = format_date(self.env, self.validity_date, lang_code=lang_code)
+            subtitles.append(_('Expires on %(date)s', date=formatted_date))
+
+        render_context['subtitles'] = subtitles
+        return render_context
+
+    def _phone_get_number_fields(self):
+        ''' No phone or mobile field is available on sale model. Instead SMS will
+        fallback on partner-based computation using ``_mail_get_partner_fields``. '''
+        return []
+
+    def _message_get_suggested_recipients(self):
+        recipients = super()._message_get_suggested_recipients()
+        if self.partner_id:
+            self._message_add_suggested_recipient(
+                recipients, partner=self.partner_id, reason=_('Customer')
+            )
+        return recipients
 
     # ------------------------------------------------------------
     # PORTAL
@@ -2267,32 +2340,6 @@ class SaleOrder(models.Model):
             generated_invoices |= downpayment_wizard._create_invoices(order)
         return generated_invoices
 
-    def _get_product_catalog_order_data(self, products, **kwargs):
-        pricelist = self.pricelist_id._get_products_price(
-            quantity=1.0,
-            products=products,
-            currency=self.currency_id,
-            date=self.date_order,
-            **kwargs,
-        )
-        res = super()._get_product_catalog_order_data(products, **kwargs)
-        for product in products:
-            res[product.id]['price'] = pricelist.get(product.id)
-            if product.sale_line_warn != 'no-message' and product.sale_line_warn_msg:
-                res[product.id]['warning'] = product.sale_line_warn_msg
-            if product.sale_line_warn == 'block':
-                res[product.id]['readOnly'] = True
-        return res
-
-    def _get_product_catalog_record_lines(self, product_ids, **kwargs):
-        grouped_lines = defaultdict(lambda: self.env['sale.order.line'])
-        for line in self.order_line:
-            if line.display_type or line.product_id.id not in product_ids:
-                continue
-
-            grouped_lines[line.product_id] |= line
-        return grouped_lines
-
     def _filter_product_documents(self, documents):
         return documents.filtered(
             lambda document:
@@ -2343,49 +2390,6 @@ class SaleOrder(models.Model):
             })
         return sol.price_unit
 
-    def _search_invoice_ids(self, operator, value):
-        if operator == 'in' and value:
-            self.env.cr.execute(
-                '''
-                SELECT
-                    array_agg(so.id)
-                FROM
-                    sale_order so
-                JOIN sale_order_line sol ON sol.order_id = so.id
-                JOIN sale_order_line_invoice_rel soli_rel ON soli_rel.order_line_id = sol.id
-                JOIN account_move_line aml ON aml.id = soli_rel.invoice_line_id
-                JOIN account_move am ON am.id = aml.move_id
-                WHERE
-                    am.move_type in ('out_invoice', 'out_refund') AND
-                    am.id = ANY(%s)
-                ''',
-                (list(value),)
-            )
-            so_ids = self.env.cr.fetchone()[0] or []
-            return [('id', 'in', so_ids)]
-
-        elif operator == '=' and not value:
-            # special case for [('invoice_ids', '=', False)], i.e. 'Invoices is not set'
-            #
-            # We cannot just search [('order_line.invoice_lines', '=', False)]
-            # because it returns orders with uninvoiced lines, which is not
-            # same 'Invoices is not set' (some lines may have invoices and some
-            # doesn't)
-            #
-            # A solution is making inverted search first ('orders with invoiced
-            # lines') and then invert results ('get all other orders')
-            #
-            # Domain below returns subset of ('order_line.invoice_lines', '!=', False)
-            order_ids = self._search([
-                ('order_line.invoice_lines.move_id.move_type', 'in', ('out_invoice', 'out_refund'))
-            ])
-            return [('id', 'not in', order_ids)]
-
-        return [
-            ('order_line.invoice_lines.move_id.move_type', 'in', ('out_invoice', 'out_refund')),
-            ('order_line.invoice_lines.move_id', operator, value),
-        ]
-
     def _is_readonly(self):
         '''
         Return Whether the sale order is read-only or not based on the state or the lock status.
@@ -2424,3 +2428,49 @@ class SaleOrder(models.Model):
             return self.partner_id.lang
 
         return self.env.lang
+
+    def _recompute_taxes(self):
+        lines_to_recompute = self.order_line.filtered(lambda line: not line.display_type)
+        lines_to_recompute._compute_tax_id()
+        self.show_update_fpos = False
+
+    def action_update_taxes(self):
+        self.ensure_one()
+        self._recompute_taxes()
+        if self.partner_id:
+            self.message_post(
+                body=_(
+                    'Product taxes have been recomputed according to fiscal position %s.',
+                    self.fiscal_position_id._get_html_link() if self.fiscal_position_id else ''
+                )
+            )
+
+    def _get_update_prices_lines(self):
+        '''
+        Hook to exclude specific lines which should not be updated based on price list recomputation
+        '''
+        return self.order_line.filtered(lambda line: not line.display_type)
+
+    def _recompute_prices(self):
+        lines_to_recompute = self._get_update_prices_lines()
+        lines_to_recompute.invalidate_recordset(['pricelist_item_id'])
+        lines_to_recompute.technical_price_unit = 0.0
+        lines_to_recompute._compute_price_unit()
+        # Special case: we want to overwrite the existing discount on _recompute_prices call
+        # i.e. to make sure the discount is correctly reset
+        # if pricelist rule is different than when the price was first computed.
+        lines_to_recompute.discount = 0.0
+        lines_to_recompute._compute_discount()
+        self.show_update_pricelist = False
+
+    def action_update_prices(self):
+        self.ensure_one()
+        self._recompute_prices()
+        if self.pricelist_id:
+            message = _(
+                'Product prices have been recomputed according to pricelist %s.',
+                self.pricelist_id._get_html_link()
+            )
+        else:
+            message = _('Product prices have been recomputed.')
+        self.message_post(body=message)
