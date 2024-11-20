@@ -22,6 +22,7 @@ class PurchaseOrderLine(models.Model):
         ondelete='cascade',
         index=True,
     )
+    sequence = fields.Integer('Sequence', default=10)
     company_id = fields.Many2one(
         related='order_id.company_id',
         string='Company',
@@ -39,15 +40,15 @@ class PurchaseOrderLine(models.Model):
         store=True,
         readonly=True
     )
-    state = fields.Selection(
-        related='order_id.state', store=True,
-    )
     partner_id = fields.Many2one(
         related='order_id.partner_id',
         string='Partner',
         store=True,
         readonly=True,
         index='btree_not_null'
+    )
+    state = fields.Selection(
+        related='order_id.state', store=True,
     )
     date_order = fields.Datetime(
         related='order_id.date_order',
@@ -68,14 +69,13 @@ class PurchaseOrderLine(models.Model):
              'pricelist lead time then today\'s date.',
     )
     display_type = fields.Selection(
-        [
+        selection=[
             ('line_section', 'Section'),
             ('line_note', 'Note')
         ],
         default=False,
         help='Technical field for UX purpose.',
     )
-    sequence = fields.Integer('Sequence', default=10)
     is_downpayment = fields.Boolean()
     product_id = fields.Many2one(
         'product.product',
@@ -83,6 +83,10 @@ class PurchaseOrderLine(models.Model):
         change_default=True,
         domain=[('purchase_ok', '=', True)],
         index='btree_not_null',
+    )
+    product_type = fields.Selection(
+        related='product_id.type',
+        readonly=True,
     )
     product_uom_category_id = fields.Many2one(
         related='product_id.uom_id.category_id'
@@ -93,16 +97,15 @@ class PurchaseOrderLine(models.Model):
         domain=[('category_id', '=', product_uom_category_id)],
     )
     product_template_attribute_value_ids = fields.Many2many(
-        related='product_id.product_template_attribute_value_ids', readonly=True,
-    )
-    product_type = fields.Selection(
-        related='product_id.type', readonly=True,
+        related='product_id.product_template_attribute_value_ids',
+        readonly=True,
     )
     product_no_variant_attribute_value_ids = fields.Many2many(
         'product.template.attribute.value',
         string='Product attribute values that do not create variants',
         ondelete='restrict',
     )
+
     name = fields.Text(
         'Description',
         required=True,
@@ -169,6 +172,7 @@ class PurchaseOrderLine(models.Model):
         'Total',
         compute='_compute_amount', store=True,
     )
+
     qty_received_method = fields.Selection(
         [('manual', 'Manual')],
         'Received Qty Method',
@@ -190,6 +194,7 @@ class PurchaseOrderLine(models.Model):
         compute_sudo=True,
         inverse='_inverse_qty_received',
     )
+
     invoice_lines = fields.One2many(
         'account.move.line',
         'purchase_line_id',
@@ -280,7 +285,11 @@ class PurchaseOrderLine(models.Model):
             for line in self:
                 if (
                     line.order_id.state == 'purchase'
-                    and float_compare(line.product_qty, vals['product_qty'], precision_digits=precision) != 0
+                    and float_compare(
+                        line.product_qty,
+                        vals['product_qty'],
+                        precision_digits=precision
+                    ) != 0
                 ):
                     line.order_id.message_post_with_source(
                         'purchase.track_po_line_template',
@@ -290,6 +299,7 @@ class PurchaseOrderLine(models.Model):
         if 'qty_received' in vals:
             for line in self:
                 line._track_qty_received(vals['qty_received'])
+
         return super(PurchaseOrderLine, self).write(vals)
 
     @api.ondelete(at_uninstall=False)
