@@ -118,7 +118,8 @@ class ProductTemplate(models.Model):
         comodel_name='uom.uom',
         string='Purchase Unit',
         required=True,
-        default=_get_default_uom_po_id,
+        compute='_compute_uom_po_id', store=True, precompute=True,
+        readonly=False,
         help='Default unit of measure used for purchase orders. '
              'It must be in the same category as the default unit of measure.',
     )
@@ -416,6 +417,12 @@ class ProductTemplate(models.Model):
         env_currency_id = self.env.company.currency_id.id
         for template in self:
             template.cost_currency_id = template.company_id.currency_id.id or env_currency_id
+
+    @api.depends('uom_id')
+    def _compute_uom_po_id(self):
+        for template in self:
+            if not template.uom_po_id or template.uom_id.category_id != template.uom_po_id.category_id:
+                template.uom_po_id = template.uom_id
 
     def _compute_template_field_from_variant_field(self, fname, default=False):
         '''Sets the value of the given field based on the template variant values
