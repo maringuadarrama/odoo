@@ -10,8 +10,8 @@ from odoo.tools.misc import unique
 
 
 class ProductProduct(models.Model):
-    _name = "product.product"
-    _description = "Product Variant"
+    _name = 'product.product'
+    _description = 'Product Variant'
     _inherits = {'product.template': 'product_tmpl_id'}
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'is_favorite desc, default_code, name, id'
@@ -23,21 +23,21 @@ class ProductProduct(models.Model):
         'Product Template',
         required=True,
         auto_join=True,
-        ondelete="cascade",
+        ondelete='cascade',
         index=True,
     )
     write_date = fields.Datetime(compute='_compute_write_date', store=True)
     active = fields.Boolean(
         'Active',
         default=True,
-        help="If unchecked, it will allow you to hide the product without removing it.",
+        help='If unchecked, it will allow you to hide the product without removing it.',
     )
     # price_extra: catalog extra value only, sum of variant extra attributes
     price_extra = fields.Float(
         'Variant Price Extra',
         digits='Product Price',
         compute='_compute_product_price_extra',
-        help="This is the sum of the extra price of all attributes",
+        help='This is the sum of the extra price of all attributes',
     )
     # lst_price: catalog value + extra, context dependent (uom)
     lst_price = fields.Float(
@@ -45,14 +45,14 @@ class ProductProduct(models.Model):
         digits='Product Price',
         compute='_compute_product_lst_price',
         inverse='_set_product_lst_price',
-        help="The sale price is managed from the product template. "
-             "Click on the 'Configure Variants' button to set the extra attribute prices.",
+        help='The sale price is managed from the product template. '
+             'Click on the \'Configure Variants\' button to set the extra attribute prices.',
     )
     standard_price = fields.Float(
         'Cost',
         digits='Product Price',
         company_dependent=True,
-        groups="base.group_user",
+        groups='base.group_user',
         help='Value of the product (automatically computed in AVCO). '
              'Used to value the product when the purchase cost is not known '
              '(e.g. inventory adjustment). '
@@ -67,42 +67,42 @@ class ProductProduct(models.Model):
         'Barcode',
         copy=False,
         index='btree_not_null',
-        help="International Article Number used for product identification.",
+        help='International Article Number used for product identification.',
     )
     partner_ref = fields.Char('Customer Ref', compute='_compute_partner_ref')
 
     # all image fields are base64 encoded and PIL-supported
     # all image_variant fields are technical and should not be displayed to the user
     can_image_1024_be_zoomed = fields.Boolean(
-        "Can Image 1024 be zoomed",
+        'Can Image 1024 be zoomed',
         compute='_compute_can_image_1024_be_zoomed',
     )
-    image_variant_1920 = fields.Image("Variant Image", max_width=1920, max_height=1920)
+    image_variant_1920 = fields.Image('Variant Image', max_width=1920, max_height=1920)
     # resized fields stored (as attachment) for performance
-    image_variant_1024 = fields.Image("Variant Image 1024", related="image_variant_1920", max_width=1024, max_height=1024, store=True)
-    image_variant_512 = fields.Image("Variant Image 512", related="image_variant_1920", max_width=512, max_height=512, store=True)
-    image_variant_256 = fields.Image("Variant Image 256", related="image_variant_1920", max_width=256, max_height=256, store=True)
-    image_variant_128 = fields.Image("Variant Image 128", related="image_variant_1920", max_width=128, max_height=128, store=True)
-    can_image_variant_1024_be_zoomed = fields.Boolean("Can Variant Image 1024 be zoomed", compute='_compute_can_image_variant_1024_be_zoomed', store=True)
+    image_variant_1024 = fields.Image('Variant Image 1024', related='image_variant_1920', max_width=1024, max_height=1024, store=True)
+    image_variant_512 = fields.Image('Variant Image 512', related='image_variant_1920', max_width=512, max_height=512, store=True)
+    image_variant_256 = fields.Image('Variant Image 256', related='image_variant_1920', max_width=256, max_height=256, store=True)
+    image_variant_128 = fields.Image('Variant Image 128', related='image_variant_1920', max_width=128, max_height=128, store=True)
+    can_image_variant_1024_be_zoomed = fields.Boolean('Can Variant Image 1024 be zoomed', compute='_compute_can_image_variant_1024_be_zoomed', store=True)
     # Computed fields that are used to create a fallback to the template if
     # necessary, it's recommended to display those fields to the user.
-    image_1920 = fields.Image("Image", compute='_compute_image_1920', inverse='_set_image_1920')
-    image_1024 = fields.Image("Image 1024", compute='_compute_image_1024')
-    image_512 = fields.Image("Image 512", compute='_compute_image_512')
-    image_256 = fields.Image("Image 256", compute='_compute_image_256')
-    image_128 = fields.Image("Image 128", compute='_compute_image_128')
+    image_1920 = fields.Image('Image', compute='_compute_image_1920', inverse='_set_image_1920')
+    image_1024 = fields.Image('Image 1024', compute='_compute_image_1024')
+    image_512 = fields.Image('Image 512', compute='_compute_image_512')
+    image_256 = fields.Image('Image 256', compute='_compute_image_256')
+    image_128 = fields.Image('Image 128', compute='_compute_image_128')
 
     product_template_attribute_value_ids = fields.Many2many(
         comodel_name='product.template.attribute.value',
         relation='product_variant_combination',
-        string="Attribute Values",
+        string='Attribute Values',
         ondelete='restrict',
     )
     product_template_variant_value_ids = fields.Many2many(
         comodel_name='product.template.attribute.value',
         relation='product_variant_combination',
         domain=[('attribute_line_id.value_count', '>', 1)],
-        string="Variant Values",
+        string='Variant Values',
         ondelete='restrict',
     )
     combination_indices = fields.Char(
@@ -112,7 +112,7 @@ class ProductProduct(models.Model):
     is_product_variant = fields.Boolean(compute='_compute_is_product_variant')
 
     additional_product_tag_ids = fields.Many2many(
-        string="Variant Tags",
+        string='Variant Tags',
         comodel_name='product.tag',
         relation='product_tag_product_product_rel',
         domain="[('id', 'not in', product_tag_ids)]",
@@ -127,277 +127,53 @@ class ProductProduct(models.Model):
         'product.packaging',
         'product_id',
         'Product Packages',
-        help="Gives the different ways to package the same product.",
+        help='Gives the different ways to package the same product.',
     )
     pricelist_item_count = fields.Integer(
-        "Number of price rules",
-        compute="_compute_variant_item_count",
+        'Number of price rules',
+        compute='_compute_variant_item_count',
     )
     product_document_ids = fields.One2many(
         comodel_name='product.document',
         inverse_name='res_id',
-        string="Documents",
+        string='Documents',
         domain=lambda self: [('res_model', '=', self._name)],
     )
     product_document_count = fields.Integer(
-        string="Documents Count",
+        string='Documents Count',
         compute='_compute_product_document_count',
     )
 
 
+    def init(self):
+        '''Ensure there is at most one active variant for each combination.
+
+        There could be no variant for a combination if using dynamic attributes.
+        '''
+        self.env.cr.execute(
+            'CREATE UNIQUE INDEX '
+            'IF NOT EXISTS product_product_combination_unique '
+            'ON %s (product_tmpl_id, combination_indices)'
+            'WHERE active is true'
+            % self._table
+        )
+
+    # ------------------------------------------------------------
+    # CONSTRAINT METHODS
+    # ------------------------------------------------------------
+
     @api.constrains('barcode')
     def _check_barcode_uniqueness(self):
-        """ With GS1 nomenclature, products and packagings use the same pattern. Therefore, we need
-        to ensure the uniqueness between products' barcodes and packagings' ones"""
+        ''' With GS1 nomenclature, products and packagings use the same pattern. Therefore, we need
+        to ensure the uniqueness between products' barcodes and packagings' ones'''
         # Barcodes should only be unique within a company
         for company_id, barcodes_within_company in self._get_barcodes_by_company():
             self._check_duplicated_product_barcodes(barcodes_within_company, company_id)
             self._check_duplicated_packaging_barcodes(barcodes_within_company, company_id)
 
-    @api.depends('image_variant_1920', 'image_variant_1024')
-    def _compute_can_image_variant_1024_be_zoomed(self):
-        for record in self:
-            record.can_image_variant_1024_be_zoomed = record.image_variant_1920 and is_image_size_above(record.image_variant_1920, record.image_variant_1024)
-
-    def _set_template_field(self, template_field, variant_field):
-        for record in self:
-            if (
-                # We are trying to remove a field from the variant even though it is already
-                # not set on the variant, remove it from the template instead.
-                (not record[template_field] and not record[variant_field])
-                # We are trying to add a field to the variant, but the template field is
-                # not set, write on the template instead.
-                or (record[template_field] and not record.product_tmpl_id[template_field])
-                # There is only one variant, always write on the template.
-                or self.search_count([
-                    ('product_tmpl_id', '=', record.product_tmpl_id.id),
-                    ('active', '=', True),
-                ]) <= 1
-            ):
-                record[variant_field] = False
-                record.product_tmpl_id[template_field] = record[template_field]
-            else:
-                record[variant_field] = record[template_field]
-
-    @api.depends("product_tmpl_id.write_date")
-    def _compute_write_date(self):
-        """
-        First, the purpose of this computation is to update a product's
-        write_date whenever its template's write_date is updated.  Indeed,
-        when a template's image is modified, updating its products'
-        write_date will invalidate the browser's cache for the products'
-        image, which may be the same as the template's.  This guarantees UI
-        consistency.
-
-        Second, the field 'write_date' is automatically updated by the
-        framework when the product is modified.  The recomputation of the
-        field supplements that behavior to keep the product's write_date
-        up-to-date with its template's write_date.
-
-        Third, the framework normally prevents us from updating write_date
-        because it is a "magic" field.  However, the assignment inside the
-        compute method is not subject to this restriction.  It therefore
-        works as intended :-)
-        """
-        for record in self:
-            record.write_date = max(record.write_date or self.env.cr.now(), record.product_tmpl_id.write_date)
-
-    def _compute_image_1920(self):
-        """Get the image from the template if no image is set on the variant."""
-        for record in self:
-            record.image_1920 = record.image_variant_1920 or record.product_tmpl_id.image_1920
-
-    def _set_image_1920(self):
-        return self._set_template_field('image_1920', 'image_variant_1920')
-
-    def _compute_image_1024(self):
-        """Get the image from the template if no image is set on the variant."""
-        for record in self:
-            record.image_1024 = record.image_variant_1024 or record.product_tmpl_id.image_1024
-
-    def _compute_image_512(self):
-        """Get the image from the template if no image is set on the variant."""
-        for record in self:
-            record.image_512 = record.image_variant_512 or record.product_tmpl_id.image_512
-
-    def _compute_image_256(self):
-        """Get the image from the template if no image is set on the variant."""
-        for record in self:
-            record.image_256 = record.image_variant_256 or record.product_tmpl_id.image_256
-
-    def _compute_image_128(self):
-        """Get the image from the template if no image is set on the variant."""
-        for record in self:
-            record.image_128 = record.image_variant_128 or record.product_tmpl_id.image_128
-
-    def _compute_can_image_1024_be_zoomed(self):
-        """Get the image from the template if no image is set on the variant."""
-        for record in self:
-            record.can_image_1024_be_zoomed = record.can_image_variant_1024_be_zoomed if record.image_variant_1920 else record.product_tmpl_id.can_image_1024_be_zoomed
-
-    def _get_placeholder_filename(self, field):
-        image_fields = ['image_%s' % size for size in [1920, 1024, 512, 256, 128]]
-        if field in image_fields:
-            return 'product/static/img/placeholder_thumbnail.png'
-        return super()._get_placeholder_filename(field)
-
-    def init(self):
-        """Ensure there is at most one active variant for each combination.
-
-        There could be no variant for a combination if using dynamic attributes.
-        """
-        self.env.cr.execute("CREATE UNIQUE INDEX IF NOT EXISTS product_product_combination_unique ON %s (product_tmpl_id, combination_indices) WHERE active is true"
-            % self._table)
-
-    def _get_barcodes_by_company(self):
-        return [
-            (company_id, [p.barcode for p in products if p.barcode])
-            for company_id, products in groupby(self, lambda p: p.company_id.id)
-        ]
-
-    def _get_barcode_search_domain(self, barcodes_within_company, company_id):
-        domain = [('barcode', 'in', barcodes_within_company)]
-        if company_id:
-            domain.append(('company_id', 'in', (False, company_id)))
-        return domain
-
-    def _check_duplicated_product_barcodes(self, barcodes_within_company, company_id):
-        domain = self._get_barcode_search_domain(barcodes_within_company, company_id)
-        products_by_barcode = self.sudo().read_group(domain, ['barcode', 'id:array_agg'], ['barcode'])
-
-        duplicates_as_str = "\n".join(
-            _(
-                "- Barcode \"%(barcode)s\" already assigned to product(s): %(product_list)s",
-                barcode=record['barcode'], product_list=format_list(self.env, [p.display_name for p in self.search([('id', 'in', record['id'])])]),
-            )
-            for record in products_by_barcode if len(record['id']) > 1
-        )
-        if duplicates_as_str.strip():
-            duplicates_as_str += _(
-                "\n\nNote: products that you don't have access to will not be shown above."
-            )
-            raise ValidationError(_("Barcode(s) already assigned:\n\n%s", duplicates_as_str))
-
-    def _check_duplicated_packaging_barcodes(self, barcodes_within_company, company_id):
-        packaging_domain = self._get_barcode_search_domain(barcodes_within_company, company_id)
-        if self.env['product.packaging'].sudo().search_count(packaging_domain, limit=1):
-            raise ValidationError(_("A packaging already uses the barcode"))
-
-    def _get_invoice_policy(self):
-        return False
-
-    @api.depends('product_template_attribute_value_ids')
-    def _compute_combination_indices(self):
-        for product in self:
-            product.combination_indices = product.product_template_attribute_value_ids._ids2str()
-
-    def _compute_is_product_variant(self):
-        self.is_product_variant = True
-
-    @api.onchange('lst_price')
-    def _set_product_lst_price(self):
-        for product in self:
-            if self._context.get('uom'):
-                value = self.env['uom.uom'].browse(self._context['uom'])._compute_price(product.lst_price, product.uom_id)
-            else:
-                value = product.lst_price
-            value -= product.price_extra
-            product.write({'list_price': value})
-
-    @api.depends("product_template_attribute_value_ids.price_extra")
-    def _compute_product_price_extra(self):
-        for product in self:
-            product.price_extra = sum(product.product_template_attribute_value_ids.mapped('price_extra'))
-
-    @api.depends('list_price', 'price_extra')
-    @api.depends_context('uom')
-    def _compute_product_lst_price(self):
-        to_uom = None
-        if 'uom' in self._context:
-            to_uom = self.env['uom.uom'].browse(self._context['uom'])
-
-        for product in self:
-            if to_uom:
-                list_price = product.uom_id._compute_price(product.list_price, to_uom)
-            else:
-                list_price = product.list_price
-            product.lst_price = list_price + product.price_extra
-
-    @api.depends_context('partner_id')
-    def _compute_product_code(self):
-        for product in self:
-            product.code = product.default_code
-            if self.env['ir.model.access'].check('product.supplierinfo', 'read', False):
-                for supplier_info in product.seller_ids:
-                    if supplier_info.partner_id.id == product._context.get('partner_id'):
-                        product.code = supplier_info.product_code or product.default_code
-                        break
-
-    @api.depends_context('partner_id')
-    def _compute_partner_ref(self):
-        for product in self:
-            for supplier_info in product.seller_ids:
-                if supplier_info.partner_id.id == product._context.get('partner_id'):
-                    product_name = supplier_info.product_name or product.default_code or product.name
-                    product.partner_ref = '%s%s' % (product.code and '[%s] ' % product.code or '', product_name)
-                    break
-            else:
-                product.partner_ref = product.display_name
-
-    def _compute_variant_item_count(self):
-        for product in self:
-            domain = [
-                ('pricelist_id.active', '=', True),
-                '|',
-                    '&', ('product_tmpl_id', '=', product.product_tmpl_id.id), ('applied_on', '=', '1_product'),
-                    '&', ('product_id', '=', product.id), ('applied_on', '=', '0_product_variant'),
-                ('compute_price', '=', 'fixed'),
-            ]
-            product.pricelist_item_count = self.env['product.pricelist.item'].search_count(domain)
-
-    def _compute_product_document_count(self):
-        for product in self:
-            product.product_document_count = product.env['product.document'].search_count([
-                ('res_model', '=', 'product.product'),
-                ('res_id', '=', product.id),
-            ])
-
-    @api.depends('product_tag_ids', 'additional_product_tag_ids')
-    def _compute_all_product_tag_ids(self):
-        for product in self:
-            product.all_product_tag_ids = (
-                product.product_tag_ids | product.additional_product_tag_ids
-            ).sorted('sequence')
-
-    def _search_all_product_tag_ids(self, operator, operand):
-        if operator in expression.NEGATIVE_TERM_OPERATORS:
-            return [('product_tag_ids', operator, operand), ('additional_product_tag_ids', operator, operand)]
-        return ['|', ('product_tag_ids', operator, operand), ('additional_product_tag_ids', operator, operand)]
-
-    @api.onchange('uom_id')
-    def _onchange_uom_id(self):
-        if self.uom_id:
-            self.uom_po_id = self.uom_id.id
-
-    @api.onchange('uom_po_id')
-    def _onchange_uom(self):
-        if self.uom_id and self.uom_po_id and self.uom_id.category_id != self.uom_po_id.category_id:
-            self.uom_po_id = self.uom_id
-
-    @api.onchange('default_code')
-    def _onchange_default_code(self):
-        if not self.default_code:
-            return
-
-        domain = [('default_code', '=', self.default_code)]
-        if self.id.origin:
-            domain.append(('id', '!=', self.id.origin))
-
-        if self.env['product.product'].search_count(domain, limit=1):
-            return {'warning': {
-                'title': _("Note:"),
-                'message': _("The Reference '%s' already exists.", self.default_code),
-            }}
+    # ------------------------------------------------------------
+    # CRUD METHODS
+    # ------------------------------------------------------------
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -429,7 +205,7 @@ class ProductProduct(models.Model):
                 continue
             # Check if the product is last product of this template...
             other_products = self.search([('product_tmpl_id', '=', product.product_tmpl_id.id), ('id', '!=', product.id)])
-            # ... and do not delete product template if it's configured to be created "on demand"
+            # ... and do not delete product template if it's configured to be created 'on demand'
             if not other_products and not product.product_tmpl_id.has_dynamic_attributes():
                 unlink_templates |= product.product_tmpl_id
             unlink_products |= product
@@ -445,10 +221,10 @@ class ProductProduct(models.Model):
         return self
 
     def _unlink_or_archive(self, check_access=True):
-        """Unlink or archive products.
+        '''Unlink or archive products.
         Try in batch as much as possible because it is much faster.
         Use dichotomy when an exception occurs.
-        """
+        '''
 
         # Avoid access errors in case the products is shared amongst companies
         # but the underlying objects are not. If unlink fails because of an
@@ -481,12 +257,12 @@ class ProductProduct(models.Model):
                     self.write({'active': False})
 
     def copy(self, default=None):
-        """Variants are generated depending on the configuration of attributes
+        '''Variants are generated depending on the configuration of attributes
         and values on the template, so copying them does not make sense.
 
         For convenience the template is copied instead and its first variant is
         returned.
-        """
+        '''
         # copy variant is disabled in https://github.com/odoo/odoo/pull/38303
         # this returns the first possible combination of variant to make it
         # works for now, need to be fixed to return product_variant_id if it's
@@ -527,7 +303,7 @@ class ProductProduct(models.Model):
 
         # all user don't have access to seller and partner
         # check access and use superuser
-        self.check_access("read")
+        self.check_access('read')
 
         product_template_ids = self.sudo().product_tmpl_id.ids
 
@@ -544,7 +320,7 @@ class ProductProduct(models.Model):
         for product in self.sudo():
             variant = product.product_template_attribute_value_ids._get_combination_name()
 
-            name = variant and "%s (%s)" % (product.name, variant) or product.name
+            name = variant and '%s (%s)' % (product.name, variant) or product.name
             sellers = self.env['product.supplierinfo'].sudo().browse(self.env.context.get('seller_id')) or []
             if not sellers and partner_ids:
                 product_supplier_info = supplier_info_by_template.get(product.product_tmpl_id, [])
@@ -560,13 +336,13 @@ class ProductProduct(models.Model):
                 temp = []
                 for s in sellers:
                     seller_variant = s.product_name and (
-                        variant and "%s (%s)" % (s.product_name, variant) or s.product_name
+                        variant and '%s (%s)' % (s.product_name, variant) or s.product_name
                         ) or False
                     temp.append(get_display_name(seller_variant or name, s.product_code or product.default_code))
 
                 # => Feature drop here, one record can only have one display_name now, instead separate with `,`
                 # Remove this comment
-                product.display_name = ", ".join(unique(temp))
+                product.display_name = ', '.join(unique(temp))
             else:
                 product.display_name = get_display_name(name, product.default_code)
 
@@ -645,7 +421,257 @@ class ProductProduct(models.Model):
             )
         return super().view_header_get(view_id, view_type)
 
-    #=== ACTION METHODS ===#
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
+    @api.depends_context('partner_id')
+    def _compute_product_code(self):
+        for product in self:
+            product.code = product.default_code
+            if self.env['ir.model.access'].check('product.supplierinfo', 'read', False):
+                for supplier_info in product.seller_ids:
+                    if supplier_info.partner_id.id == product._context.get('partner_id'):
+                        product.code = supplier_info.product_code or product.default_code
+                        break
+
+    @api.depends_context('partner_id')
+    def _compute_partner_ref(self):
+        for product in self:
+            for supplier_info in product.seller_ids:
+                if supplier_info.partner_id.id == product._context.get('partner_id'):
+                    product_name = supplier_info.product_name or product.default_code or product.name
+                    product.partner_ref = '%s%s' % (product.code and '[%s] ' % product.code or '', product_name)
+                    break
+            else:
+                product.partner_ref = product.display_name
+
+    def _set_template_field(self, template_field, variant_field):
+        for record in self:
+            if (
+                # We are trying to remove a field from the variant even though it is already
+                # not set on the variant, remove it from the template instead.
+                (not record[template_field] and not record[variant_field])
+                # We are trying to add a field to the variant, but the template field is
+                # not set, write on the template instead.
+                or (record[template_field] and not record.product_tmpl_id[template_field])
+                # There is only one variant, always write on the template.
+                or self.search_count([
+                    ('product_tmpl_id', '=', record.product_tmpl_id.id),
+                    ('active', '=', True),
+                ]) <= 1
+            ):
+                record[variant_field] = False
+                record.product_tmpl_id[template_field] = record[template_field]
+            else:
+                record[variant_field] = record[template_field]
+
+    @api.depends('product_tmpl_id.write_date')
+    def _compute_write_date(self):
+        '''
+        First, the purpose of this computation is to update a product's
+        write_date whenever its template's write_date is updated.  Indeed,
+        when a template's image is modified, updating its products'
+        write_date will invalidate the browser's cache for the products'
+        image, which may be the same as the template's.  This guarantees UI
+        consistency.
+
+        Second, the field 'write_date' is automatically updated by the
+        framework when the product is modified.  The recomputation of the
+        field supplements that behavior to keep the product's write_date
+        up-to-date with its template's write_date.
+
+        Third, the framework normally prevents us from updating write_date
+        because it is a 'magic' field.  However, the assignment inside the
+        compute method is not subject to this restriction.  It therefore
+        works as intended :-)
+        '''
+        for record in self:
+            record.write_date = max(record.write_date or self.env.cr.now(), record.product_tmpl_id.write_date)
+
+    @api.depends('image_variant_1920', 'image_variant_1024')
+    def _compute_can_image_variant_1024_be_zoomed(self):
+        for record in self:
+            record.can_image_variant_1024_be_zoomed = record.image_variant_1920 and is_image_size_above(record.image_variant_1920, record.image_variant_1024)
+
+    def _compute_image_1920(self):
+        '''Get the image from the template if no image is set on the variant.'''
+        for record in self:
+            record.image_1920 = record.image_variant_1920 or record.product_tmpl_id.image_1920
+
+    def _set_image_1920(self):
+        return self._set_template_field('image_1920', 'image_variant_1920')
+
+    def _compute_image_1024(self):
+        '''Get the image from the template if no image is set on the variant.'''
+        for record in self:
+            record.image_1024 = record.image_variant_1024 or record.product_tmpl_id.image_1024
+
+    def _compute_image_512(self):
+        '''Get the image from the template if no image is set on the variant.'''
+        for record in self:
+            record.image_512 = record.image_variant_512 or record.product_tmpl_id.image_512
+
+    def _compute_image_256(self):
+        '''Get the image from the template if no image is set on the variant.'''
+        for record in self:
+            record.image_256 = record.image_variant_256 or record.product_tmpl_id.image_256
+
+    def _compute_image_128(self):
+        '''Get the image from the template if no image is set on the variant.'''
+        for record in self:
+            record.image_128 = record.image_variant_128 or record.product_tmpl_id.image_128
+
+    def _compute_can_image_1024_be_zoomed(self):
+        '''Get the image from the template if no image is set on the variant.'''
+        for record in self:
+            record.can_image_1024_be_zoomed = record.can_image_variant_1024_be_zoomed if record.image_variant_1920 else record.product_tmpl_id.can_image_1024_be_zoomed
+
+    def _get_placeholder_filename(self, field):
+        image_fields = ['image_%s' % size for size in [1920, 1024, 512, 256, 128]]
+        if field in image_fields:
+            return 'product/static/img/placeholder_thumbnail.png'
+        return super()._get_placeholder_filename(field)
+
+    def _get_barcodes_by_company(self):
+        return [
+            (company_id, [p.barcode for p in products if p.barcode])
+            for company_id, products in groupby(self, lambda p: p.company_id.id)
+        ]
+
+    def _get_barcode_search_domain(self, barcodes_within_company, company_id):
+        domain = [('barcode', 'in', barcodes_within_company)]
+        if company_id:
+            domain.append(('company_id', 'in', (False, company_id)))
+        return domain
+
+    def _check_duplicated_product_barcodes(self, barcodes_within_company, company_id):
+        domain = self._get_barcode_search_domain(barcodes_within_company, company_id)
+        products_by_barcode = self.sudo().read_group(domain, ['barcode', 'id:array_agg'], ['barcode'])
+
+        duplicates_as_str = '\n'.join(
+            _(
+                '- Barcode \'%(barcode)s\' already assigned to product(s): %(product_list)s',
+                barcode=record['barcode'], product_list=format_list(self.env, [p.display_name for p in self.search([('id', 'in', record['id'])])]),
+            )
+            for record in products_by_barcode if len(record['id']) > 1
+        )
+        if duplicates_as_str.strip():
+            duplicates_as_str += _(
+                '\n\nNote: products that you don\'t have access to will not be shown above.'
+            )
+            raise ValidationError(_(
+                'Barcode(s) already assigned:\n\n%s', duplicates_as_str
+            ))
+
+    def _check_duplicated_packaging_barcodes(self, barcodes_within_company, company_id):
+        packaging_domain = self._get_barcode_search_domain(barcodes_within_company, company_id)
+        if self.env['product.packaging'].sudo().search_count(packaging_domain, limit=1):
+            raise ValidationError(_('A packaging already uses the barcode'))
+
+    @api.depends('product_template_attribute_value_ids')
+    def _compute_combination_indices(self):
+        for product in self:
+            product.combination_indices = product.product_template_attribute_value_ids._ids2str()
+
+    @api.depends('product_template_attribute_value_ids.price_extra')
+    def _compute_product_price_extra(self):
+        for product in self:
+            product.price_extra = sum(product.product_template_attribute_value_ids.mapped('price_extra'))
+
+    @api.onchange('lst_price')
+    def _set_product_lst_price(self):
+        for product in self:
+            if self._context.get('uom'):
+                value = self.env['uom.uom'].browse(self._context['uom'])._compute_price(product.lst_price, product.uom_id)
+            else:
+                value = product.lst_price
+            value -= product.price_extra
+            product.write({'list_price': value})
+
+    @api.depends_context('uom')
+    @api.depends('list_price', 'price_extra')
+    def _compute_product_lst_price(self):
+        to_uom = None
+        if 'uom' in self._context:
+            to_uom = self.env['uom.uom'].browse(self._context['uom'])
+
+        for product in self:
+            if to_uom:
+                list_price = product.uom_id._compute_price(product.list_price, to_uom)
+            else:
+                list_price = product.list_price
+            product.lst_price = list_price + product.price_extra
+
+    @api.depends('product_tag_ids', 'additional_product_tag_ids')
+    def _compute_all_product_tag_ids(self):
+        for product in self:
+            product.all_product_tag_ids = (
+                product.product_tag_ids | product.additional_product_tag_ids
+            ).sorted('sequence')
+
+    def _search_all_product_tag_ids(self, operator, operand):
+        if operator in expression.NEGATIVE_TERM_OPERATORS:
+            return [('product_tag_ids', operator, operand), ('additional_product_tag_ids', operator, operand)]
+
+        return ['|', ('product_tag_ids', operator, operand), ('additional_product_tag_ids', operator, operand)]
+
+    def _get_invoice_policy(self):
+        return False
+
+    def _compute_is_product_variant(self):
+        self.is_product_variant = True
+
+    def _compute_variant_item_count(self):
+        for product in self:
+            domain = [
+                ('pricelist_id.active', '=', True),
+                '|',
+                    '&', ('product_tmpl_id', '=', product.product_tmpl_id.id), ('applied_on', '=', '1_product'),
+                    '&', ('product_id', '=', product.id), ('applied_on', '=', '0_product_variant'),
+                ('compute_price', '=', 'fixed'),
+            ]
+            product.pricelist_item_count = self.env['product.pricelist.item'].search_count(domain)
+
+    def _compute_product_document_count(self):
+        for product in self:
+            product.product_document_count = product.env['product.document'].search_count([
+                ('res_model', '=', 'product.product'),
+                ('res_id', '=', product.id),
+            ])
+
+    # ------------------------------------------------------------
+    # ONCHANGE METHODS
+    # ------------------------------------------------------------
+
+    @api.onchange('uom_id')
+    def _onchange_uom_id(self):
+        if self.uom_id:
+            self.uom_po_id = self.uom_id.id
+
+    @api.onchange('uom_po_id')
+    def _onchange_uom(self):
+        if self.uom_id and self.uom_po_id and self.uom_id.category_id != self.uom_po_id.category_id:
+            self.uom_po_id = self.uom_id
+
+    @api.onchange('default_code')
+    def _onchange_default_code(self):
+        if not self.default_code:
+            return
+
+        domain = [('default_code', '=', self.default_code)]
+        if self.id.origin:
+            domain.append(('id', '!=', self.id.origin))
+
+        if self.env['product.product'].search_count(domain, limit=1):
+            return {'warning': {
+                'title': _('Note:'),
+                'message': _('The Reference \'%s\' already exists.', self.default_code),
+            }}
+
+    # ------------------------------------------------------------
+    # ACTIONS
+    # ------------------------------------------------------------
 
     def action_open_label_layout(self):
         action = self.env['ir.actions.act_window']._for_xml_id('product.action_open_label_layout')
@@ -674,17 +700,6 @@ class ProductProduct(models.Model):
             }
         }
 
-    def open_product_template(self):
-        """ Utility method used to add an "Open Template" button in product views """
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'product.template',
-            'view_mode': 'form',
-            'res_id': self.product_tmpl_id.id,
-            'target': 'new'
-        }
-
     def action_open_documents(self):
         res = self.product_tmpl_id.action_open_documents()
         res['context'].update({
@@ -693,6 +708,17 @@ class ProductProduct(models.Model):
             'search_default_context_variant': True,
         })
         return res
+
+    def open_product_template(self):
+        ''' Utility method used to add an 'Open Template' button in product views '''
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.template',
+            'view_mode': 'form',
+            'res_id': self.product_tmpl_id.id,
+            'target': 'new'
+        }
 
     #=== BUSINESS METHODS ===#
 
@@ -804,15 +830,16 @@ class ProductProduct(models.Model):
     @api.model
     def get_empty_list_help(self, help_message):
         self = self.with_context(
-            empty_list_help_document_name=_("product"),
+            empty_list_help_document_name=_('product'),
         )
         return super(ProductProduct, self).get_empty_list_help(help_message)
 
     def get_product_multiline_description_sale(self):
-        """ Compute a multiline description of this product, in the context of sales
-                (do not use for purchases or other display reasons that don't intend to use "description_sale").
-            It will often be used as the default description of a sale order line referencing this product.
-        """
+        '''
+        Compute a multiline description of this product, in the context of sales
+        (do not use for purchases or other display reasons that don't intend to use 'description_sale').
+        It will often be used as the default description of a sale order line referencing this product.
+        '''
         name = self.display_name
         if self.description_sale:
             name += '\n' + self.description_sale
@@ -820,7 +847,7 @@ class ProductProduct(models.Model):
         return name
 
     def _is_variant_possible(self, parent_combination=None):
-        """Return whether the variant is possible based on its own combination,
+        '''Return whether the variant is possible based on its own combination,
         and optionally a parent combination.
 
         See `_is_combination_possible` for more information.
@@ -831,13 +858,13 @@ class ProductProduct(models.Model):
 
         :return: ẁhether the variant is possible based on its own combination
         :rtype: bool
-        """
+        '''
         self.ensure_one()
         return self.product_tmpl_id._is_combination_possible(self.product_template_attribute_value_ids, parent_combination=parent_combination, ignore_no_variant=True)
 
     def toggle_active(self):
-        """ Archiving related product.template if there is not any more active product.product
-        (and vice versa, unarchiving the related product template if there is now an active product.product) """
+        ''' Archiving related product.template if there is not any more active product.product
+        (and vice versa, unarchiving the related product template if there is now an active product.product) '''
         result = super().toggle_active()
         # We deactivate product templates which are active with no active variants.
         tmpl_to_deactivate = self.filtered(lambda product: (product.product_tmpl_id.active

@@ -304,6 +304,10 @@ class ProductTemplate(models.Model):
     )
 
 
+    # ------------------------------------------------------------
+    # CONSTRAINT METHODS
+    # ------------------------------------------------------------
+
     @api.constrains('company_id')
     def _check_barcode_uniqueness(self):
         for template in self:
@@ -335,7 +339,7 @@ class ProductTemplate(models.Model):
                 )
             ):
                 raise ValidationError(_(
-                        'A sellable combo product can only contain sellable products.'
+                    'A sellable combo product can only contain sellable products.'
                 ))
 
     @api.depends('type')
@@ -717,9 +721,324 @@ class ProductTemplate(models.Model):
         self_obj = self
         if 'search_product_product' not in self.env.context and any(term[0] == 'id' for term in (args or [])):
             self_obj = self_obj.with_context(search_product_product=False)
+
         return super(ProductTemplate, self_obj).name_search(name, args, operator, limit)
 
-    #=== ACTION METHODS ===#
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
+    @api.depends('company_id')
+    def _compute_currency_id(self):
+        main_company = self.env['res.company']._get_main_company()
+        for template in self:
+            template.currency_id = template.company_id.sudo().currency_id.id or main_company.currency_id.id
+
+    @api.depends('company_id')
+    @api.depends_context('company')
+    def _compute_cost_currency_id(self):
+        env_currency_id = self.env.company.currency_id.id
+        for template in self:
+            template.cost_currency_id = template.company_id.currency_id.id or env_currency_id
+
+    @api.depends('uom_id')
+    def _compute_uom_po_id(self):
+        for template in self:
+            if not template.uom_po_id or template.uom_id.category_id != template.uom_po_id.category_id:
+                template.uom_po_id = template.uom_id
+
+    @api.depends('type')
+    def _compute_service_tracking(self):
+        self.filtered(lambda product: product.type != 'service').service_tracking = 'no'
+
+    @api.model
+    def _get_weight_uom_id_from_ir_config_parameter(self):
+        ''' Get the unit of measure to interpret the `weight` field. By default, we considerer
+        that weights are expressed in kilograms. Users can configure to express them in pounds
+        by adding an ir.config_parameter record with 'product.product_weight_in_lbs' as key
+        and '1' as value.
+        '''
+        product_weight_in_lbs_param = self.env['ir.config_parameter'].sudo().get_param('product.weight_in_lbs')
+        if product_weight_in_lbs_param == '1':
+            return self.env.ref('uom.product_uom_lb')
+        else:
+            return self.env.ref('uom.product_uom_kgm')
+
+    @api.model
+    def _get_weight_uom_name_from_ir_config_parameter(self):
+        return self._get_weight_uom_id_from_ir_config_parameter().display_name
+
+    @api.depends('type')
+    def _compute_weight_uom_name(self):
+        self.weight_uom_name = self._get_weight_uom_name_from_ir_config_parameter()
+
+    @api.model
+    def _get_volume_uom_id_from_ir_config_parameter(self):
+        ''' Get the unit of measure to interpret the `volume` field. By default, we consider
+        that volumes are expressed in cubic meters. Users can configure to express them in cubic feet
+        by adding an ir.config_parameter record with 'product.volume_in_cubic_feet' as key
+        and '1' as value.
+        '''
+        product_length_in_feet_param = self.env['ir.config_parameter'].sudo().get_param('product.volume_in_cubic_feet')
+        if product_length_in_feet_param == '1':
+            return self.env.ref('uom.product_uom_cubic_foot')
+        else:
+            return self.env.ref('uom.product_uom_cubic_meter')
+
+    @api.model
+    def _get_volume_uom_name_from_ir_config_parameter(self):
+        return self._get_volume_uom_id_from_ir_config_parameter().display_name
+
+    @api.depends('type')
+    def _compute_volume_uom_name(self):
+        self.volume_uom_name = self._get_volume_uom_name_from_ir_config_parameter()
+
+    @api.model
+    def _get_length_uom_id_from_ir_config_parameter(self):
+        ''' Get the unit of measure to interpret the `length`, 'width', 'height' field.
+        By default, we considerer that length are expressed in millimeters. Users can configure
+        to express them in feet by adding an ir.config_parameter record with 'product.volume_in_cubic_feet'
+        as key and '1' as value.
+        '''
+        product_length_in_feet_param = self.env['ir.config_parameter'].sudo().get_param('product.volume_in_cubic_feet')
+        if product_length_in_feet_param == '1':
+            return self.env.ref('uom.product_uom_foot')
+        else:
+            return self.env.ref('uom.product_uom_millimeter')
+
+    @api.model
+    def _get_length_uom_name_from_ir_config_parameter(self):
+        return self._get_length_uom_id_from_ir_config_parameter().display_name
+
+    def _prepare_tooltip(self):
+        self.ensure_one()
+        tooltip = ''
+        if self.type == 'combo':
+            tooltip = _(
+                'Combos allow to choose one product amongst a selection of choices per category.'
+            )
+        return tooltip
+
+    @api.depends('type')
+    def _compute_product_tooltip(self):
+        self.product_tooltip = False
+        for template in self:
+            template.product_tooltip = template._prepare_tooltip()
+
+    @api.depends(
+        'attribute_line_ids',
+        'attribute_line_ids.value_ids',
+        'attribute_line_ids.value_ids.is_custom',
+        'attribute_line_ids.attribute_id.create_variant',
+        'attribute_line_ids.attribute_id.display_type',
+    )
+    def _compute_has_configurable_attributes(self):
+        '''A product is considered configurable if:
+        - It has dynamic attributes
+        - It has any attribute line with at least 2 attribute values configured
+        - It has multi-checkbox display type
+        - It has at least one custom attribute value
+        '''
+        for product in self:
+            product.has_configurable_attributes = (
+                product.has_dynamic_attributes() or any(
+                    ptal.attribute_id.display_type == 'multi'
+                    or len(ptal.value_ids) >= 2
+                    or ptal.value_ids.is_custom
+                    for ptal in product.attribute_line_ids
+                )
+            )
+
+    @api.depends('image_1920', 'image_1024')
+    def _compute_can_image_1024_be_zoomed(self):
+        for template in self:
+            template.can_image_1024_be_zoomed = template.image_1920 and is_image_size_above(template.image_1920, template.image_1024)
+
+    def _compute_template_field_from_variant_field(self, fname, default=False):
+        '''Sets the value of the given field based on the template variant values
+
+        Equals to product_variant_ids[fname] if it's a single variant product.
+        Otherwise, sets the value specified in ``default``.
+        It's used to compute fields like barcode, weight, volume..
+
+        :param str fname: name of the field to compute
+            (field name must be identical between product.product & product.template models)
+        :param default: default value to set when there are multiple or no variants on the template
+        :return: None
+        '''
+        for template in self:
+            variant_count = len(template.product_variant_ids)
+            if variant_count == 1:
+                template[fname] = template.product_variant_ids[fname]
+            elif variant_count == 0 and self.env.context.get('active_test', True):
+                # If the product has no active variants, retry without the active_test
+                template_ctx = template.with_context(active_test=False)
+                template_ctx._compute_template_field_from_variant_field(fname, default=default)
+            else:
+                template[fname] = default
+
+    @api.depends('product_variant_ids')
+    def _compute_product_variant_id(self):
+        for p in self:
+            p.product_variant_id = p.product_variant_ids[:1].id
+
+    @api.depends_context('company')
+    @api.depends('product_variant_ids.standard_price')
+    def _compute_standard_price(self):
+        # Depends on force_company context because standard_price is company_dependent
+        # on the product_product
+        self._compute_template_field_from_variant_field('standard_price')
+
+    @api.depends('product_variant_ids.volume')
+    def _compute_volume(self):
+        self._compute_template_field_from_variant_field('volume')
+
+    @api.depends('product_variant_ids.weight')
+    def _compute_weight(self):
+        self._compute_template_field_from_variant_field('weight')
+
+    @api.depends('product_variant_ids.barcode')
+    def _compute_barcode(self):
+        self._compute_template_field_from_variant_field('barcode')
+
+    @api.depends('product_variant_ids.product_tmpl_id')
+    def _compute_product_variant_count(self):
+        for template in self:
+            template.product_variant_count = len(template.product_variant_ids)
+
+    @api.depends('product_variant_ids.default_code')
+    def _compute_default_code(self):
+        self._compute_template_field_from_variant_field('default_code')
+
+    @api.depends('product_variant_ids', 'product_variant_ids.packaging_ids')
+    def _compute_packaging_ids(self):
+        for p in self:
+            if len(p.product_variant_ids) == 1:
+                p.packaging_ids = p.product_variant_ids.packaging_ids
+            else:
+                p.packaging_ids = False
+
+    @api.depends('attribute_line_ids.value_ids')
+    def _compute_valid_product_template_attribute_line_ids(self):
+        '''A product template attribute line is considered valid if it has at
+        least one possible value.
+
+        Those with only one value are considered valid, even though they should
+        not appear on the configurator itself (unless they have an is_custom
+        value to input), indeed single value attributes can be used to filter
+        products among others based on that attribute/value.
+        '''
+        for record in self:
+            record.valid_product_template_attribute_line_ids = record.attribute_line_ids.filtered(lambda ptal: ptal.value_ids)
+
+    def _set_product_variant_field(self, fname):
+        '''Propagate the value of the given field from the templates to their unique variant.
+
+        Only if it's a single variant product.
+        It's used to set fields like barcode, weight, volume..
+
+        :param str fname: name of the field whose value should be propagated to the variant.
+            (field name must be identical between product.product & product.template models)
+        '''
+        for template in self:
+            count = len(template.product_variant_ids)
+            if count == 1:
+                template.product_variant_ids[fname] = template[fname]
+            elif count == 0:
+                archived_variants = self.with_context(active_test=False).product_variant_ids
+                if len(archived_variants) == 1:
+                    archived_variants[fname] = template[fname]
+
+    def _set_standard_price(self):
+        self._set_product_variant_field('standard_price')
+
+    def _set_volume(self):
+        self._set_product_variant_field('volume')
+
+    def _set_weight(self):
+        self._set_product_variant_field('weight')
+
+    def _set_barcode(self):
+        self._set_product_variant_field('barcode')
+
+    def _set_default_code(self):
+        self._set_product_variant_field('default_code')
+
+    def _set_packaging_ids(self):
+        for p in self:
+            if len(p.product_variant_ids) == 1:
+                p.product_variant_ids.packaging_ids = p.packaging_ids
+
+    def _compute_is_product_variant(self):
+        self.is_product_variant = False
+
+    def _compute_purchase_ok(self):
+        pass
+
+    def _compute_item_count(self):
+        for template in self:
+            # Pricelist item count counts the rules applicable on current template or on its variants.
+            template.pricelist_item_count = template.env['product.pricelist.item'].search_count([
+                '&',
+                '|', ('product_tmpl_id', '=', template.id), ('product_id', 'in', template.product_variant_ids.ids),
+                ('pricelist_id.active', '=', True),
+                ('compute_price', '=', 'fixed'),
+            ])
+
+    def _compute_product_document_count(self):
+        for template in self:
+            template.product_document_count = template.env['product.document'].search_count([
+                '|',
+                    '&', ('res_model', '=', 'product.template'), ('res_id', '=', template.id),
+                    '&',
+                        ('res_model', '=', 'product.product'),
+                        ('res_id', 'in', template.product_variant_ids.ids),
+            ])
+
+    def _search_barcode(self, operator, value):
+        subquery = self.with_context(active_test=False)._search([
+            ('product_variant_ids.barcode', operator, value),
+        ])
+        return [('id', 'in', subquery)]
+
+    def _search_standard_price(self, operator, value):
+        return [('product_variant_ids.standard_price', operator, value)]
+
+    # ------------------------------------------------------------
+    # ONCHANGE METHODS
+    # ------------------------------------------------------------
+
+    @api.onchange('default_code')
+    def _onchange_default_code(self):
+        if not self.default_code:
+            return
+
+        domain = [('default_code', '=', self.default_code)]
+        if self.id.origin:
+            domain.append(('id', '!=', self.id.origin))
+
+        if self.env['product.template'].search_count(domain, limit=1):
+            return {'warning': {
+                'title': _('Note:'),
+                'message': _('The Internal Reference \'%s\' already exists.', self.default_code),
+            }}
+
+    @api.onchange('uom_id')
+    def _onchange_uom_id(self):
+        if self.uom_id:
+            self.uom_po_id = self.uom_id.id
+
+    @api.onchange('type')
+    def _onchange_type(self):
+        if self.type == 'combo':
+            if self.attribute_line_ids:
+                raise UserError(_('Combo products can\'t have attributes'))
+            self.purchase_ok = False
+        return {}
+
+    # ------------------------------------------------------------
+    # ACTIONS
+    # ------------------------------------------------------------
 
     def action_open_label_layout(self):
         action = self.env['ir.actions.act_window']._for_xml_id('product.action_open_label_layout')
@@ -769,7 +1088,7 @@ class ProductTemplate(models.Model):
                         ('res_id', 'in', self.product_variant_ids.ids),
             ],
             'target': 'current',
-            'help': """
+            'help': '''
                 <p class="o_view_nocontent_smiling_face">
                     %s
                 </p>
@@ -783,7 +1102,7 @@ class ProductTemplate(models.Model):
                     %s
                     </a>
                 </p>
-            """ % (
+            ''' % (
                 _('Upload files to your product'),
                 _('Use this feature to store any files you would like to share with your customers'),
                 _('(e.g: product description, ebook, legal notice, ...).'),
@@ -962,19 +1281,6 @@ class ProductTemplate(models.Model):
         '''
         self.ensure_one()
         return any(a.create_variant == 'dynamic' for a in self.valid_product_template_attribute_line_ids.attribute_id)
-
-    @api.depends('attribute_line_ids.value_ids')
-    def _compute_valid_product_template_attribute_line_ids(self):
-        '''A product template attribute line is considered valid if it has at
-        least one possible value.
-
-        Those with only one value are considered valid, even though they should
-        not appear on the configurator itself (unless they have an is_custom
-        value to input), indeed single value attributes can be used to filter
-        products among others based on that attribute/value.
-        '''
-        for record in self:
-            record.valid_product_template_attribute_line_ids = record.attribute_line_ids.filtered(lambda ptal: ptal.value_ids)
 
     def _get_possible_variants(self, parent_combination=None):
         '''Return the existing variants that are possible.
@@ -1578,9 +1884,6 @@ class ProductTemplate(models.Model):
             'template': '/product/static/xls/product_template.xls'
         }]
 
-    def get_contextual_price(self, product=None):
-        return self._get_contextual_price(product=product)
-
     def _get_contextual_price(self, product=None):
         self.ensure_one()
         pricelist = self._get_contextual_pricelist()
@@ -1588,6 +1891,9 @@ class ProductTemplate(models.Model):
         uom = self.env['uom.uom'].browse(self.env.context.get('uom'))
         date = self.env.context.get('date')
         return pricelist._get_product_price(product or self, quantity, uom=uom, date=date)
+
+    def get_contextual_price(self, product=None):
+        return self._get_contextual_price(product=product)
 
     def _get_contextual_pricelist(self):
         ''' Get the contextual pricelist
