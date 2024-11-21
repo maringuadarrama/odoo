@@ -651,6 +651,27 @@ class SaleOrderLine(models.Model):
 
         return name
 
+    def _get_downpayment_line_price_unit(self, invoices):
+        return sum(
+            l.price_unit if l.move_id.move_type == 'out_invoice' else -l.price_unit
+            for l in self.invoice_lines
+            if l.move_id.state == 'posted' and l.move_id not in invoices  # don't recompute with the final invoice
+        )
+
+    def _get_downpayment_state(self):
+        self.ensure_one()
+
+        if self.display_type:
+            return ''
+
+        invoice_lines = self._get_invoice_lines()
+        if all(line.parent_state == 'draft' for line in invoice_lines):
+            return 'draft'
+        if all(line.parent_state == 'cancel' for line in invoice_lines):
+            return 'cancel'
+
+        return ''
+
     def _get_downpayment_description(self):
         self.ensure_one()
         if self.display_type:
@@ -1057,20 +1078,6 @@ class SaleOrderLine(models.Model):
         mapping = lines_by_analytic._get_delivered_quantity_by_analytic([('amount', '<=', 0.0)])
         for so_line in lines_by_analytic:
             so_line.qty_delivered = mapping.get(so_line.id or so_line._origin.id, 0.0)
-
-    def _get_downpayment_state(self):
-        self.ensure_one()
-
-        if self.display_type:
-            return ''
-
-        invoice_lines = self._get_invoice_lines()
-        if all(line.parent_state == 'draft' for line in invoice_lines):
-            return 'draft'
-        if all(line.parent_state == 'cancel' for line in invoice_lines):
-            return 'cancel'
-
-        return ''
 
     def _get_delivered_quantity_by_analytic(self, additional_domain):
         '''
