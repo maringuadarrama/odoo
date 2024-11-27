@@ -1,9 +1,6 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import csv
 import io
 import json
-
 import xlsxwriter
 
 from odoo import _
@@ -20,9 +17,9 @@ class ProductPricelistExportController(Controller):
         quantities = report_data['quantities']
         products = report_data['products']
         headers = [
-            _("Product"),
-            _("UOM"),
-        ] + [_("Quantity (%s UoM)", qty) for qty in quantities]
+            _('Product'),
+            _('UOM'),
+        ] + [_('Quantity (%s UoM)', qty) for qty in quantities]
         if export_format == 'csv':
             return self._generate_csv(pricelist_name, quantities, products, headers)
         else:

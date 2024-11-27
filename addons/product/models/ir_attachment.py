@@ -6,9 +6,10 @@ from odoo import api, models
 class IrAttachment(models.Model):
     _inherit = 'ir.attachment'
 
+
     @api.model_create_multi
     def create(self, vals_list):
-        """Create product.document for attachments added in products chatters"""
+        '''Create product.document for attachments added in products chatters'''
         attachments = super().create(vals_list)
         if not self.env.context.get('disable_product_documents_creation'):
             product_attachments = attachments.filtered(

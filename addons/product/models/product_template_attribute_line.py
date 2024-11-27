@@ -6,71 +6,62 @@ from odoo.fields import Command
 
 
 class ProductTemplateAttributeLine(models.Model):
-    """Attributes available on product.template with their selected values in a m2m.
-    Used as a configuration model to generate the appropriate product.template.attribute.value"""
-
+    '''
+    Attributes available on product.template with their selected values in a m2m.
+    Used as a configuration model to generate the appropriate product.template.attribute.value
+    '''
     _name = 'product.template.attribute.line'
     _rec_name = 'attribute_id'
     _rec_names_search = ['attribute_id', 'value_ids']
-    _description = "Product Template Attribute Line"
+    _description = 'Product Template Attribute Line'
     _order = 'sequence, attribute_id, id'
 
-    active = fields.Boolean(default=True)
-    product_tmpl_id = fields.Many2one(
-        comodel_name='product.template',
-        string="Product Template",
-        ondelete='cascade',
-        required=True,
-        index=True)
-    sequence = fields.Integer("Sequence", default=10)
+
     attribute_id = fields.Many2one(
         comodel_name='product.attribute',
-        string="Attribute",
-        ondelete='restrict',
+        string='Attribute',
         required=True,
-        index=True)
+        ondelete='restrict',
+        index=True,
+    )
+    active = fields.Boolean(default=True)
+    sequence = fields.Integer('Sequence', default=10)
+    product_tmpl_id = fields.Many2one(
+        comodel_name='product.template',
+        string='Product Template',
+        required=True,
+        ondelete='cascade',
+        index=True,
+    )
     value_ids = fields.Many2many(
         comodel_name='product.attribute.value',
         relation='product_attribute_value_product_template_attribute_line_rel',
-        string="Values",
-        domain="[('attribute_id', '=', attribute_id)]",
-        ondelete='restrict')
+        string='Values',
+        domain=[('attribute_id', '=', attribute_id)],
+        ondelete='restrict',
+    )
     value_count = fields.Integer(compute='_compute_value_count', store=True)
     product_template_value_ids = fields.One2many(
         comodel_name='product.template.attribute.value',
         inverse_name='attribute_line_id',
-        string="Product Attribute Values")
+        string='Product Attribute Values',
+    )
 
-    @api.depends('value_ids')
-    def _compute_value_count(self):
-        for record in self:
-            record.value_count = len(record.value_ids)
-
-    @api.onchange('attribute_id')
-    def _onchange_attribute_id(self):
-        if self.attribute_id.create_variant == 'no_variant':
-            self.value_ids = self.env['product.attribute.value'].search([
-                ('attribute_id', '=', self.attribute_id.id),
-            ])
-        else:
-            self.value_ids = self.value_ids.filtered(
-                lambda pav: pav.attribute_id == self.attribute_id
-            )
 
     @api.constrains('active', 'value_ids', 'attribute_id')
     def _check_valid_values(self):
         for ptal in self:
             if ptal.active and not ptal.value_ids:
                 raise ValidationError(_(
-                    "The attribute %(attribute)s must have at least one value for the product %(product)s.",
+                    'The attribute %(attribute)s must have at least one value for the product %(product)s.',
                     attribute=ptal.attribute_id.display_name,
                     product=ptal.product_tmpl_id.display_name,
                 ))
             for pav in ptal.value_ids:
                 if pav.attribute_id != ptal.attribute_id:
                     raise ValidationError(_(
-                        "On the product %(product)s you cannot associate the value %(value)s"
-                        " with the attribute %(attribute)s because they do not match.",
+                        'On the product %(product)s you cannot associate the value %(value)s'
+                        ' with the attribute %(attribute)s because they do not match.',
                         product=ptal.product_tmpl_id.display_name,
                         value=pav.display_name,
                         attribute=ptal.attribute_id.display_name,
@@ -79,14 +70,15 @@ class ProductTemplateAttributeLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Override to:
+        '''
+        Override to:
         - Activate archived lines having the same configuration (if they exist)
             instead of creating new lines.
         - Set up related values and related variants.
 
         Reactivating existing lines allows to re-use existing variants when
         possible, keeping their configuration and avoiding duplication.
-        """
+        '''
         create_values = []
         activated_lines = self.env['product.template.attribute.line']
         for value in vals_list:
@@ -110,23 +102,24 @@ class ProductTemplateAttributeLine(models.Model):
             else:
                 create_values.append(value)
         res = activated_lines + super().create(create_values)
-        if self._context.get("create_product_product", True):
+        if self._context.get('create_product_product', True):
             res._update_product_template_attribute_values()
         return res
 
     def write(self, values):
-        """Override to:
+        '''
+        Override to:
         - Add constraints to prevent doing changes that are not supported such
             as modifying the template or the attribute of existing lines.
         - Clean up related values and related variants when archiving or when
             updating `value_ids`.
-        """
+        '''
         if 'product_tmpl_id' in values:
             for ptal in self:
                 if ptal.product_tmpl_id.id != values['product_tmpl_id']:
                     raise UserError(_(
-                        "You cannot move the attribute %(attribute)s from the product"
-                        " %(product_src)s to the product %(product_dest)s.",
+                        'You cannot move the attribute %(attribute)s from the product'
+                        ' %(product_src)s to the product %(product_dest)s.',
                         attribute=ptal.attribute_id.display_name,
                         product_src=ptal.product_tmpl_id.display_name,
                         product_dest=values['product_tmpl_id'],
@@ -136,12 +129,13 @@ class ProductTemplateAttributeLine(models.Model):
             for ptal in self:
                 if ptal.attribute_id.id != values['attribute_id']:
                     raise UserError(_(
-                        "On the product %(product)s you cannot transform the attribute"
-                        " %(attribute_src)s into the attribute %(attribute_dest)s.",
+                        'On the product %(product)s you cannot transform the attribute'
+                        ' %(attribute_src)s into the attribute %(attribute_dest)s.',
                         product=ptal.product_tmpl_id.display_name,
                         attribute_src=ptal.attribute_id.display_name,
                         attribute_dest=values['attribute_id'],
                     ))
+
         # Remove all values while archiving to make sure the line is clean if it
         # is ever activated again.
         if not values.get('active', True):
@@ -157,14 +151,15 @@ class ProductTemplateAttributeLine(models.Model):
         return res
 
     def unlink(self):
-        """Override to:
+        '''
+        Override to:
         - Archive the line if unlink is not possible.
         - Clean up related values and related variants.
 
         Archiving is typically needed when the line has values that can't be
         deleted because they are referenced elsewhere (on a variant that can't
         be deleted, on a sales order line, ...).
-        """
+        '''
         # Try to remove the values first to remove some potentially blocking
         # references, which typically works:
         # - For single value lines because the values are directly removed from
@@ -190,8 +185,24 @@ class ProductTemplateAttributeLine(models.Model):
         (templates - ptal_to_archive.product_tmpl_id)._create_variant_ids()
         return True
 
+    @api.depends('value_ids')
+    def _compute_value_count(self):
+        for record in self:
+            record.value_count = len(record.value_ids)
+
+    @api.onchange('attribute_id')
+    def _onchange_attribute_id(self):
+        if self.attribute_id.create_variant == 'no_variant':
+            self.value_ids = self.env['product.attribute.value'].search([
+                ('attribute_id', '=', self.attribute_id.id),
+            ])
+        else:
+            self.value_ids = self.value_ids.filtered(
+                lambda pav: pav.attribute_id == self.attribute_id
+            )
+
     def _update_product_template_attribute_values(self):
-        """Create or unlink `product.template.attribute.value` for each line in
+        '''Create or unlink `product.template.attribute.value` for each line in
         `self` based on `value_ids`.
 
         The goal is to delete all values that are not in `value_ids`, to
@@ -201,7 +212,7 @@ class ProductTemplateAttributeLine(models.Model):
         This is a trick for the form view and for performance in general,
         because we don't want to generate in advance all possible values for all
         templates, but only those that will be selected.
-        """
+        '''
         ProductTemplateAttributeValue = self.env['product.template.attribute.value']
         ptav_to_create = []
         ptav_to_unlink = ProductTemplateAttributeValue
@@ -261,15 +272,15 @@ class ProductTemplateAttributeLine(models.Model):
 
     def action_open_attribute_values(self):
         return {
+            'name': _('Product Variant Values'),
             'type': 'ir.actions.act_window',
-            'name': _("Product Variant Values"),
             'res_model': 'product.template.attribute.value',
             'view_mode': 'list,form',
-            'domain': [('id', 'in', self.product_template_value_ids.ids)],
             'views': [
                 (self.env.ref('product.product_template_attribute_value_view_tree').id, 'list'),
                 (self.env.ref('product.product_template_attribute_value_view_form').id, 'form'),
             ],
+            'domain': [('id', 'in', self.product_template_value_ids.ids)],
             'context': {
                 'search_default_active': 1,
                 'product_invisible': True,
