@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
@@ -7,6 +6,7 @@ from odoo import api, fields, models
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
+
     # when the specific_property_product_pricelist is not defined
     # the fallback value may be computed with 2 ir.config_parameter
     # in self.env['product.pricelist']._get_partner_pricelist_multi
@@ -14,13 +14,13 @@ class ResPartner(models.Model):
     # 2. res.partner.property_product_pricelist               # fallback for all companies
     property_product_pricelist = fields.Many2one(
         comodel_name='product.pricelist',
-        string="Pricelist",
+        string='Pricelist',
         compute='_compute_product_pricelist',
-        inverse="_inverse_product_pricelist",
+        inverse='_inverse_product_pricelist',
         company_dependent=False,  # behave like company dependent field but is not company_dependent
         domain=lambda self: [('company_id', 'in', (self.env.company.id, False))],
-        help="This pricelist will be used, instead of the default one, for sales to the current partner")
-
+        help='This pricelist will be used, instead of the default one, for sales to the current partner',
+    )
     # the specific pricelist to compute property_product_pricelist
     # this company dependent field shouldn't have any fallback in ir.default
     specific_property_product_pricelist = fields.Many2one(
@@ -28,8 +28,9 @@ class ResPartner(models.Model):
         company_dependent=True,
     )
 
-    @api.depends('country_id', 'specific_property_product_pricelist')
+
     @api.depends_context('company')
+    @api.depends('country_id', 'specific_property_product_pricelist')
     def _compute_product_pricelist(self):
         res = self.env['product.pricelist']._get_partner_pricelist_multi(self._ids)
         for partner in self:

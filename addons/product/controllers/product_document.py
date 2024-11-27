@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import json
 import logging
 
@@ -22,7 +20,7 @@ class ProductDocumentController(Controller):
             return
 
         files = request.httprequest.files.getlist('ufile')
-        result = {'success': _("All files uploaded")}
+        result = {'success': _('All files uploaded')}
         for ufile in files:
             try:
                 mimetype = ufile.content_type
@@ -36,7 +34,7 @@ class ProductDocumentController(Controller):
                     **self.get_additional_create_params(**kwargs)
                 })
             except Exception as e:
-                logger.exception("Failed to upload document %s", ufile.filename)
+                logger.exception('Failed to upload document %s', ufile.filename)
                 result = {'error': str(e)}
         return json.dumps(result)
 
