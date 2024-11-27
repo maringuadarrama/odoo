@@ -36,8 +36,8 @@ class ProductCatalogMixin(models.AbstractModel):
         search_view_id = self.env.ref('product.product_view_search_catalog').id
         additional_context = self._get_action_add_from_catalog_extra_context()
         return {
-            'type': 'ir.actions.act_window',
             'name': _('Products'),
+            'type': 'ir.actions.act_window',
             'res_model': 'product.product',
             'views': [(kanban_view_id, 'kanban'), (False, 'form')],
             'search_view_id': [search_view_id, 'search'],
@@ -123,7 +123,8 @@ class ProductCatalogMixin(models.AbstractModel):
         return order_line_info
 
     def _update_order_line_info(self, product_id, quantity, **kwargs):
-        '''Update the line information for a given product or create a new one if none exists yet.
+        '''
+        Update the line information for a given product or create a new one if none exists yet.
         Must be overrided by each model using this mixin.
         :param int product_id: The product, as a `product.product` id.
         :param int quantity: The product's quantity.
