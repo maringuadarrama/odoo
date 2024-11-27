@@ -4,16 +4,29 @@ from odoo import _, api, models
 
 
 class ResCompany(models.Model):
-    _inherit = "res.company"
+    _inherit = 'res.company'
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        companies = super().create(vals_list)
-        companies._activate_or_create_pricelists()
-        return companies
+
+    def _get_default_pricelist_vals(self):
+        '''
+        Add values to the default pricelist at company creation or activation of the pricelist
+
+        Note: self.ensure_one()
+
+        :rtype: dict
+        '''
+        self.ensure_one()
+        values = {}
+        values.update({
+            'name': _('Default'),
+            'currency_id': self.currency_id.id,
+            'company_id': self.id,
+            'sequence': 10,
+        })
+        return values
 
     def _activate_or_create_pricelists(self):
-        """ Manage the default pricelists for needed companies. """
+        '''Manage the default pricelists for needed companies.'''
         if self.env.context.get('disable_company_pricelist_creation'):
             return
 
@@ -33,29 +46,19 @@ class ResCompany(models.Model):
                 company._get_default_pricelist_vals() for company in companies_without_pricelist
             ])
 
-    def _get_default_pricelist_vals(self):
-        """Add values to the default pricelist at company creation or activation of the pricelist
-
-        Note: self.ensure_one()
-
-        :rtype: dict
-        """
-        self.ensure_one()
-        values = {}
-        values.update({
-            'name': _("Default"),
-            'currency_id': self.currency_id.id,
-            'company_id': self.id,
-            'sequence': 10,
-        })
-        return values
+    @api.model_create_multi
+    def create(self, vals_list):
+        companies = super().create(vals_list)
+        companies._activate_or_create_pricelists()
+        return companies
 
     def write(self, vals):
-        """Delay the automatic creation of pricelists post-company update.
+        '''
+        Delay the automatic creation of pricelists post-company update.
 
         This makes sure that the pricelist(s) automatically created are created with the right
         currency.
-        """
+        '''
         if not vals.get('currency_id'):
             return super().write(vals)
 
@@ -65,5 +68,4 @@ class ResCompany(models.Model):
         ).write(vals)
         if not enabled_pricelists and self.env.user.has_group('product.group_product_pricelist'):
             self.browse()._activate_or_create_pricelists()
-
         return res

@@ -1,3 +1,5 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 from odoo import api, models, tools, _
 from odoo.exceptions import ValidationError
 
@@ -13,13 +15,13 @@ class DecimalPrecision(models.Model):
             and tools.float_compare(
                 self.env.company.currency_id.rounding, 10 ** - precision.digits,
                 precision_digits=6
-            ) == -1 for precision in self
+            ) == -1
+            for precision in self
         ):
             raise ValidationError(_(
-                'You cannot define the decimal precision of \'Account\' as greater than '
-                'the rounding factor of the company\'s main currency'
+                'You cannot define the decimal precision of \'Account\' as greater '
+                'than the rounding factor of the company\'s main currency'
             ))
-
         return True
 
     @api.onchange('digits')

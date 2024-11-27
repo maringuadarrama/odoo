@@ -1,3 +1,5 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -12,29 +14,29 @@ class ProductCategory(models.Model):
     _order = 'complete_name'
 
 
-    name = fields.Char('Name', required=True, index='trigram')
+    name = fields.Char(string='Name', required=True, index='trigram')
     complete_name = fields.Char(
-        'Complete Name',
+        string='Complete Name',
         compute='_compute_complete_name', store=True,
         recursive=True,
     )
     parent_id = fields.Many2one(
-        'product.category',
-        'Parent Category',
-        ondelete='cascade',
+        comodel_name='product.category',
+        string='Parent Category',
         index=True,
+        ondelete='cascade',
     )
     parent_path = fields.Char(index=True)
     child_id = fields.One2many(
-        'product.category',
-        'parent_id',
-        'Child Categories',
+        comodel_name='product.category',
+        inverse_name='parent_id',
+        string='Child Categories',
     )
     product_count = fields.Integer(
-        '# Products',
+        string='# Products',
         compute='_compute_product_count',
         help='The number of products under this category '
-             '(Does not consider the children categories)',
+             '(Does not consider the children categories).',
     )
     product_properties_definition = fields.PropertiesDefinition('Product Properties')
 
@@ -42,9 +44,14 @@ class ProductCategory(models.Model):
     @api.constrains('parent_id')
     def _check_category_recursion(self):
         if self._has_cycle():
-            raise ValidationError(_(
-                'You cannot create recursive categories.'
-            ))
+            raise ValidationError(_('You cannot create recursive categories.'))
+
+    @api.depends_context('hierarchical_naming')
+    def _compute_display_name(self):
+        if self.env.context.get('hierarchical_naming', True):
+            return super()._compute_display_name()
+        for record in self:
+            record.display_name = record.name
 
     @api.ondelete(at_uninstall=False)
     def _unlink_except_default_category(self):
@@ -57,8 +64,7 @@ class ProductCategory(models.Model):
         expense_category = self.env.ref('product.cat_expense', raise_if_not_found=False)
         if expense_category and expense_category in self:
             raise UserError(_(
-                'You cannot delete the %s product category.',
-                expense_category.name
+                f'You cannot delete the {expense_category.name} product category.'
             ))
 
     @api.depends('name', 'parent_id.complete_name')
@@ -86,12 +92,3 @@ class ProductCategory(models.Model):
     def name_create(self, name):
         category = self.create({'name': name})
         return category.id, category.display_name
-
-    @api.depends_context('hierarchical_naming')
-    def _compute_display_name(self):
-        if self.env.context.get('hierarchical_naming', True):
-            return super()._compute_display_name()
-
-        for record in self:
-            record.display_name = record.name
-

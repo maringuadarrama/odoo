@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import models
@@ -6,6 +5,7 @@ from odoo import models
 
 class ResCurrency(models.Model):
     _inherit = 'res.currency'
+
 
     def _activate_group_multi_currency(self):
         # for Sale/ POS - Multi currency flows require pricelists
@@ -16,10 +16,8 @@ class ResCurrency(models.Model):
             self.env['res.company']._activate_or_create_pricelists()
 
     def write(self, vals):
-        """ Archive pricelist when the linked currency is archived. """
+        'Archive pricelist when the linked currency is archived.'
         res = super().write(vals)
-
         if self and 'active' in vals and not vals['active']:
             self.env['product.pricelist'].search([('currency_id', 'in', self.ids)]).action_archive()
-
         return res
