@@ -278,7 +278,8 @@ class Pricelist(models.Model):
     def _compute_price_rule_multi(self, products, quantity, uom=None, date=False, **kwargs):
         '''
         Low-level method - Multi pricelist, multi products
-        Returns: dict{product_id: dict{pricelist_id: (price, suitable_rule)} }'''
+        Returns: dict{product_id: dict{pricelist_id: (price, suitable_rule)} }
+        '''
         if not self.ids:
             pricelists = self.search([])
         else:

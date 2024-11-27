@@ -39,8 +39,8 @@ class ProductAttributeValue(models.Model):
     default_extra_price = fields.Float()
     html_color = fields.Char(
         string='Color',
-        help='Here you can set a specific HTML color index (e.g. #ff0000)'
-             ' to display the color if the attribute type is \'Color\'.',
+        help='Here you can set a specific HTML color index (e.g. #ff0000) '
+             'to display the color if the attribute type is \'Color\'.',
     )
     color = fields.Integer(string='Color Index', default=_get_default_color)
     image = fields.Image(
@@ -119,7 +119,8 @@ class ProductAttributeValue(models.Model):
     @api.depends_context('show_attribute')
     @api.depends('attribute_id')
     def _compute_display_name(self):
-        '''Override because in general the name of the value is confusing if it
+        '''
+        Override because in general the name of the value is confusing if it
         is displayed without the name of the corresponding attribute.
         Eg. on product list & kanban views, on BOM form view
 

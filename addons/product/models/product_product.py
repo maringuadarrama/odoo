@@ -25,8 +25,8 @@ class ProductProduct(models.Model):
         string='Product Template',
         required=True,
         auto_join=True,
-        index=True,
         ondelete='cascade',
+        index=True,
     )
     write_date = fields.Datetime(compute='_compute_write_date', store=True)
     active = fields.Boolean(
@@ -55,8 +55,9 @@ class ProductProduct(models.Model):
         digits='Product Price',
         company_dependent=True,
         groups='base.group_user',
-        help='Value of the product (automatically computed in AVCO).'
-             'Used to value the product when the purchase cost is not known (e.g. inventory adjustment).'
+        help='Value of the product (automatically computed in AVCO). '
+             'Used to value the product when the purchase cost is not known '
+             '(e.g. inventory adjustment). '
              'Used to compute margins on sale orders.',
     )
     volume = fields.Float('Volume', digits='Volume')
@@ -594,8 +595,8 @@ class ProductProduct(models.Model):
                 product.product_template_attribute_value_ids.mapped('price_extra')
             )
 
-    @api.depends('list_price', 'price_extra')
     @api.depends_context('uom')
+    @api.depends('list_price', 'price_extra')
     def _compute_product_lst_price(self):
         to_uom = None
         if 'uom' in self._context:
@@ -767,13 +768,13 @@ class ProductProduct(models.Model):
         ]
         return {
             'name': _('Price Rules'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.pricelist.item',
             'view_mode': 'list,form',
             'views': [(
                 self.env.ref('product.product_pricelist_item_tree_view_from_product').id,
                 'list'
             )],
-            'res_model': 'product.pricelist.item',
-            'type': 'ir.actions.act_window',
             'target': 'current',
             'domain': domain,
             'context': {

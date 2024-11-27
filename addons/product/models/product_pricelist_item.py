@@ -114,7 +114,7 @@ class PricelistItem(models.Model):
     date_start = fields.Datetime(
         string='Start Date',
         help='Starting datetime for the pricelist item validation\n'
-            'The displayed value depends on the timezone set in your preferences.',
+             'The displayed value depends on the timezone set in your preferences.',
     )
     date_end = fields.Datetime(
         string='End Date',

@@ -202,7 +202,8 @@ class ProductTemplateAttributeLine(models.Model):
             )
 
     def _update_product_template_attribute_values(self):
-        '''Create or unlink `product.template.attribute.value` for each line in
+        '''
+        Create or unlink `product.template.attribute.value` for each line in
         `self` based on `value_ids`.
 
         The goal is to delete all values that are not in `value_ids`, to

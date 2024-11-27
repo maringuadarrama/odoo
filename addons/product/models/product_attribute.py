@@ -85,13 +85,15 @@ class ProductAttribute(models.Model):
     # === CRUD METHODS === #
 
     def write(self, vals):
-        '''Override to make sure attribute type can't be changed if it's used on
+        '''
+        Override to make sure attribute type can't be changed if it's used on
         a product template.
 
         This is important to prevent because changing the type would make
         existing combinations invalid without recomputing them, and recomputing
         them might take too long and we don't want to change products without
-        the user knowing about it.'''
+        the user knowing about it.
+        '''
         if 'create_variant' in vals:
             for pa in self:
                 if vals['create_variant'] != pa.create_variant and pa.number_related_products:
@@ -156,6 +158,7 @@ class ProductAttribute(models.Model):
                 raise UserError(_(
                     'You cannot archive this attribute as there are still products linked to it',
                 ))
+
         return super().action_archive()
 
     def action_open_product_template_attribute_lines(self):

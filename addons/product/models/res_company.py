@@ -26,7 +26,7 @@ class ResCompany(models.Model):
         return values
 
     def _activate_or_create_pricelists(self):
-        ''' Manage the default pricelists for needed companies. '''
+        'Manage the default pricelists for needed companies.'
         if self.env.context.get('disable_company_pricelist_creation'):
             return
 
