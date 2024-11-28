@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models, _
@@ -7,7 +6,12 @@ from odoo import api, fields, models, _
 class AccountAnalyticAccount(models.Model):
     _inherit = 'account.analytic.account'
 
-    purchase_order_count = fields.Integer("Purchase Order Count", compute='_compute_purchase_order_count')
+
+    purchase_order_count = fields.Integer(
+        'Purchase Order Count',
+        compute='_compute_purchase_order_count',
+    )
+
 
     @api.depends('line_ids')
     def _compute_purchase_order_count(self):
@@ -22,11 +26,11 @@ class AccountAnalyticAccount(models.Model):
             ('order_line.invoice_lines.analytic_line_ids.account_id', '=', self.id)
         ])
         result = {
-            "type": "ir.actions.act_window",
-            "res_model": "purchase.order",
-            "domain": [['id', 'in', purchase_orders.ids]],
-            "name": _("Purchase Orders"),
+            'name': _('Purchase Orders'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'purchase.order',
             'view_mode': 'list,form',
+            'domain': [['id', 'in', purchase_orders.ids]],
         }
         if len(purchase_orders) == 1:
             result['view_mode'] = 'form'
