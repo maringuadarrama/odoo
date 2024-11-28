@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-#
 # Please note that these reports are not multi-currency !!!
-#
+
 
 from odoo import fields, models, api
 from odoo.tools.query import Query
@@ -15,6 +13,7 @@ class PurchaseReport(models.Model):
     _description = "Purchase Report"
     _auto = False
     _order = 'date_order desc, price_total desc'
+
 
     date_order = fields.Datetime('Order Date', readonly=True)
     state = fields.Selection([
@@ -52,9 +51,13 @@ class PurchaseReport(models.Model):
     qty_billed = fields.Float('Qty Billed', readonly=True)
     qty_to_be_billed = fields.Float('Qty to be Billed', readonly=True)
 
+
     @property
     def _table_query(self) -> SQL:
-        ''' Report needs to be dynamic to take into account multi-company selected + multi-currency rates '''
+        '''
+        Report needs to be dynamic to take into account multi-company selected + 
+        multi-currency rates
+        '''
         return SQL("%s %s %s %s", self._select(), self._from(), self._where(), self._group_by())
 
     def _select(self) -> SQL:
