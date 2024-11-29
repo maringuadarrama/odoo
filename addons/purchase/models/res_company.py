@@ -23,7 +23,8 @@ class Company(models.Model):
         ],
         string='Purchase Order Modification',
         default='edit',
-        help='Purchase Order Modification used when you want to purchase order editable after confirm',
+        help='Purchase Order Modification used when you want to purchase '
+             'order editable after confirm',
     )
     po_double_validation = fields.Selection(
         [

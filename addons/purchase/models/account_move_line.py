@@ -23,7 +23,6 @@ class AccountMoveLine(models.Model):
 
 
     def _copy_data_extend_business_fields(self, values):
-        # OVERRIDE to copy the 'purchase_line_id' field as well.
         super(AccountMoveLine, self)._copy_data_extend_business_fields(values)
         values['purchase_line_id'] = self.purchase_line_id.id
 

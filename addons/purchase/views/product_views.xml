@@ -47,8 +47,8 @@
                         <field name="purchase_line_warn" nolabel="1" colspan="2" />
                         <field name="purchase_line_warn_msg" nolabel="1" colspan="2"
                             placeholder="Type a message..."
-                            readonly="purchase_line_warn == 'no-message'"
                             required="purchase_line_warn != 'no-message'"
+                            readonly="purchase_line_warn == 'no-message'"
                             invisible="purchase_line_warn == 'no-message'" />
                     </group>
                 </group>
@@ -63,8 +63,7 @@
         <field name="arch" type="xml">
             <button name="action_open_documents" position="after">
                 <button name="action_view_po"
-                    class="oe_stat_button"
-                    type="object"
+                    type="object" class="oe_stat_button"
                     icon="fa-credit-card"
                     invisible="not purchase_ok"
                     groups="purchase.group_purchase_user"
@@ -116,13 +115,18 @@
         <field name="inherit_id" ref="product.product_normal_form_view" />
         <field name="arch" type="xml">
             <field name="seller_ids" position="attributes">
-                <attribute name="context">{'default_product_tmpl_id': product_tmpl_id,
+                <attribute name="context">{
+                    'default_product_tmpl_id': product_tmpl_id,
                     'product_template_invisible_variant': True,
-                    'list_view_ref':'purchase.product_product_supplierinfo_tree_view2'}</attribute>
+                    'list_view_ref':'purchase.product_product_supplierinfo_tree_view2'
+                }</attribute>
             </field>
             <field name="variant_seller_ids" position="attributes">
-                <attribute name="context">{'model': 'product.product', 'active_id': id,
-                    'list_view_ref':'purchase.product_product_supplierinfo_tree_view2'}</attribute>
+                <attribute name="context">{
+                    'model': 'product.product',
+                    'active_id': id,
+                    'list_view_ref': 'purchase.product_product_supplierinfo_tree_view2'
+                }</attribute>
             </field>
         </field>
     </record>
@@ -134,8 +138,8 @@
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
                 <button name="action_view_po"
-                    class="oe_stat_button"
                     type="object"
+                    class="oe_stat_button"
                     icon="fa-credit-card"
                     invisible="not purchase_ok"
                     groups="purchase.group_purchase_user"
@@ -157,8 +161,10 @@
         <field name="name">Products</field>
         <field name="res_model">product.template</field>
         <field name="view_mode">kanban,list,form,activity</field>
-        <field name="context">{"search_default_filter_to_purchase":1, "purchase_product_template":
-            1}</field>
+        <field name="context">{
+            "search_default_filter_to_purchase": 1,
+            "purchase_product_template": 1
+        }</field>
         <field name="search_view_id" ref="product.product_template_search_view" />
         <field name="view_id" eval="False" /> <!-- Force empty -->
         <field name="help" type="html">

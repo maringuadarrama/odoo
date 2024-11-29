@@ -8,7 +8,7 @@ class AccountAnalyticAccount(models.Model):
 
 
     purchase_order_count = fields.Integer(
-        'Purchase Order Count',
+        string='Purchase Order Count',
         compute='_compute_purchase_order_count',
     )
 
