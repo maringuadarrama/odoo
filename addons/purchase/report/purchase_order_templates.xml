@@ -5,32 +5,29 @@
             <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang)" />
             <t t-set="address">
                 <div t-field="o.partner_id"
-                     t-options='{"widget": "contact", "fields": ["address", "name", "phone", "vat"], "no_marker": True, "phone_icons": True}' />
+                    t-options='{"widget": "contact", "fields": ["address", "name", "phone", "vat"], "no_marker": True, "phone_icons": True}' />
             </t>
             <t t-if="o.dest_address_id">
                 <t t-set="information_block">
                     <strong>Shipping address</strong>
                     <div t-if="o.dest_address_id">
-                        <div
-                            t-field="o.dest_address_id"
+                        <div t-field="o.dest_address_id"
                             t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'
                             name="purchase_shipping_address" />
                     </div>
+
                 </t>
             </t>
             <div class="page">
                 <div class="oe_structure" />
                 <div class="mt-4">
                     <t t-set="layout_document_title">
-                        <t t-if="o.state in ['draft', 'sent', 'to approve']"
-                        >Request for Quotation <span t-field="o.name" />
-                        </t>
-                        <t t-if="o.state in ['purchase', 'done']"
-                        >Purchase Order <span t-field="o.name" />
-                        </t>
-                        <t t-if="o.state == 'cancel'"
-                        >Cancelled Purchase Order <span t-field="o.name" />
-                        </t>
+                        <t t-if="o.state in ['draft', 'sent', 'to approve']">Request for Quotation #<span
+                                t-field="o.name" /></t>
+                        <t t-if="o.state in ['purchase', 'done']">Purchase Order #<span
+                                t-field="o.name" /></t>
+                        <t t-if="o.state == 'cancel'">Cancelled Purchase Order #<span
+                                t-field="o.name" /></t>
                     </t>
                 </div>
                 <div id="informations" class="row mb-4">
@@ -82,24 +79,9 @@
                         <t t-set="current_subtotal" t-value="0" />
                         <t t-foreach="o.order_line" t-as="line">
                             <t t-set="current_subtotal"
-                               t-value="current_subtotal + line.price_subtotal" />
+                                t-value="current_subtotal + line.price_subtotal" />
                             <tr
-                                t-att-class="
-                                    'fw-bold o_line_section' if line.display_type == 'line_section'
-                                    else 'fst-italic o_line_note' if line.display_type == 'line_note'
-                                    else ''">
-                                <t t-if="line.display_type == 'line_section'">
-                                    <td colspan="99" id="section">
-                                        <span t-field="line.name" />
-                                    </td>
-                                    <t t-set="current_section" t-value="line" />
-                                    <t t-set="current_subtotal" t-value="0" />
-                                </t>
-                                <t t-if="line.display_type == 'line_note'">
-                                    <td colspan="99" id="note">
-                                        <span t-field="line.name" />
-                                    </td>
-                                </t>
+                                t-att-class="'fw-bold o_line_section' if line.display_type == 'line_section' else 'fst-italic o_line_note' if line.display_type == 'line_note' else ''">
                                 <t t-if="not line.display_type">
                                     <td id="product" class="text-start">
                                         <span t-field="line.name" />
@@ -116,30 +98,40 @@
                                         <span t-field="line.price_unit" />
                                     </td>
                                     <td class="text-end">
-                                        <span class="text-align-bottom">
-                                            <span t-field="line.discount" /> %</span>
+                                        <span class="text-align-bottom"><span
+                                                t-field="line.discount" />%</span>
                                     </td>
                                     <td class="text-end">
                                         <span
                                             t-esc="', '.join([(tax.invoice_label or tax.name) for tax in line.taxes_id])" />
                                     </td>
                                     <td class="text-end">
-                                        <span
-                                            t-field="line.price_subtotal"
+                                        <span t-field="line.price_subtotal"
                                             t-options='{"widget": "monetary", "display_currency": o.currency_id}' />
+                                    </td>
+                                </t>
+                                <t t-if="line.display_type == 'line_section'">
+                                    <td colspan="99" id="section">
+                                        <span t-field="line.name" />
+                                    </td>
+                                    <t t-set="current_section" t-value="line" />
+                                    <t t-set="current_subtotal" t-value="0" />
+                                </t>
+                                <t t-if="line.display_type == 'line_note'">
+                                    <td colspan="99" id="note">
+                                        <span t-field="line.name" />
                                     </td>
                                 </t>
                             </tr>
                             <t
-                                t-if="
-                                    current_section
-                                    and (line_last or o.order_line[line_index+1].display_type == 'line_section')">
+                                t-if="current_section and (line_last or o.order_line[line_index+1].display_type == 'line_section')">
                                 <tr class="is-subtotal text-end">
                                     <td colspan="99" id="subtotal">
                                         <strong class="mr16">Subtotal</strong>
                                         <span
                                             t-esc="current_subtotal"
-                                            t-options='{"widget": "monetary", "display_currency": o.currency_id}' />
+                                            t-options='{"widget": "monetary", "display_currency": o.currency_id}'
+                                        />
                                     </td>
                                 </tr>
                             </t>
@@ -180,9 +172,7 @@
     </template>
 
     <!-- Allow edits (e.g. studio) without changing the often inherited base template -->
-    <template
-        id="document_tax_totals"
-        inherit_id="account.document_tax_totals_template"
+    <template id="document_tax_totals" inherit_id="account.document_tax_totals_template"
         primary="True">
     </template>
 </odoo>

@@ -8,11 +8,12 @@
             <xpath expr="//footer/div" position="inside">
                 <a t-if="record.purchase_order_count?.value"
                     name="%(purchase.act_res_partner_2_purchase_order)d"
-                    type="action" class="btn btn-sm btn-link smaller"
                     role="button"
+                    type="action"
+                    class="btn btn-sm btn-link smaller"
                     groups="purchase.group_purchase_user">
-                    <i title="Purchases" class="fa fa-credit-card me-1" aria-label="Purchases"
-                        role="img" />
+                    <i role="img" class="fa fa-credit-card me-1" aria-label="Purchases"
+                        title="Purchases" />
                     <field name="purchase_order_count" />
                 </a>
             </xpath>
@@ -27,10 +28,11 @@
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
                 <button name="%(purchase.act_res_partner_2_purchase_order)d"
-                    type="action" class="oe_stat_button"
+                    class="oe_stat_button"
+                    type="action"
                     icon="fa-credit-card"
                     groups="purchase.group_purchase_user">
-                    <field string="Purchases" name="purchase_order_count" widget="statinfo" />
+                    <field name="purchase_order_count" string="Purchases" widget="statinfo" />
                 </button>
             </div>
             <page name="internal_notes" position="inside">
@@ -57,7 +59,7 @@
         <field name="priority">36</field>
         <field name="arch" type="xml">
             <group name="purchase" position="inside">
-                <div name="receipt_reminder" colspan="2" class="o_checkbox_optional_field"
+                <div name="receipt_reminder" class="o_checkbox_optional_field" colspan="2"
                     groups='purchase.group_send_reminder'>
                     <label for="receipt_reminder_email" />
                     <field name="receipt_reminder_email" />
@@ -71,7 +73,7 @@
                     groups='base.group_multi_currency' />
             </group>
             <field name="property_supplier_payment_term_id" position="before">
-                <field name="buyer_id" widget="many2one_avatar_user"
+                <field name="buyer_id" widget="many2one_avatar_user" 
                     domain="[('share', '=', False)]" />
             </field>
         </field>
@@ -85,11 +87,11 @@
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
                 <button name="%(purchase.act_res_partner_2_supplier_invoices)d"
-                    type="action" class="oe_stat_button"
-                    icon="fa-pencil-square-o"
-                    help="Vendor Bills"
+                    class="oe_stat_button"
+                    type="action"
+                    icon="fa-pencil-square-o" help="Vendor Bills"
                     groups="account.group_account_invoice">
-                    <field string="Vendor Bills" name="supplier_invoice_count" widget="statinfo" />
+                    <field name="supplier_invoice_count" string="Vendor Bills" widget="statinfo" />
                 </button>
             </div>
         </field>

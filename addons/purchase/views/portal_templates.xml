@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template
-        id="portal_my_home_menu_purchase"
-        name="Portal layout : purchase menu entries"
-        inherit_id="portal.portal_breadcrumbs"
-        priority="25">
+    <template id="portal_my_home_menu_purchase" name="Portal layout : purchase menu entries"
+        inherit_id="portal.portal_breadcrumbs" priority="25">
         <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
             <li t-if="page_name == 'rfq' or order and order.state == 'sent'"
                 t-attf-class="breadcrumb-item #{'active ' if not order else ''}">
@@ -22,12 +19,10 @@
         </xpath>
     </template>
 
-    <template
-        id="portal_my_home_purchase"
-        name="Requests for Quotation / Purchase Orders"
+    <template id="portal_my_home_purchase" name="Requests for Quotation / Purchase Orders"
         inherit_id="portal.portal_my_home"
-        priority="25"
-        customize_show="True">
+        customize_show="True" 
+        priority="25">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
             <t t-set="portal_vendor_category_enable" t-value="True" />
         </xpath>
@@ -159,16 +154,14 @@
         </t>
     </template>
 
-    <template
-        id="portal_my_purchase_order"
-        name="Purchase Order"
+    <template id="portal_my_purchase_order" name="Purchase Order"
         inherit_id="portal.portal_sidebar"
         primary="True">
         <xpath expr="//div[hasclass('o_portal_sidebar')]" position="inside">
             <t t-set="o_portal_fullwidth_alert" groups="purchase.group_purchase_manager">
                 <t t-call="portal.portal_back_in_edit_mode">
                     <t t-set="backend_url"
-                       t-value="'/odoo/action-purchase.purchase_rfq/%s' % (order.id)" />
+                        t-value="'/odoo/action-purchase.purchase_rfq/%s' % (order.id)" />
                 </t>
             </t>
             <div class="row o_portal_purchase_sidebar">
@@ -224,8 +217,7 @@
                                 </t>
                             </div>
                             <div>
-                                <button
-                                    id="portal_connect_software_modal_btn"
+                                <button id="portal_connect_software_modal_btn"
                                     type="button"
                                     class="btn btn-primary"
                                     data-bs-toggle="modal"
@@ -361,14 +353,14 @@
                     </div>
                 </div>
                 <t t-set="invoices"
-                   t-value="[i for i in order.invoice_ids if i.state not in ['draft', 'cancel']]" />
+                    t-value="[i for i in order.invoice_ids if i.state not in ['draft', 'cancel']]" />
                 <div t-if="invoices" class="row">
                     <div class="col">
                         <strong class="d-block mb-1">Invoices</strong>
                         <ul class="list-group mb-4">
                             <t t-foreach="invoices" t-as="i">
                                 <t t-set="report_url"
-                                   t-value="i.get_portal_url(report_type='pdf', download=True)" />
+                                    t-value="i.get_portal_url(report_type='pdf', download=True)" />
                                 <div
                                     class="d-flex flex-wrap align-items-center justify-content-between">
                                     <div>
@@ -425,9 +417,8 @@
                             <t t-foreach="order.order_line" t-as="line">
                                 <t t-set="current_subtotal"
                                     t-value="current_subtotal + line.price_subtotal" />
-                                <tr t-att-class="
-                                    'fw-bold o_line_section' if line.display_type == 'line_section' 
-                                    else 'fst-italic text-break' if line.display_type == 'line_note' else ''">
+                                <tr
+                                    t-att-class="'fw-bold o_line_section' if line.display_type == 'line_section' else 'fst-italic text-break' if line.display_type == 'line_note' else ''">
                                     <t t-if="not line.display_type">
                                         <td id="product_name" class="d-flex">
                                             <img
@@ -458,7 +449,9 @@
                                         </td>
                                         <td t-if="display_price_and_taxes"
                                             t-attf-class="text-end {{ 'd-none d-sm-table-cell' if report_type == 'html' else '' }}">
-                                            <div t-field="line.price_unit" class="text-end" />
+                                            <div
+                                                t-field="line.price_unit"
+                                                class="text-end" />
                                         </td>
                                         <td t-if="display_price_and_taxes"
                                             t-attf-class="text-end {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }}">
@@ -488,10 +481,8 @@
                                         </td>
                                     </t>
                                 </tr>
-                                <t t-if="
-                                    current_section 
-                                    and (line_last or order.order_line[line_index+1].display_type == 'line_section') 
-                                    and order.state in ['purchase', 'done']">
+                                <t
+                                    t-if="current_section and (line_last or order.order_line[line_index+1].display_type == 'line_section') and order.state in ['purchase', 'done']">
                                     <tr class="is-subtotal text-end">
                                         <td colspan="99">
                                             <strong class="mr16">Subtotal</strong>
@@ -506,8 +497,10 @@
                         </tbody>
                     </table>
                 </div>
-                <div id="total" name="total" t-if="order.state in ['purchase', 'done']"
-                    class="row" style="page-break-inside: avoid;">
+                <div id="total" name="total"
+                    class="row"
+                    style="page-break-inside: avoid;"
+                    t-if="order.state in ['purchase', 'done']">
                     <div
                         t-attf-class="#{'col-4' if report_type != 'html' else 'col-sm-7 col-md-5'} ms-auto">
                         <t t-call="purchase.purchase_order_portal_content_totals_table" />
@@ -536,9 +529,7 @@
         </table>
     </template>
 
-    <template
-        id="portal_my_purchase_order_update_date"
-        name="Portal: My Purchase Order Update Dates"
+    <template id="portal_my_purchase_order_update_date" name="Portal: My Purchase Order Update Dates"
         inherit_id="purchase.portal_my_purchase_order"
         primary="True">
         <xpath expr="////div[@id='portal_purchase_content']" position="replace">

@@ -22,19 +22,11 @@
             </xpath>
             <group name="purchase" position="before">
                 <field name="seller_ids"
-                    context="{
-                        'default_product_tmpl_id': id,
-                        'product_template_invisible_variant': True,
-                        'list_view_ref':'purchase.product_supplierinfo_tree_view2'
-                    }"
+                    context="{'default_product_tmpl_id': id, 'product_template_invisible_variant': True, 'list_view_ref':'purchase.product_supplierinfo_tree_view2'}"
                     nolabel="1" invisible="product_variant_count &gt; 1"
                     readonly="product_variant_count &gt; 1" />
                 <field name="variant_seller_ids"
-                    context="{
-                        'model': 'product.template',
-                        'active_id': id,
-                        'list_view_ref':'purchase.product_supplierinfo_tree_view2'
-                    }"
+                    context="{'model': 'product.template', 'active_id': id, 'list_view_ref':'purchase.product_supplierinfo_tree_view2'}"
                     nolabel="1" invisible="product_variant_count &lt;= 1"
                     readonly="product_variant_count &lt;= 1" />
             </group>
@@ -47,19 +39,14 @@
             <group name="purchase" position="inside">
                 <group col="1">
                     <group string="Purchase Description">
-                        <field name="description_purchase"
-                            nolabel="1"
-                            placeholder="This note is added to purchase orders."/>
+                        <field name="description_purchase" nolabel="1"
+                            placeholder="This note is added to purchase orders." />
                     </group>
                     <group string="Warning when Purchasing this Product"
                         groups="purchase.group_warning_purchase">
-                        <field name="purchase_line_warn"
-                            nolabel="1"
-                            colspan="2" />
-                        <field name="purchase_line_warn_msg"
-                            nolabel="1"
+                        <field name="purchase_line_warn" nolabel="1" colspan="2" />
+                        <field name="purchase_line_warn_msg" nolabel="1" colspan="2"
                             placeholder="Type a message..."
-                            colspan="2"
                             required="purchase_line_warn != 'no-message'"
                             readonly="purchase_line_warn == 'no-message'"
                             invisible="purchase_line_warn == 'no-message'" />
@@ -76,15 +63,16 @@
         <field name="arch" type="xml">
             <button name="action_open_documents" position="after">
                 <button name="action_view_po"
-                    type="object" class="oe_stat_button"
-                    icon="fa-credit-card" 
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-credit-card"
                     invisible="not purchase_ok"
-                    help="Purchased in the last 365 days"
-                    groups="purchase.group_purchase_user">
+                    groups="purchase.group_purchase_user"
+                    help="Purchased in the last 365 days">
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_value d-flex gap-1">
-                            <field name="purchased_product_qty" widget="statinfo" nolabel="1"
-                                class="oe_inline" />
+                            <field name="purchased_product_qty" widget="statinfo"
+                                nolabel="1" class="oe_inline" />
                             <field name="uom_name" class="oe_inline" />
                         </span>
                         <span class="o_stat_text">Purchased</span>
@@ -104,8 +92,7 @@
                 <field name="seller_ids" string="Vendor" />
             </xpath>
             <xpath expr="//filter[@name='goods']" position="after">
-                <filter name="products_in_order"
-                    string="In the Order"
+                <filter name="products_in_order" string="In the Order"
                     domain="[('is_in_purchase_order', '=', True)]" />
             </xpath>
         </field>
@@ -132,7 +119,7 @@
                 <attribute name="context">{
                     'default_product_tmpl_id': product_tmpl_id,
                     'product_template_invisible_variant': True,
-                    'list_view_ref': 'purchase.product_product_supplierinfo_tree_view2'
+                    'list_view_ref':'purchase.product_product_supplierinfo_tree_view2'
                 }</attribute>
             </field>
             <field name="variant_seller_ids" position="attributes">
@@ -152,11 +139,12 @@
         <field name="arch" type="xml">
             <div name="button_box" position="inside">
                 <button name="action_view_po"
-                    type="object" class="oe_stat_button"
+                    type="object"
+                    class="oe_stat_button"
                     icon="fa-credit-card"
                     invisible="not purchase_ok"
-                    help="Purchased in the last 365 days"
-                    groups="purchase.group_purchase_user">
+                    groups="purchase.group_purchase_user"
+                    help="Purchased in the last 365 days">
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_value d-flex gap-1">
                             <field name="purchased_product_qty" widget="statinfo" nolabel="1"
@@ -175,7 +163,8 @@
         <field name="res_model">product.template</field>
         <field name="view_mode">kanban,list,form,activity</field>
         <field name="context">{
-            "search_default_filter_to_purchase":1, "purchase_product_template": 1
+            "search_default_filter_to_purchase": 1,
+            "purchase_product_template": 1
         }</field>
         <field name="search_view_id" ref="product.product_template_search_view" />
         <field name="view_id" eval="False" /> <!-- Force empty -->

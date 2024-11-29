@@ -1,3 +1,5 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 from odoo import api, fields, models, _
 from odoo.tools import SQL
 from odoo.exceptions import UserError
@@ -44,54 +46,16 @@ class PurchaseBillMatch(models.Model):
     )
     reference = fields.Char(compute='_compute_reference')
 
-    @api.onchange('product_uom_price')
-    def _inverse_product_uom_price(self):
-        for line in self:
-            if line.aml_id:
-                line.aml_id.price_unit = line.product_uom_price
-            else:
-                line.pol_id.price_unit = line.product_uom_price
 
-    @api.onchange('product_uom_qty')
-    def _inverse_product_uom_qty(self):
-        for line in self:
-            if line.aml_id:
-                line.aml_id.quantity = line.product_uom_qty
-            else:
-                # on POL, setting product_qty will recompute price_unit to have the old value
-                # this prevents the price to revert by saving the previous price and re-setting
-                # them again
-                previous_price_unit = line.pol_id.price_unit
-                line.pol_id.product_qty = line.product_uom_qty
-                line.pol_id.price_unit = previous_price_unit
-
-    def _compute_amount_untaxed_fields(self):
-        for line in self:
-            line.billed_amount_untaxed = line.line_amount_untaxed if line.account_move_id else False
-            line.purchase_amount_untaxed = line.line_amount_untaxed if line.purchase_order_id else False
-
-    def _compute_reference(self):
-        for line in self:
-            line.reference = line.purchase_order_id.display_name or line.account_move_id.display_name
-
-    def _compute_display_name(self):
-        for line in self:
-            line.display_name = line.product_id.display_name or line.aml_id.name or line.pol_id.name
-
-    def _compute_product_uom_qty(self):
-        for line in self:
-            line.product_uom_qty = line.line_uom_id._compute_quantity(line.line_qty, line.product_uom_id)
-
-    @api.depends('aml_id.price_unit', 'pol_id.price_unit')
-    def _compute_product_uom_price(self):
-        for line in self:
-            line.product_uom_price = line.aml_id.price_unit if line.aml_id else line.pol_id.price_unit
+    @property
+    def _table_query(self):
+        return SQL('%s UNION ALL %s', self._select_po_line(), self._select_am_line())
 
     @api.model
     def _select_po_line(self):
         return SQL(
             '''
-            SELECT
+            SELECT 
                 pol.id,
                 pol.id as pol_id,
                 NULL as aml_id,
@@ -108,17 +72,17 @@ class PurchaseBillMatch(models.Model):
                 po.state as state
             FROM
                 purchase_order_line pol
-            LEFT JOIN purchase_order po ON pol.order_id = po.id
-            WHERE
+                LEFT JOIN purchase_order po ON pol.order_id = po.id
+             WHERE
                 pol.state in ('purchase', 'done')
                 AND pol.product_qty > pol.qty_invoiced
-                    OR (
-                        (pol.display_type = '' OR pol.display_type IS NULL)
-                        AND pol.is_downpayment
-                        AND pol.qty_invoiced > 0
-                    )
+                OR (
+                    (pol.display_type = '' OR pol.display_type IS NULL)
+                    AND pol.is_downpayment
+                    AND pol.qty_invoiced > 0
+                )
             '''
-    )
+        )
 
     @api.model
     def _select_am_line(self):
@@ -141,18 +105,68 @@ class PurchaseBillMatch(models.Model):
                 aml.parent_state as state
             FROM
                 account_move_line aml
-            LEFT JOIN account_move am on aml.move_id = am.id
+                LEFT JOIN account_move am on aml.move_id = am.id
             WHERE
                 aml.display_type = 'product'
                 AND am.move_type in ('in_invoice', 'in_refund')
                 AND aml.parent_state in ('draft', 'posted')
                 AND aml.purchase_line_id IS NULL
             '''
-    )
+        )
 
-    @property
-    def _table_query(self):
-        return SQL('%s UNION ALL %s', self._select_po_line(), self._select_am_line())
+    def _compute_amount_untaxed_fields(self):
+        for line in self:
+            line.billed_amount_untaxed = line.line_amount_untaxed if line.account_move_id else False
+            line.purchase_amount_untaxed = (
+                line.line_amount_untaxed
+                if line.purchase_order_id
+                else False
+            )
+
+    def _compute_reference(self):
+        for line in self:
+            line.reference = (
+                line.purchase_order_id.display_name
+                or line.account_move_id.display_name
+            )
+
+    def _compute_display_name(self):
+        for line in self:
+            line.display_name = line.product_id.display_name or line.aml_id.name or line.pol_id.name
+
+    def _compute_product_uom_qty(self):
+        for line in self:
+            line.product_uom_qty = (
+                line.line_uom_id._compute_quantity(line.line_qty, line.product_uom_id)
+            )
+
+    @api.depends('aml_id.price_unit', 'pol_id.price_unit')
+    def _compute_product_uom_price(self):
+        for line in self:
+            line.product_uom_price = (
+                line.aml_id.price_unit if line.aml_id else line.pol_id.price_unit
+            )
+
+    @api.onchange('product_uom_price')
+    def _inverse_product_uom_price(self):
+        for line in self:
+            if line.aml_id:
+                line.aml_id.price_unit = line.product_uom_price
+            else:
+                line.pol_id.price_unit = line.product_uom_price
+
+    @api.onchange('product_uom_qty')
+    def _inverse_product_uom_qty(self):
+        for line in self:
+            if line.aml_id:
+                line.aml_id.quantity = line.product_uom_qty
+            else:
+                # on POL, setting product_qty will recompute price_unit to have the old value
+                # this prevents the price to revert by saving the previous price and 
+                # re-setting them again
+                previous_price_unit = line.pol_id.price_unit
+                line.pol_id.product_qty = line.product_uom_qty
+                line.pol_id.price_unit = previous_price_unit
 
     def action_open_line(self):
         self.ensure_one()
@@ -160,12 +174,13 @@ class PurchaseBillMatch(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'account.move' if self.account_move_id else 'purchase.order',
             'view_mode': 'form',
-            'res_id': self.account_move_id.id if self.account_move_id else self.purchase_order_id.id,
+            'res_id':
+                self.account_move_id.id if self.account_move_id else self.purchase_order_id.id,
         }
 
     @api.model
     def _action_create_bill_from_po_lines(self, partner, po_lines):
-        '''Create a new vendor bill with the selected PO lines and returns an action to open it'''
+        'Create a new vendor bill with the selected PO lines and returns an action to open it'
         bill = self.env['account.move'].create({
             'move_type': 'in_invoice',
             'partner_id': partner.id,
@@ -197,17 +212,16 @@ class PurchaseBillMatch(models.Model):
         residual_bill = self.aml_id.move_id
         # Match all matchable POL-AML lines and remove them from the residual group
         for product, po_line in pol_by_product.items():
-            po_line = po_line[0]  # in case of multiple POL with same product, only match the first one
+            # in case of multiple POL with same product, only match the first one
+            po_line = po_line[0]
             matching_bill_lines = aml_by_product.get(product)
             if matching_bill_lines:
                 matching_bill_lines.purchase_line_id = po_line.id
                 residual_purchase_order_lines -= po_line
                 residual_account_move_lines -= matching_bill_lines
-
         # Delete all unmatched selected AML
         if residual_account_move_lines:
             residual_account_move_lines.unlink()
-
         # Add all remaining POL to the residual bill
         residual_bill._add_purchase_order_lines(residual_purchase_order_lines)
 
@@ -230,8 +244,8 @@ class PurchaseBillMatch(models.Model):
         elif self.purchase_order_id:
             context['default_purchase_order_id'] = self.purchase_order_id.id
         return {
-            'type': 'ir.actions.act_window',
             'name': _('Add to Purchase Order'),
+            'type': 'ir.actions.act_window',
             'res_model': 'bill.to.po.wizard',
             'target': 'new',
             'views': [(self.env.ref('purchase.bill_to_po_wizard_form').id, 'form')],

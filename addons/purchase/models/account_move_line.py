@@ -1,3 +1,5 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 from odoo import fields, models
 
 
@@ -7,8 +9,8 @@ class AccountMoveLine(models.Model):
 
     is_downpayment = fields.Boolean()
     purchase_line_id = fields.Many2one(
-        'purchase.order.line',
-        'Purchase Order Line',
+        comodel_name='purchase.order.line',
+        string='Purchase Order Line',
         ondelete='set null',
         copy=False,
         index='btree_not_null',
@@ -19,8 +21,8 @@ class AccountMoveLine(models.Model):
         readonly=True,
     )
 
+
     def _copy_data_extend_business_fields(self, values):
-        # OVERRIDE to copy the 'purchase_line_id' field as well.
         super(AccountMoveLine, self)._copy_data_extend_business_fields(values)
         values['purchase_line_id'] = self.purchase_line_id.id
 

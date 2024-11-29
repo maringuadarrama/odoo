@@ -1,11 +1,13 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 from odoo import api, fields, models, tools
 from odoo.tools import formatLang
 
 
 class PurchaseBillUnion(models.Model):
     _name = 'purchase.bill.union'
-    _auto = False
     _description = 'Purchases & Bills Union'
+    _auto = False
     _order = 'date desc, name desc'
     _rec_names_search = ['name', 'reference']
 
@@ -29,14 +31,16 @@ class PurchaseBillUnion(models.Model):
                 SELECT
                     id, name, ref as reference, partner_id, date, amount_untaxed as amount, currency_id, company_id,
                     id as vendor_bill_id, NULL as purchase_order_id
-                FROM account_move
+                FROM
+                    account_move
                 WHERE
                     move_type='in_invoice' and state = 'posted'
             UNION
                 SELECT
                     -id, name, partner_ref as reference, partner_id, date_order::date as date, amount_untaxed as amount, currency_id, company_id,
                     NULL as vendor_bill_id, id as purchase_order_id
-                FROM purchase_order
+                FROM
+                    purchase_order
                 WHERE
                     state in ('purchase', 'done') AND
                     invoice_status in ('to invoice', 'no')
