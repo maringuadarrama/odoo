@@ -20,7 +20,9 @@
     </template>
 
     <template id="portal_my_home_purchase" name="Requests for Quotation / Purchase Orders"
-        customize_show="True" inherit_id="portal.portal_my_home" priority="25">
+        inherit_id="portal.portal_my_home"
+        customize_show="True" 
+        priority="25">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
             <t t-set="portal_vendor_category_enable" t-value="True" />
         </xpath>
@@ -152,7 +154,8 @@
         </t>
     </template>
 
-    <template id="portal_my_purchase_order" name="Purchase Order" inherit_id="portal.portal_sidebar"
+    <template id="portal_my_purchase_order" name="Purchase Order"
+        inherit_id="portal.portal_sidebar"
         primary="True">
         <xpath expr="//div[hasclass('o_portal_sidebar')]" position="inside">
             <t t-set="o_portal_fullwidth_alert" groups="purchase.group_purchase_manager">
@@ -214,8 +217,8 @@
                                 </t>
                             </div>
                             <div>
-                                <button id="portal_connect_software_modal_btn" type="button"
-                                    class="btn btn-primary"
+                                <button id="portal_connect_software_modal_btn"
+                                    type="button" class="btn btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#portal_connect_software_modal">
                                     Connect with your software!
@@ -438,8 +441,7 @@
                                                             t-att-data-access-token="order.access_token"
                                                             t-att-data-order-id="order.id"
                                                             t-att-data-line-id="line.id"
-                                                            t-att-data-value="line.date_planned.isoformat()"
-                                                        />
+                                                            t-att-data-value="line.date_planned.isoformat()" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -494,8 +496,10 @@
                         </tbody>
                     </table>
                 </div>
-                <div id="total" t-if="order.state in ['purchase', 'done']" class="row" name="total"
-                    style="page-break-inside: avoid;">
+                <div id="total" name="total"
+                    class="row"
+                    style="page-break-inside: avoid;"
+                    t-if="order.state in ['purchase', 'done']">
                     <div
                         t-attf-class="#{'col-4' if report_type != 'html' else 'col-sm-7 col-md-5'} ms-auto">
                         <t t-call="purchase.purchase_order_portal_content_totals_table" />
@@ -524,8 +528,8 @@
         </table>
     </template>
 
-    <template id="portal_my_purchase_order_update_date"
-        name="Portal: My Purchase Order Update Dates" inherit_id="purchase.portal_my_purchase_order"
+    <template id="portal_my_purchase_order_update_date" name="Portal: My Purchase Order Update Dates"
+        inherit_id="purchase.portal_my_purchase_order"
         primary="True">
         <xpath expr="////div[@id='portal_purchase_content']" position="replace">
             <div id="portal_purchase_content">

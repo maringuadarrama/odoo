@@ -11,8 +11,7 @@
                 decoration-muted="state == 'draft'">
                 <header>
                     <button name="action_match_lines" string="Match"
-                        type="object"
-                        class="btn btn-primary"
+                        type="object" class="btn btn-primary"
                         groups="account.group_account_invoice" />
                     <button name="action_add_to_po" string="Add to PO"
                         type="object"
@@ -23,7 +22,8 @@
                 <field name="display_name" string="Product Description"
                     decoration-it="not product_id" />
                 <field name="product_uom_qty" string="Qty" />
-                <field name="product_uom_id" string="Unit" groups="uom.group_uom" />
+                <field name="product_uom_id" string="Unit"
+                    groups="uom.group_uom" />
                 <field name="product_uom_price" string="Price" />
                 <field name="qty_invoiced" optional="hidden" />
                 <field name="billed_amount_untaxed" string="Billed"

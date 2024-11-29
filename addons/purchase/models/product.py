@@ -1,10 +1,11 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models, _
 from odoo.addons.base.models.res_partner import WARNING_MESSAGE, WARNING_HELP
-from odoo.tools.float_utils import float_round
 from odoo.exceptions import UserError
-from dateutil.relativedelta import relativedelta
+from odoo.tools.float_utils import float_round
 
 
 class ProductTemplate(models.Model):
@@ -13,7 +14,7 @@ class ProductTemplate(models.Model):
 
 
     purchase_method = fields.Selection(
-        [
+        selection=[
             ('purchase', 'On ordered quantities'),
             ('receive', 'On received quantities'),
         ],
@@ -108,7 +109,7 @@ class ProductProduct(models.Model):
         domain = [
             ('order_id.state', 'in', ['purchase', 'done']),
             ('product_id', 'in', self.ids),
-            ('order_id.date_approve', '>=', date_from)
+            ('order_id.date_approve', '>=', date_from),
         ]
         order_lines = self.env['purchase.order.line']._read_group(
             domain,

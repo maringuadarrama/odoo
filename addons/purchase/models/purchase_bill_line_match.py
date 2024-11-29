@@ -26,10 +26,24 @@ class PurchaseBillMatch(models.Model):
     currency_id = fields.Many2one(comodel_name='res.currency')
     state = fields.Char()
     product_uom_id = fields.Many2one(comodel_name='uom.uom', related='product_id.uom_id')
-    product_uom_qty = fields.Float(compute='_compute_product_uom_qty', inverse='_inverse_product_uom_qty', readonly=False)
-    product_uom_price = fields.Float(compute='_compute_product_uom_price', inverse='_inverse_product_uom_price', readonly=False)
-    billed_amount_untaxed = fields.Monetary(compute='_compute_amount_untaxed_fields', currency_field='currency_id')
-    purchase_amount_untaxed = fields.Monetary(compute='_compute_amount_untaxed_fields', currency_field='currency_id')
+    product_uom_qty = fields.Float(
+        compute='_compute_product_uom_qty',
+        readonly=False,
+        inverse='_inverse_product_uom_qty',
+    )
+    product_uom_price = fields.Float(
+        compute='_compute_product_uom_price',
+        readonly=False,
+        inverse='_inverse_product_uom_price',
+    )
+    billed_amount_untaxed = fields.Monetary(
+        currency_field='currency_id',
+        compute='_compute_amount_untaxed_fields',
+    )
+    purchase_amount_untaxed = fields.Monetary(
+        currency_field='currency_id',
+        compute='_compute_amount_untaxed_fields',
+    )
     reference = fields.Char(compute='_compute_reference')
 
 
@@ -103,11 +117,18 @@ class PurchaseBillMatch(models.Model):
     def _compute_amount_untaxed_fields(self):
         for line in self:
             line.billed_amount_untaxed = line.line_amount_untaxed if line.account_move_id else False
-            line.purchase_amount_untaxed = line.line_amount_untaxed if line.purchase_order_id else False
+            line.purchase_amount_untaxed = (
+                line.line_amount_untaxed
+                if line.purchase_order_id
+                else False
+            )
 
     def _compute_reference(self):
         for line in self:
-            line.reference = line.purchase_order_id.display_name or line.account_move_id.display_name
+            line.reference = (
+                line.purchase_order_id.display_name
+                or line.account_move_id.display_name
+            )
 
     def _compute_display_name(self):
         for line in self:
@@ -115,12 +136,16 @@ class PurchaseBillMatch(models.Model):
 
     def _compute_product_uom_qty(self):
         for line in self:
-            line.product_uom_qty = line.line_uom_id._compute_quantity(line.line_qty, line.product_uom_id)
+            line.product_uom_qty = (
+                line.line_uom_id._compute_quantity(line.line_qty, line.product_uom_id)
+            )
 
     @api.depends('aml_id.price_unit', 'pol_id.price_unit')
     def _compute_product_uom_price(self):
         for line in self:
-            line.product_uom_price = line.aml_id.price_unit if line.aml_id else line.pol_id.price_unit
+            line.product_uom_price = (
+                line.aml_id.price_unit if line.aml_id else line.pol_id.price_unit
+            )
 
     @api.onchange('product_uom_price')
     def _inverse_product_uom_price(self):
@@ -137,7 +162,8 @@ class PurchaseBillMatch(models.Model):
                 line.aml_id.quantity = line.product_uom_qty
             else:
                 # on POL, setting product_qty will recompute price_unit to have the old value
-                # this prevents the price to revert by saving the previous price and re-setting them again
+                # this prevents the price to revert by saving the previous price and 
+                # re-setting them again
                 previous_price_unit = line.pol_id.price_unit
                 line.pol_id.product_qty = line.product_uom_qty
                 line.pol_id.price_unit = previous_price_unit
@@ -148,7 +174,8 @@ class PurchaseBillMatch(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'account.move' if self.account_move_id else 'purchase.order',
             'view_mode': 'form',
-            'res_id': self.account_move_id.id if self.account_move_id else self.purchase_order_id.id,
+            'res_id':
+                self.account_move_id.id if self.account_move_id else self.purchase_order_id.id,
         }
 
     @api.model
@@ -162,15 +189,18 @@ class PurchaseBillMatch(models.Model):
         return bill._get_records_action()
 
     def action_match_lines(self):
-        if not self.pol_id:  # we need POL(s) to either match or create bill
+        # we need POL(s) to either match or create bill
+        if not self.pol_id:
             raise UserError(_(
                 'You must select at least one Purchase Order line to match or create bill.'
             ))
 
-        if not self.aml_id:  # select POL(s) without AML -> create a draft bill with the POL(s)
+        # select POL(s) without AML -> create a draft bill with the POL(s)
+        if not self.aml_id:
             return self._action_create_bill_from_po_lines(self.partner_id, self.pol_id)
 
-        if len(self.aml_id.move_id) > 1:  # for purchase matching, disallow matching multiple bills at the same time
+        # for purchase matching, disallow matching multiple bills at the same time
+        if len(self.aml_id.move_id) > 1:
             raise UserError(_(
                 'You can\'t select lines from multiple Vendor Bill to do the matching.'
             ))
@@ -182,7 +212,8 @@ class PurchaseBillMatch(models.Model):
         residual_bill = self.aml_id.move_id
         # Match all matchable POL-AML lines and remove them from the residual group
         for product, po_line in pol_by_product.items():
-            po_line = po_line[0]  # in case of multiple POL with same product, only match the first one
+            # in case of multiple POL with same product, only match the first one
+            po_line = po_line[0]
             matching_bill_lines = aml_by_product.get(product)
             if matching_bill_lines:
                 matching_bill_lines.purchase_line_id = po_line.id
@@ -196,7 +227,9 @@ class PurchaseBillMatch(models.Model):
 
     def action_add_to_po(self):
         if not self or not self.aml_id:
-            raise UserError(_('Select Vendor Bill lines to add to a Purchase Order'))
+            raise UserError(_(
+                'Select Vendor Bill lines to add to a Purchase Order'
+            ))
 
         context = {
             'default_partner_id': self.partner_id.id,
@@ -204,7 +237,9 @@ class PurchaseBillMatch(models.Model):
             'has_products': bool(self.aml_id.product_id),
         }
         if len(self.purchase_order_id) > 1:
-            raise UserError(_('Vendor Bill lines can only be added to one Purchase Order.'))
+            raise UserError(_(
+                'Vendor Bill lines can only be added to one Purchase Order.'
+            ))
 
         elif self.purchase_order_id:
             context['default_purchase_order_id'] = self.purchase_order_id.id

@@ -3,8 +3,8 @@
 from collections import defaultdict
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from pytz import timezone
 from markupsafe import escape, Markup
+from pytz import timezone
 from werkzeug.urls import url_encode
 
 from odoo import api, Command, fields, models, _
@@ -16,7 +16,9 @@ from odoo.tools.float_utils import float_is_zero
 
 class PurchaseOrder(models.Model):
     _name = 'purchase.order'
-    _inherit = ['portal.mixin', 'product.catalog.mixin', 'mail.thread', 'mail.activity.mixin']
+    _inherit = [
+        'portal.mixin', 'product.catalog.mixin', 'mail.thread', 'mail.activity.mixin'
+    ]
     _description = 'Purchase Order'
     _rec_names_search = ['name', 'partner_ref']
     _order = 'priority desc, id desc'
@@ -30,7 +32,8 @@ class PurchaseOrder(models.Model):
         index=True,
     )
     country_code = fields.Char(
-        related='company_id.account_fiscal_country_id.code', string='Country code'
+        related='company_id.account_fiscal_country_id.code',
+        string='Country code'
     )
     company_price_include = fields.Selection(
         related='company_id.account_price_include',
@@ -47,10 +50,8 @@ class PurchaseOrder(models.Model):
     )
     currency_rate = fields.Float(
         string='Currency Rate',
-        compute='_compute_currency_rate',
         digits=0,
-        store=True,
-        precompute=True,
+        compute='_compute_currency_rate', store=True, precompute=True,
     )
     tax_calculation_rounding_method = fields.Selection(
         related='company_id.tax_calculation_rounding_method',
@@ -95,8 +96,8 @@ class PurchaseOrder(models.Model):
         default=fields.Datetime.now,
         copy=False,
         index=True,
-        help='Depicts the date within which the Quotation should be confirmed '
-             'and converted into a purchase order.'
+        help='Depicts the date within which the Quotation should be '
+             'confirmed and converted into a purchase order.',
     )
     date_approve = fields.Datetime(
         string='Confirmation Date',
@@ -110,8 +111,8 @@ class PurchaseOrder(models.Model):
         readonly=False,
         copy=False,
         index=True,
-        help='Delivery date promised by vendor. This date is used to determine '
-             'expected arrival of products.',
+        help='Delivery date promised by vendor. This date is used to determine expected '
+             'arrival of products.',
     )
     date_calendar_start = fields.Datetime(
         compute='_compute_date_calendar_start', store=True,
@@ -136,8 +137,8 @@ class PurchaseOrder(models.Model):
         string='Vendor',
         required=True,
         change_default=True,
-        tracking=True,
         check_company=True,
+        tracking=True,
         help='You can find a vendor by its Name, TIN, Email or Internal Reference.',
     )
     partner_bill_count = fields.Integer(
@@ -188,7 +189,8 @@ class PurchaseOrder(models.Model):
         copy=True,
     )
     product_id = fields.Many2one(
-        related='order_line.product_id', string='Product'
+        related='order_line.product_id',
+        string='Product',
     )
     amount_untaxed = fields.Monetary(
         string='Untaxed Amount',
@@ -217,31 +219,31 @@ class PurchaseOrder(models.Model):
         exportable=False,
     )
     mail_reminder_confirmed = fields.Boolean(
-        'Reminder Confirmed',
+        string='Reminder Confirmed',
         default=False,
         readonly=True,
         copy=False,
         help='True if the reminder email is confirmed by the vendor.',
     )
     mail_reception_confirmed = fields.Boolean(
-        'Reception Confirmed',
+        string='Reception Confirmed',
         default=False,
         readonly=True,
         copy=False,
         help='True if PO reception is confirmed by the vendor.',
     )
     mail_reception_declined = fields.Boolean(
-        'Reception Declined',
+        string='Reception Declined',
         readonly=True,
         copy=False,
         help='True if PO reception is declined by the vendor.',
     )
     receipt_reminder_email = fields.Boolean(
-        'Receipt Reminder Email',
+        string='Receipt Reminder Email',
         compute='_compute_receipt_reminder_email',
     )
     reminder_date_before_receipt = fields.Integer(
-        'Days Before Receipt',
+        string='Days Before Receipt',
         compute='_compute_receipt_reminder_email',
     )
     invoice_ids = fields.Many2many(
@@ -286,7 +288,7 @@ class PurchaseOrder(models.Model):
                 )
                 raise ValidationError(_(
                     'Your quotation contains products from company %(product_company)s '
-                    'whereas your quotation belongs to company %(quote_company)s. \n'
+                    'whereas your quotation belongs to company %(quote_company)s.\n'
                     'Please change the company of your quotation or remove the products '
                     'from other companies (%(bad_products)s).',
                     product_company=', '.join(invalid_companies.sudo().mapped('display_name')),
@@ -535,7 +537,7 @@ class PurchaseOrder(models.Model):
                 lambda line: not line.display_type
             ).date_planned = self.date_planned
 
-    @api.onchange('partner_id', 'company_id')
+    @api.onchange('company_id', 'partner_id')
     def onchange_partner_id(self):
         # Ensures all properties and fiscal positions
         # are taken with the company of the order
@@ -634,7 +636,6 @@ class PurchaseOrder(models.Model):
             'force_email': True,
             'mark_rfq_as_sent': True,
         })
-
         # In the case of a RFQ or a PO, we want the 'View...' button in line with the state of the
         # object. Therefore, we pass the model description in the context, in the language in which
         # the template is rendered.
@@ -643,7 +644,6 @@ class PurchaseOrder(models.Model):
             template = self.env['mail.template'].browse(ctx['default_template_id'])
             if template and template.lang:
                 lang = template._render_lang([ctx['default_res_id']])[ctx['default_res_id']]
-
         self = self.with_context(lang=lang)
         if self.state in ['draft', 'sent']:
             ctx['model_description'] = _('Request for Quotation')
@@ -654,9 +654,9 @@ class PurchaseOrder(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'mail.compose.message',
             'view_mode': 'form',
+            'target': 'new',
             'views': [(compose_form_id, 'form')],
             'view_id': compose_form_id,
-            'target': 'new',
             'context': ctx,
         }
 
@@ -893,7 +893,8 @@ class PurchaseOrder(models.Model):
                 merged_names = ', '.join(rfq_names)
                 oldest_rfq_message = _(
                     'RFQ merged with %(oldest_rfq_name)s and %(cancelled_rfq)s',
-                    oldest_rfq_name=oldest_rfq.name, cancelled_rfq=merged_names
+                    oldest_rfq_name=oldest_rfq.name,
+                    cancelled_rfq=merged_names
                 )
                 for rfq in rfqs:
                     cancelled_rfq_message = _(f'RFQ merged with {oldest_rfq._get_html_link()}')
@@ -1365,11 +1366,13 @@ class PurchaseOrder(models.Model):
         When auto sending a reminder mail, only send for unconfirmed purchase
         order and not all products are service.
         '''
-        return self.search([
-            ('partner_id', '!=', False),
-            ('state', 'in', ['purchase', 'done']),
-            ('mail_reminder_confirmed', '=', False),
-        ]).filtered(
+        return self.search(
+            [
+                ('partner_id', '!=', False),
+                ('state', 'in', ['purchase', 'done']),
+                ('mail_reminder_confirmed', '=', False),
+            ]
+        ).filtered(
             lambda p:
                 p.partner_id.with_company(p.company_id).receipt_reminder_email
                 and p.mapped('order_line.product_id.product_tmpl_id.type') != ['service']
@@ -1456,10 +1459,11 @@ class PurchaseOrder(models.Model):
                 email_values={'email_to': self.env.user.email, 'recipient_ids': []},
             )
             return {
-                'toast_message': escape(_(
-                    'A sample email has been sent to %s.',
-                    self.env.user.email
-                ))
+                'toast_message':
+                    escape(_(
+                        'A sample email has been sent to %s.',
+                        self.env.user.email
+                    ))
             }
 
     # ------------------------------------------------------------
@@ -1526,20 +1530,20 @@ class PurchaseOrder(models.Model):
             [
                 ('state', '=', 'sent'),
                 ('date_order', '>=', fields.Datetime.now()),
-                ('user_id', '=', self.env.uid)
+                ('user_id', '=', self.env.uid),
             ]
         )
         result['all_late'] = po.search_count(
             [
                 ('state', 'in', ['draft', 'sent', 'to approve']),
-                ('date_order', '<', fields.Datetime.now())
+                ('date_order', '<', fields.Datetime.now()),
             ]
         )
         result['my_late'] = po.search_count(
             [
                 ('state', 'in', ['draft', 'sent', 'to approve']),
                 ('date_order', '<', fields.Datetime.now()),
-                ('user_id', '=', self.env.uid)
+                ('user_id', '=', self.env.uid),
             ]
         )
 

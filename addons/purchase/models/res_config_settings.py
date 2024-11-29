@@ -8,25 +8,41 @@ class ResConfigSettings(models.TransientModel):
 
 
     lock_confirmed_po = fields.Boolean(
-        'Lock Confirmed Orders', default=lambda self: self.env.company.po_lock == 'lock'
+        string='Lock Confirmed Orders',
+        default=lambda self: self.env.company.po_lock == 'lock',
     )
     po_lock = fields.Selection(
-        related='company_id.po_lock', string='Purchase Order Modification *', readonly=False
+        related='company_id.po_lock',
+        string='Purchase Order Modification *',
+        readonly=False,
     )
     po_order_approval = fields.Boolean(
-        'Purchase Order Approval',
-        default=lambda self: self.env.company.po_double_validation == 'two_step'
+        string='Purchase Order Approval',
+        default=lambda self: self.env.company.po_double_validation == 'two_step',
     )
     po_double_validation = fields.Selection(
-        related='company_id.po_double_validation', string='Levels of Approvals *', readonly=False
+        related='company_id.po_double_validation',
+        string='Levels of Approvals *',
+        readonly=False,
     )
     po_double_validation_amount = fields.Monetary(
-        related='company_id.po_double_validation_amount', string='Minimum Amount',
+        related='company_id.po_double_validation_amount',
+        string='Minimum Amount',
         currency_field='company_currency_id',
-        readonly=False
+        readonly=False,
     )
+    use_po_lead = fields.Boolean(
+        string='Security Lead Time for Purchase',
+        config_parameter='purchase.use_po_lead',
+        help='Margin of error for vendor lead times. When the system generates Purchase Orders '
+             'for reordering products,they will be scheduled that many days earlier to cope '
+             'with unexpected vendor delays.',
+    )
+    po_lead = fields.Float(related='company_id.po_lead', readonly=False)
     company_currency_id = fields.Many2one(
-        related='company_id.currency_id', string='Company Currency', readonly=True
+        related='company_id.currency_id',
+        string='Company Currency',
+        readonly=True,
     )
     default_purchase_method = fields.Selection(
         [
@@ -40,31 +56,23 @@ class ResConfigSettings(models.TransientModel):
              'This can be changed in the product detail form.',
     )
     group_warning_purchase = fields.Boolean(
-        'Purchase Warnings',
+        string='Purchase Warnings',
         implied_group='purchase.group_warning_purchase'
     )
-    module_account_3way_match = fields.Boolean(
-        '3-way matching: purchases, receptions and bills'
-    )
-    module_purchase_requisition = fields.Boolean(
-        'Purchase Agreements'
-    )
-    module_purchase_product_matrix = fields.Boolean(
-        'Purchase Grid Entry'
-    )
-    po_lead = fields.Float(related='company_id.po_lead', readonly=False)
-    use_po_lead = fields.Boolean(
-        string='Security Lead Time for Purchase',
-        config_parameter='purchase.use_po_lead',
-        help='Margin of error for vendor lead times. When the system generates Purchase Orders '
-             'for reordering products,they will be scheduled that many days earlier to cope '
-             'with unexpected vendor delays.',
-    )
     group_send_reminder = fields.Boolean(
-        'Receipt Reminder',
+        string='Receipt Reminder',
         default=True,
         implied_group='purchase.group_send_reminder',
         help='Allow automatically send email to remind your vendor the receipt date',
+    )
+    module_account_3way_match = fields.Boolean(
+        string='3-way matching: purchases, receptions and bills'
+    )
+    module_purchase_requisition = fields.Boolean(
+        string='Purchase Agreements'
+    )
+    module_purchase_product_matrix = fields.Boolean(
+        string='Purchase Grid Entry'
     )
 
 

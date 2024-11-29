@@ -32,7 +32,8 @@ class AccountMove(models.Model):
         help='Auto-complete from a past purchase order.',
     )
     purchase_order_count = fields.Integer(
-        compute='_compute_origin_po_count', string='Purchase Order Count',
+        string='Purchase Order Count',
+        compute='_compute_origin_po_count',
     )
     purchase_order_name = fields.Char(
         compute='_compute_purchase_order_name',
@@ -40,7 +41,7 @@ class AccountMove(models.Model):
     # 0: PO not required or partially linked. 1: All lines linked
     is_purchase_matched = fields.Boolean(
         compute='_compute_is_purchase_matched',
-    ) 
+    )
 
 
     @api.model_create_multi
@@ -119,7 +120,10 @@ class AccountMove(models.Model):
                     ('type', '=', 'purchase'),
                     ('currency_id', '=', currency_id.id),
                 ]
-                default_journal_id = self.env['account.journal'].search(journal_domain, limit=1)
+                default_journal_id = self.env['account.journal'].search(
+                    journal_domain,
+                    limit=1
+                )
                 if default_journal_id:
                     self.journal_id = default_journal_id
             self.currency_id = currency_id
@@ -152,7 +156,8 @@ class AccountMove(models.Model):
 
     @api.onchange('purchase_vendor_bill_id', 'purchase_id')
     def _onchange_purchase_auto_complete(self):
-        r''' Load from either an old purchase order, either an old vendor bill.
+        r'''
+        Load from either an old purchase order, either an old vendor bill.
 
         When setting a 'purchase.bill.union' in 'purchase_vendor_bill_id':
         * If it's a vendor bill, 'invoice_vendor_bill_id' is set and the loading is done
@@ -173,7 +178,8 @@ class AccountMove(models.Model):
         # Copy data from PO
         invoice_vals = self.purchase_id.with_company(self.purchase_id.company_id)._prepare_invoice()
         has_invoice_lines = bool(self.invoice_line_ids.filtered(
-            lambda x: x.display_type not in ('line_note', 'line_section'))
+            lambda x: x.display_type not in ('line_note', 'line_section')
+            )
         )
         new_currency_id = self.currency_id if has_invoice_lines else invoice_vals.get('currency_id')
         del invoice_vals['ref'], invoice_vals['payment_reference']
@@ -552,7 +558,9 @@ class AccountMove(models.Model):
             self._set_purchase_orders(matched_po_lines.order_id, force_write=False)
             with self._get_edi_creation() as invoice:
                 unmatched_lines = invoice.invoice_line_ids.filtered(
-                    lambda l: l.purchase_line_id and l.purchase_line_id not in matched_po_lines
+                    lambda l:
+                        l.purchase_line_id
+                        and l.purchase_line_id not in matched_po_lines
                 )
                 invoice.invoice_line_ids = [Command.update(line.id, {'quantity': 0}) for line in unmatched_lines]
 
@@ -564,16 +572,22 @@ class AccountMove(models.Model):
 
             with self._get_edi_creation() as invoice:
                 unmatched_lines = invoice.invoice_line_ids.filtered(
-                    lambda l: l.purchase_line_id and l.purchase_line_id not in matched_po_lines
+                    lambda l:
+                        l.purchase_line_id
+                        and l.purchase_line_id not in matched_po_lines
                 )
                 invoice.invoice_line_ids = [Command.delete(line.id) for line in unmatched_lines]
                 # We remove the original matched invoice lines and apply their quantities and taxes
                 # to the matched purchase order lines.
                 inv_and_po_lines = list(map(lambda line: (
                         invoice.invoice_line_ids.filtered(
-                            lambda l: l.purchase_line_id and l.purchase_line_id.id == line[0]),
+                            lambda l:
+                                l.purchase_line_id
+                                and l.purchase_line_id.id == line[0]
+                        ),
                         invoice.invoice_line_ids.filtered(
-                            lambda l: l in line[1])
+                            lambda l: l in line[1]
+                        )
                     ),
                     matched_inv_lines
                 ))
@@ -583,7 +597,9 @@ class AccountMove(models.Model):
                 ]
                 invoice.invoice_line_ids = [Command.delete(inv_line.id) for dummy, inv_line in inv_and_po_lines]
                 # If there are lines left not linked to a purchase order, we add a header
-                unmatched_lines = invoice.invoice_line_ids.filtered(lambda l: not l.purchase_line_id)
+                unmatched_lines = invoice.invoice_line_ids.filtered(
+                    lambda l: not l.purchase_line_id
+                )
                 if len(unmatched_lines) > 0:
                     invoice.invoice_line_ids = [Command.create({
                         'display_type': 'line_section',

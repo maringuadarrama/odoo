@@ -10,10 +10,16 @@ class IrActionsReport(models.Model):
     _inherit = 'ir.actions.report'
 
 
-    def _render_qweb_pdf_prepare_streams(self, report_ref, data, res_ids=None):
-        # EXTENDS base
-        collected_streams = super()._render_qweb_pdf_prepare_streams(report_ref, data, res_ids=res_ids)
+    def _is_purchase_order_report(self, report_ref):
+        return self._get_report(report_ref).report_name in (
+            'purchase.report_purchasequotation',
+            'purchase.report_purchaseorder'
+        )
 
+    def _render_qweb_pdf_prepare_streams(self, report_ref, data, res_ids=None):
+        collected_streams = super()._render_qweb_pdf_prepare_streams(
+            report_ref, data, res_ids=res_ids
+        )
         if (
             collected_streams
             and res_ids
@@ -46,9 +52,3 @@ class IrActionsReport(models.Model):
             writer.write(new_pdf_stream)
             collected_streams[purchase_order.id]['stream'] = new_pdf_stream
         return collected_streams
-
-    def _is_purchase_order_report(self, report_ref):
-        return self._get_report(report_ref).report_name in (
-            'purchase.report_purchasequotation',
-            'purchase.report_purchaseorder'
-        )

@@ -18,7 +18,7 @@
         'data/purchase_tour.xml',
         'report/purchase_order_templates.xml',
         'report/purchase_quotation_templates.xml',
-        'report/purchase_reports.xml',
+        'report/ir_action_report.xml',
         'report/purchase_report_views.xml',
         'data/mail_template_data.xml',
         'views/purchase_order_line_views.xml',
