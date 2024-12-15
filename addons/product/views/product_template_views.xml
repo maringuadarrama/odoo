@@ -213,11 +213,11 @@
                         </h1>
                     </div>
                     <div name="options">
-                        <span class="d-inline-block">
+                        <span class="d-inline-flex">
                             <field name="sale_ok" />
                             <label for="sale_ok" />
                         </span>
-                        <span class="d-inline-block" invisible="type == 'combo'">
+                        <span class="d-inline-flex" invisible="type == 'combo'">
                             <field name="purchase_ok" />
                             <label for="purchase_ok" />
                         </span>
@@ -391,16 +391,6 @@
                         and valid_product_template_attribute_line_ids)
                         or type in ['service', 'combo']" />
             </field>
-            <button name="action_open_documents" position="before">
-                <button name="%(product.product_variant_action)d"
-                    type="action"
-                    class="oe_stat_button"
-                    icon="fa-sitemap"
-                    invisible="product_variant_count &lt;= 1"
-                    groups="product.group_product_variant">
-                    <field name="product_variant_count" string="Variants" widget="statinfo" />
-                </button>
-            </button>
             <xpath expr="//page[@name='general_information']" position="after">
                 <page
                     name="variants"

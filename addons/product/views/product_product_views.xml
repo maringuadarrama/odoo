@@ -55,11 +55,9 @@
                 </group>
                 <!-- searchpanel -->
                 <searchpanel>
-                    <field name="categ_id"
-                        string="Product Category"
+                    <field name="categ_id" string="Product Category"
                         icon="fa-th-list" />
-                    <field name="product_template_attribute_value_ids"
-                        string="Attributes"
+                    <field name="product_template_attribute_value_ids" string="Attributes"
                         icon="fa-th-list"
                         domain="[('ptav_active', '=', True), ('product_tmpl_id.active', '=', True)]"
                         enable_counters="1"
@@ -78,7 +76,8 @@
                 <header>
                     <button name="action_open_label_layout" string="Print Labels" type="object" />
                 </header>
-                <field name="is_favorite" widget="boolean_favorite" nolabel="1" readonly="1" />
+                <field name="is_favorite" widget="boolean_favorite"
+                    nolabel="1" readonly="1" />
                 <field name="default_code" optional="show" readonly="1" />
                 <field name="barcode" optional="hide" readonly="1" />
                 <field name="name" readonly="1" />
@@ -189,8 +188,10 @@
                                     options="{'color_field': 'color'}"
                                     groups="product.group_product_variant" />
                             </div>
-                            <field name="image_128" widget="image" alt="Product"
-                                invisible="not image_128" class="ms-auto"
+                            <field name="image_128" widget="image"
+                                alt="Product"
+                                class="ms-auto"
+                                invisible="not image_128"
                                 options="{'size': [55, 55]}" />
                         </div>
                     </t>
@@ -223,7 +224,8 @@
                     <div class="oe_title">
                         <label for="name" string="Product Name" />
                         <h1>
-                            <field name="name" readonly="1"
+                            <field name="name"
+                                readonly="1"
                                 placeholder="e.g. Odoo Enterprise Subscription" />
                         </h1>
                         <field name="product_template_attribute_value_ids" widget="many2many_tags"
@@ -245,7 +247,8 @@
                             <field name="product_variant_count" invisible="1" />
                             <label for="lst_price" string="Sales Price" />
                             <div class="o_row">
-                                <field name="lst_price" widget='monetary' class="oe_inline"
+                                <field name="lst_price" widget='monetary'
+                                    class="oe_inline"
                                     options="{'currency_field': 'currency_id', 'field_digits': True}"
                                     readonly="product_variant_count &gt; 1" />
                             </div>
@@ -335,6 +338,16 @@
                 <attribute name="string">Product Variant</attribute>
                 <attribute name="duplicate">false</attribute>
             </form>
+            <button name="action_open_documents" position="before">
+                <button name="%(product.product_variant_action)d"
+                    type="action"
+                    class="oe_stat_button"
+                    icon="fa-sitemap"
+                    invisible="product_variant_count &lt;= 1"
+                    groups="product.group_product_variant">
+                    <field name="product_variant_count" string="Variants" widget="statinfo" />
+                </button>
+            </button>
             <xpath expr="//div[@name='standard_price_uom']" position="after">
                 <field name="default_code" />
                 <field name="barcode" />
@@ -409,8 +422,12 @@
                 (0, 0, {'view_mode': 'form', 'view_id': ref('product_variant_easy_edit_view')}),
                 (0, 0, {'view_mode': 'kanban'})
             ]" />
-        <field name="context">{'search_default_product_tmpl_id': [active_id],
-            'default_product_tmpl_id': active_id, 'create': False}</field>
+        <field name="context">{
+            'search_default_product_tmpl_id': [active_id],
+            'default_product_tmpl_id': active_id,
+            'create': False
+        }
+        </field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create a new product variant
