@@ -289,7 +289,10 @@ class Location(models.Model):
         if 'active' in values:
             if not values['active']:
                 for location in self:
-                    warehouses = self.env['stock.warehouse'].search([('active', '=', True), '|', ('lot_stock_id', '=', location.id), ('view_location_id', '=', location.id)], limit=1)
+                    warehouses = self.env['stock.warehouse'].search(
+                        [('active', '=', True), '|', ('lot_stock_id', '=', location.id), ('view_location_id', '=', location.id)],
+                        limit=1
+                    )
                     if warehouses:
                         raise UserError(_(
                             'You cannot archive location %(location)s '
@@ -301,7 +304,9 @@ class Location(models.Model):
             if not self.env.context.get('do_not_check_quant'):
                 children_location = self.env['stock.location'].with_context(active_test=False).search([('id', 'child_of', self.ids)])
                 internal_children_locations = children_location.filtered(lambda l: l.usage == 'internal')
-                children_quants = self.env['stock.quant'].search(['&', '|', ('quantity', '!=', 0), ('reserved_quantity', '!=', 0), ('location_id', 'in', internal_children_locations.ids)])
+                children_quants = self.env['stock.quant'].search(
+                    ['&', '|', ('quantity', '!=', 0), ('reserved_quantity', '!=', 0), ('location_id', 'in', internal_children_locations.ids)]
+                )
                 if children_quants and not values['active']:
                     raise UserError(_(
                         'You cannot disable locations %s because they still contain products.',

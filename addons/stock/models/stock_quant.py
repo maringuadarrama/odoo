@@ -226,7 +226,7 @@ class StockQuant(models.Model):
             if quant.lot_id.product_id and quant.lot_id.product_id != quant.product_id:
                 raise ValidationError(_(
                     'The Lot/Serial number (%s) is linked to another product.',
-                    quant.location_id.name
+                    quant.lot_id.name
                 ))
 
     @api.model_create_multi

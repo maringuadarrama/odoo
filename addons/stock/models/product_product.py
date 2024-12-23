@@ -12,6 +12,7 @@ from odoo.tools import check_barcode_encoding
 from odoo.tools.float_utils import float_round
 from odoo.tools.mail import html2plaintext, is_html_empty
 
+
 OPERATORS = {
     '<': py_operator.lt,
     '>': py_operator.gt,

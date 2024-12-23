@@ -63,6 +63,25 @@ class Company(models.Model):
              ''',
     )
 
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        companies = super().create(vals_list)
+        # Unarchive inter-company location when multi-company is enabled.
+        inter_company_location = self.env.ref('stock.stock_location_inter_company')
+        if not inter_company_location.active:
+            inter_company_location.sudo().write({'active': True})
+        for company in companies:
+            company.sudo()._create_per_company_locations()
+            company.sudo()._create_per_company_sequences()
+            company.sudo()._create_per_company_picking_types()
+            company.sudo()._create_per_company_rules()
+            company.sudo()._set_per_company_inter_company_locations(inter_company_location)
+        test_mode = getattr(threading.current_thread(), 'testing', False)
+        if test_mode:
+            self.env['stock.warehouse'].sudo().create([{'company_id': company.id} for company in companies])
+        return companies
+
     def _create_transit_location(self):
         '''Create a transit location with company_id being the given company_id. This is needed
            in case of resuply routes between warehouses belonging to the same company, because
@@ -135,7 +154,8 @@ class Company(models.Model):
 
     @api.model
     def create_missing_warehouse(self):
-        ''' This hook is used to add a warehouse on the first company of the database
+        '''
+        This hook is used to add a warehouse on the first company of the database
         '''
         existing_warehouses = self.env['stock.warehouse'].search([])
         if len(existing_warehouses) == 0:
@@ -199,28 +219,11 @@ class Company(models.Model):
     def _create_per_company_rules(self):
         self.ensure_one()
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        companies = super().create(vals_list)
-        # Unarchive inter-company location when multi-company is enabled.
-        inter_company_location = self.env.ref('stock.stock_location_inter_company')
-        if not inter_company_location.active:
-            inter_company_location.sudo().write({'active': True})
-        for company in companies:
-            company.sudo()._create_per_company_locations()
-            company.sudo()._create_per_company_sequences()
-            company.sudo()._create_per_company_picking_types()
-            company.sudo()._create_per_company_rules()
-            company.sudo()._set_per_company_inter_company_locations(inter_company_location)
-        test_mode = getattr(threading.current_thread(), 'testing', False)
-        if test_mode:
-            self.env['stock.warehouse'].sudo().create([{'company_id': company.id} for company in companies])
-        return companies
-
     def _set_per_company_inter_company_locations(self, inter_company_location):
         self.ensure_one()
         if not self.env.user.has_group('base.group_multi_company'):
             return
+
         other_companies = self.env['res.company'].search([('id', '!=', self.id)])
         other_companies.partner_id.with_company(self).write({
             'property_stock_customer': inter_company_location.id,
