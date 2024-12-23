@@ -23,6 +23,7 @@ class PickingType(models.Model):
     _rec_names_search = ['name', 'warehouse_id.name']
     _check_company_auto = True
 
+
     name = fields.Char('Operation Type', required=True, translate=True)
     color = fields.Integer('Color')
     sequence = fields.Integer('Sequence', help="Used to order the 'All Operations' kanban view")

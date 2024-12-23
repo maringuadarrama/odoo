@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models, _
@@ -8,19 +7,22 @@ from odoo.exceptions import UserError
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    module_product_expiry = fields.Boolean("Expiration Dates",
-        help="Track following dates on lots & serial numbers: best before, removal, end of life, alert. \n Such dates are set automatically at lot/serial number creation based on values set on the product (in days).")
-    group_stock_production_lot = fields.Boolean("Lots & Serial Numbers",
-        implied_group='stock.group_production_lot', group="base.group_user,base.group_portal")
-    group_stock_lot_print_gs1 = fields.Boolean("Print GS1 Barcodes for Lots & Serial Numbers",
+    module_product_expiry = fields.Boolean('Expiration Dates',
+        help='Track following dates on lots & serial numbers: best before, removal, end of life, alert.\n'
+             'Such dates are set automatically at lot/serial number creation based on values set '
+             'on the product (in days).'
+    )
+    group_stock_production_lot = fields.Boolean('Lots & Serial Numbers',
+        implied_group='stock.group_production_lot', group='base.group_user,base.group_portal')
+    group_stock_lot_print_gs1 = fields.Boolean('Print GS1 Barcodes for Lots & Serial Numbers',
         implied_group='stock.group_stock_lot_print_gs1')
-    group_lot_on_delivery_slip = fields.Boolean("Display Lots & Serial Numbers on Delivery Slips",
-        implied_group='stock.group_lot_on_delivery_slip', group="base.group_user,base.group_portal")
-    group_stock_tracking_lot = fields.Boolean("Packages",
+    group_lot_on_delivery_slip = fields.Boolean('Display Lots & Serial Numbers on Delivery Slips',
+        implied_group='stock.group_lot_on_delivery_slip', group='base.group_user,base.group_portal')
+    group_stock_tracking_lot = fields.Boolean('Packages',
         implied_group='stock.group_tracking_lot')
-    group_stock_tracking_owner = fields.Boolean("Consignment",
+    group_stock_tracking_owner = fields.Boolean('Consignment',
         implied_group='stock.group_tracking_owner')
-    group_stock_adv_location = fields.Boolean("Multi-Step Routes",
+    group_stock_adv_location = fields.Boolean('Multi-Step Routes',
         implied_group='stock.group_adv_location',
         help="Add and customize route operations to process product moves in your warehouse(s): e.g. unload > quality control > stock for incoming products, pick > pack > ship for outgoing products. \n You can also set putaway strategies on warehouse locations in order to send incoming products into specific child locations straight away (e.g. specific bins, racks).")
     group_warning_stock = fields.Boolean("Warnings for Stock", implied_group='stock.group_warning_stock')

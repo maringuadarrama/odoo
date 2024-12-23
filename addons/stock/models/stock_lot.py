@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import operator as py_operator
-from operator import attrgetter
 from re import findall as regex_findall, split as regex_split
 
 from odoo import _, api, fields, models
@@ -26,6 +24,7 @@ class StockLot(models.Model):
     _check_company_auto = True
     _order = 'name, id'
 
+
     @api.model
     def default_get(self, fields_list):
         context = dict(self.env.context)
@@ -36,6 +35,7 @@ class StockLot(models.Model):
     def _read_group_location_id(self, locations, domain):
         partner_locations = locations.search([('usage', 'in', ('customer', 'supplier'))])
         return partner_locations + locations.warehouse_id.search([]).lot_stock_id
+
 
     name = fields.Char(
         'Lot/Serial Number', default=lambda self: self.env['ir.sequence'].next_by_code('stock.lot.serial'),

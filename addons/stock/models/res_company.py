@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 import threading
 
 from odoo import _, api, fields, models
 
 
 class Company(models.Model):
-    _inherit = "res.company"
+    _inherit = 'res.company'
     _check_company_auto = True
+
 
     def _default_confirmation_mail_template(self):
         try:
@@ -15,34 +16,52 @@ class Company(models.Model):
         except ValueError:
             return False
 
+
     # used for resupply routes between warehouses that belong to this company
     internal_transit_location_id = fields.Many2one(
-        'stock.location', 'Internal Transit Location', ondelete="restrict", check_company=True)
-    stock_move_email_validation = fields.Boolean("Email Confirmation picking", default=False)
-    stock_mail_confirmation_template_id = fields.Many2one('mail.template', string="Email Template confirmation picking",
-        domain="[('model', '=', 'stock.picking')]",
+        'stock.location',
+        'Internal Transit Location',
+        check_company=True,
+        ondelete='restrict',
+    )
+    stock_move_email_validation = fields.Boolean(
+        'Email Confirmation picking', default=False,
+    )
+    stock_mail_confirmation_template_id = fields.Many2one(
+        'mail.template',
+        string='Email Template confirmation picking',
         default=_default_confirmation_mail_template,
-        help="Email sent to the customer once the order is done.")
-    annual_inventory_month = fields.Selection([
-        ('1', 'January'),
-        ('2', 'February'),
-        ('3', 'March'),
-        ('4', 'April'),
-        ('5', 'May'),
-        ('6', 'June'),
-        ('7', 'July'),
-        ('8', 'August'),
-        ('9', 'September'),
-        ('10', 'October'),
-        ('11', 'November'),
-        ('12', 'December'),
-    ], string='Annual Inventory Month',
+        domain=[('model', '=', 'stock.picking')],
+        help='Email sent to the customer once the order is done.',
+    )
+    annual_inventory_month = fields.Selection(
+        [
+            ('1', 'January'),
+            ('2', 'February'),
+            ('3', 'March'),
+            ('4', 'April'),
+            ('5', 'May'),
+            ('6', 'June'),
+            ('7', 'July'),
+            ('8', 'August'),
+            ('9', 'September'),
+            ('10', 'October'),
+            ('11', 'November'),
+            ('12', 'December'),
+        ],
+        string='Annual Inventory Month',
         default='12',
-        help="Annual inventory month for products not in a location with a cyclic inventory date. Set to no month if no automatic annual inventory.")
+        help='Annual inventory month for products not in a location with a cyclic inventory date. '
+             'Set to no month if no automatic annual inventory.',
+    )
     annual_inventory_day = fields.Integer(
-        string='Day of the month', default=31,
-        help="""Day of the month when the annual inventory should occur. If zero or negative, then the first day of the month will be selected instead.
-        If greater than the last day of a month, then the last day of the month will be selected instead.""")
+        string='Day of the month',
+        default=31,
+        help='''Day of the month when the annual inventory should occur.
+             If zero or negative, then the first day of the month will be selected instead.
+             If greater than the last day of a month, then the last day of the month will be selected instead.
+             ''',
+    )
 
     def _create_transit_location(self):
         '''Create a transit location with company_id being the given company_id. This is needed
@@ -116,8 +135,8 @@ class Company(models.Model):
 
     @api.model
     def create_missing_warehouse(self):
-        """ This hook is used to add a warehouse on the first company of the database
-        """
+        ''' This hook is used to add a warehouse on the first company of the database
+        '''
         existing_warehouses = self.env['stock.warehouse'].search([])
         if len(existing_warehouses) == 0:
             first_company = self.env['res.company'].search([], limit=1)
