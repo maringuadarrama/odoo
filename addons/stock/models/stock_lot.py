@@ -38,14 +38,14 @@ class StockLot(models.Model):
 
 
     name = fields.Char(
-        'Lot/Serial Number',
+        string='Lot/Serial Number',
         required=True,
         default=lambda self: self.env['ir.sequence'].next_by_code('stock.lot.serial'),
         index='trigram',
         help='Unique Lot/Serial Number',
     )
     ref = fields.Char(
-        'Internal Reference',
+        string='Internal Reference',
         help='Internal reference number in case it differs from the manufacturer\'s lot/serial number',
     )
     product_id = fields.Many2one(
@@ -60,6 +60,13 @@ class StockLot(models.Model):
     product_uom_id = fields.Many2one(
         related='product_id.uom_id', store=True, string='Unit of Measure',
     )
+    company_id = fields.Many2one(
+        comodel_name='res.company',
+        string='Company',
+        compute='_compute_company_id', store=True,
+        readonly=False,
+        index=True,
+    )
     quant_ids = fields.One2many(
         comodel_name='stock.quant',
         inverse_name='lot_id',
@@ -67,17 +74,10 @@ class StockLot(models.Model):
         readonly=True,
     )
     product_qty = fields.Float(
-        'On Hand Quantity',
+        string='On Hand Quantity',
         compute='_product_qty',
         search='_search_product_qty',
     )
-    note = fields.Html(string='Description')
-    display_complete = fields.Boolean(compute='_compute_display_complete')
-    company_id = fields.Many2one('res.company', 'Company', index=True, store=True, readonly=False, compute='_compute_company_id')
-    delivery_ids = fields.Many2many('stock.picking', compute='_compute_delivery_ids', string='Transfers')
-    delivery_count = fields.Integer('Delivery order count', compute='_compute_delivery_ids')
-    last_delivery_partner_id = fields.Many2one('res.partner', compute='_compute_last_delivery_partner_id')
-    lot_properties = fields.Properties('Properties', definition='product_id.lot_properties_definition', copy=True)
     location_id = fields.Many2one(
         comodel_name='stock.location',
         string='Location',
@@ -87,12 +87,24 @@ class StockLot(models.Model):
         domain=[('usage', '!=', 'view')],
         group_expand='_read_group_location_id'
     )
+    note = fields.Html(string='Description')
+    display_complete = fields.Boolean(compute='_compute_display_complete')
+    delivery_ids = fields.Many2many(
+        comodel_name='stock.picking',
+        string='Transfers',
+        compute='_compute_delivery_ids',
+    )
+    delivery_count = fields.Integer('Delivery order count', compute='_compute_delivery_ids')
+    last_delivery_partner_id = fields.Many2one(comodel_name='res.partner', compute='_compute_last_delivery_partner_id')
+    lot_properties = fields.Properties('Properties', definition='product_id.lot_properties_definition', copy=True)
 
 
     @api.constrains('name', 'product_id', 'company_id')
     def _check_unique_lot(self):
-        domain = [('product_id', 'in', self.product_id.ids),
-                  ('name', 'in', self.mapped('name'))]
+        domain = [
+            ('product_id', 'in', self.product_id.ids),
+            ('name', 'in', self.mapped('name'))
+        ]
         groupby = ['company_id', 'product_id', 'name']
         if any(not lot.company_id for lot in self):
             # We need to check across other companies to not have duplicates between 'no-company' and a company.
@@ -106,13 +118,15 @@ class StockLot(models.Model):
             # For company-specific lots, we check that there is no duplicate with 'no-company' lots, but NOT between specific-company ones.
             if (company and (cross_lots.get((product, name), 0) + count) > 1) or count > 1:
                 error_message_lines.add(_(
-                    ' - Product: %(product)s, Lot/Serial Number: %(lot)s', product=product.display_name, lot=name
+                    ' - Product: %(product)s, Lot/Serial Number: %(lot)s',
+                    product=product.display_name, lot=name
                 ))
         if error_message_lines:
             raise ValidationError(_(
-                    'The combination of lot/serial number and product must be unique within a company '
-                    'including when no company is defined.\nThe following combinations contain duplicates:\n%(error_lines)s',
-                    error_lines='\n'.join(error_message_lines),
+                'The combination of lot/serial number and product must be unique within '
+                'a company including when no company is defined.\nThe following '
+                'combinations contain duplicates:\n%(error_lines)s',
+                error_lines='\n'.join(error_message_lines),
             ))
 
     @api.model_create_multi
@@ -123,13 +137,20 @@ class StockLot(models.Model):
     def write(self, vals):
         if 'company_id' in vals:
             for lot in self:
-                if lot.location_id.company_id and vals['company_id'] and lot.location_id.company_id.id != vals['company_id']:
+                if (
+                    lot.location_id.company_id
+                    and vals['company_id']
+                    and lot.location_id.company_id.id != vals['company_id']
+                ):
                     raise UserError(_(
-                        'You cannot change the company of a lot/serial number currently in a location belonging to another company.'
+                        'You cannot change the company of a lot/serial number currently in a '
+                        'location belonging to another company.'
                     ))
 
         if 'product_id' in vals and any(vals['product_id'] != lot.product_id.id for lot in self):
-            move_lines = self.env['stock.move.line'].search([('lot_id', 'in', self.ids), ('product_id', '!=', vals['product_id'])])
+            move_lines = self.env['stock.move.line'].search(
+                [('lot_id', 'in', self.ids), ('product_id', '!=', vals['product_id'])]
+            )
             if move_lines:
                 raise UserError(_(
                     'You are not allowed to change the product linked to a serial or lot number '
@@ -160,8 +181,21 @@ class StockLot(models.Model):
         This compute depends on field `name` because as it has always a default value, it'll be
         always triggered.
         '''
-        for prod_lot in self:
-            prod_lot.display_complete = prod_lot.id or self._context.get('display_complete')
+        for lot in self:
+            lot.display_complete = lot.id or self._context.get('display_complete')
+
+    @api.depends('quant_ids', 'quant_ids.quantity')
+    def _compute_single_location(self):
+        for lot in self:
+            quants = lot.quant_ids.filtered(lambda q: q.quantity > 0)
+            lot.location_id = quants.location_id if len(quants.location_id) == 1 else False
+
+    @api.depends('quant_ids', 'quant_ids.quantity')
+    def _product_qty(self):
+        for lot in self:
+            # We only care for the quants in internal or transit locations.
+            quants = lot.quant_ids.filtered(lambda q: q.location_id.usage == 'internal' or (q.location_id.usage == 'transit' and q.location_id.company_id))
+            lot.product_qty = sum(quants.mapped('quantity'))
 
     def _compute_delivery_ids(self):
         delivery_ids_by_lot = self._find_delivery_ids_by_lot()
@@ -178,19 +212,6 @@ class StockLot(models.Model):
                 lot.last_delivery_partner_id = self.env['stock.picking'].browse(delivery_ids_by_lot[lot.id]).sorted(key='date_done', reverse=True)[0].partner_id
             else:
                 lot.last_delivery_partner_id = False
-
-    @api.depends('quant_ids', 'quant_ids.quantity')
-    def _compute_single_location(self):
-        for lot in self:
-            quants = lot.quant_ids.filtered(lambda q: q.quantity > 0)
-            lot.location_id = quants.location_id if len(quants.location_id) == 1 else False
-
-    @api.depends('quant_ids', 'quant_ids.quantity')
-    def _product_qty(self):
-        for lot in self:
-            # We only care for the quants in internal or transit locations.
-            quants = lot.quant_ids.filtered(lambda q: q.location_id.usage == 'internal' or (q.location_id.usage == 'transit' and q.location_id.company_id))
-            lot.product_qty = sum(quants.mapped('quantity'))
 
     @api.model
     def generate_lot_names(self, first_lot, count):

@@ -108,21 +108,6 @@ class Product(models.Model):
              'Otherwise, this includes goods leaving any Stock '
              'Location with \'internal\' type.'
     )
-    orderpoint_ids = fields.One2many(
-        'stock.warehouse.orderpoint',
-        'product_id',
-        'Minimum Stock Rules',
-    )
-    putaway_rule_ids = fields.One2many(
-        'stock.putaway.rule',
-        'product_id',
-        'Putaway Rules',
-    )
-    storage_category_capacity_ids = fields.One2many(
-        'stock.storage.category.capacity',
-        'product_id',
-        'Storage Category Capacity',
-    )
     nbr_moves_in = fields.Integer(
         compute='_compute_nbr_moves',
         compute_sudo=False,
@@ -133,8 +118,23 @@ class Product(models.Model):
         compute_sudo=False,
         help='Number of outgoing stock moves in the past 12 months',
     )
+    orderpoint_ids = fields.One2many(
+        comodel_name='stock.warehouse.orderpoint',
+        inverse_name='product_id',
+        string='Minimum Stock Rules',
+    )
+    putaway_rule_ids = fields.One2many(
+        comodel_name='stock.putaway.rule',
+        inverse_name='product_id',
+        string='Putaway Rules',
+    )
+    storage_category_capacity_ids = fields.One2many(
+        comodel_name='stock.storage.category.capacity',
+        inverse_name='product_id',
+        string='Storage Category Capacity',
+    )
     nbr_reordering_rules = fields.Integer(
-        'Reordering Rules',
+        string='Reordering Rules',
         compute='_compute_nbr_reordering_rules',
         compute_sudo=False,
     )
@@ -326,6 +326,31 @@ class Product(models.Model):
             product.nbr_moves_in = res_incoming.get(product.id, 0)
             product.nbr_moves_out = res_outgoing.get(product.id, 0)
 
+    def _compute_nbr_reordering_rules(self):
+        read_group_res = self.env['stock.warehouse.orderpoint']._read_group(
+            [('product_id', 'in', self.ids)],
+            ['product_id'],
+            ['__count', 'product_min_qty:sum', 'product_max_qty:sum']
+        )
+        mapped_res = {product: aggregates for product, *aggregates in read_group_res}
+        for product in self:
+            count, product_min_qty_sum, product_max_qty_sum = mapped_res.get(product._origin, (0, 0, 0))
+            product.nbr_reordering_rules = count
+            product.reordering_min_qty = product_min_qty_sum
+            product.reordering_max_qty = product_max_qty_sum
+
+    @api.onchange('tracking')
+    def _onchange_tracking(self):
+        if any(product.tracking != 'none' and product.qty_available > 0 for product in self):
+            return {
+                'warning': {
+                    'title': _('Warning!'),
+                    'message': _(
+                        'You have product(s) in stock that have no lot/serial number. '
+                        'You can assign lot/serial numbers by doing an inventory adjustment.'
+                    )
+            }}
+
     def get_components(self):
         self.ensure_one()
         return self.ids
@@ -352,6 +377,35 @@ class Product(models.Model):
             return self.description_picking or description
 
         return description
+
+    def _get_domain_locations_new(self, location_ids):
+        if not location_ids:
+            return [[expression.FALSE_LEAF]] * 3
+
+        locations = self.env['stock.location'].browse(location_ids)
+        # TDE FIXME: should move the support of child_of + auto_join directly in expression
+        # this optimizes [('location_id', 'child_of', locations.ids)]
+        # by avoiding the ORM to search for children locations and injecting a
+        # lot of location ids into the main query
+        if self.env.context.get('strict'):
+            loc_domain = [('location_id', 'in', locations.ids)]
+            dest_loc_domain = [('location_dest_id', 'in', locations.ids)]
+        elif locations:
+            paths_domain = expression.OR(
+                [[('parent_path', '=like', loc.parent_path + '%')] for loc in locations]
+            )
+            loc_domain = [('location_id', 'any', paths_domain)]
+            dest_loc_domain = [
+                '|',
+                '&', ('location_final_id', '!=', False), ('location_final_id', 'any', paths_domain),
+                '&', ('location_final_id', '=', False), ('location_dest_id', 'any', paths_domain),
+            ]
+        # returns: (domain_quant_loc, domain_move_in_loc, domain_move_out_loc)
+        return (
+            loc_domain,
+            dest_loc_domain + ['!'] + loc_domain,
+            loc_domain + ['!'] + dest_loc_domain,
+        )
 
     def _get_domain_locations(self):
         '''
@@ -408,35 +462,6 @@ class Product(models.Model):
                     ).mapped('view_location_id').ids
                 )
         return self._get_domain_locations_new(location_ids)
-
-    def _get_domain_locations_new(self, location_ids):
-        if not location_ids:
-            return [[expression.FALSE_LEAF]] * 3
-
-        locations = self.env['stock.location'].browse(location_ids)
-        # TDE FIXME: should move the support of child_of + auto_join directly in expression
-        # this optimizes [('location_id', 'child_of', locations.ids)]
-        # by avoiding the ORM to search for children locations and injecting a
-        # lot of location ids into the main query
-        if self.env.context.get('strict'):
-            loc_domain = [('location_id', 'in', locations.ids)]
-            dest_loc_domain = [('location_dest_id', 'in', locations.ids)]
-        elif locations:
-            paths_domain = expression.OR(
-                [[('parent_path', '=like', loc.parent_path + '%')] for loc in locations]
-            )
-            loc_domain = [('location_id', 'any', paths_domain)]
-            dest_loc_domain = [
-                '|',
-                '&', ('location_final_id', '!=', False), ('location_final_id', 'any', paths_domain),
-                '&', ('location_final_id', '=', False), ('location_dest_id', 'any', paths_domain),
-            ]
-        # returns: (domain_quant_loc, domain_move_in_loc, domain_move_out_loc)
-        return (
-            loc_domain,
-            dest_loc_domain + ['!'] + loc_domain,
-            loc_domain + ['!'] + dest_loc_domain,
-        )
 
     def _search_qty_available(self, operator, value):
         # In the very specific case we want to retrieve products with stock available, we only need
@@ -535,31 +560,6 @@ class Product(models.Model):
             )
             product_ids |= set(products_without_quants_in_domain.ids)
         return list(product_ids)
-
-    def _compute_nbr_reordering_rules(self):
-        read_group_res = self.env['stock.warehouse.orderpoint']._read_group(
-            [('product_id', 'in', self.ids)],
-            ['product_id'],
-            ['__count', 'product_min_qty:sum', 'product_max_qty:sum']
-        )
-        mapped_res = {product: aggregates for product, *aggregates in read_group_res}
-        for product in self:
-            count, product_min_qty_sum, product_max_qty_sum = mapped_res.get(product._origin, (0, 0, 0))
-            product.nbr_reordering_rules = count
-            product.reordering_min_qty = product_min_qty_sum
-            product.reordering_max_qty = product_max_qty_sum
-
-    @api.onchange('tracking')
-    def _onchange_tracking(self):
-        if any(product.tracking != 'none' and product.qty_available > 0 for product in self):
-            return {
-                'warning': {
-                    'title': _('Warning!'),
-                    'message': _(
-                        'You have product(s) in stock that have no lot/serial number. '
-                        'You can assign lot/serial numbers by doing an inventory adjustment.'
-                    )
-            }}
 
     @api.model
     def view_header_get(self, view_id, view_type):

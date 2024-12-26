@@ -38,7 +38,7 @@ class Location(models.Model):
         help='Let this field empty if this location is shared between companies',
     )
     active = fields.Boolean(
-        'Active',
+        string='Active',
         default=True,
         help='By unchecking the active field, you may hide a location without deleting it.'
     )
@@ -65,8 +65,8 @@ class Location(models.Model):
              '\n* Transit Location: Counterpart location that should be used in inter-company or inter-warehouses operations',
     )
     location_id = fields.Many2one(
-        'stock.location',
-        'Parent Location',
+        comodel_name='stock.location',
+        string='Parent Location',
         check_company=True,
         index=True,
         help='The parent location that includes this location. '
@@ -74,12 +74,28 @@ class Location(models.Model):
     )
     name = fields.Char('Location Name', required=True)
     complete_name = fields.Char(
-        'Full Location Name',
+        string='Full Location Name',
         compute='_compute_complete_name', store=True,
         recursive=True,
     )
     parent_path = fields.Char(index=True)
     barcode = fields.Char('Barcode', copy=False)
+    posx = fields.Integer(
+        string='Corridor (X)',
+        default=0,
+        help='Optional localization details, for information purpose only'
+    )
+    posy = fields.Integer(
+        string='Shelves (Y)',
+        default=0,
+        help='Optional localization details, for information purpose only'
+    )
+    posz = fields.Integer(
+        string='Height (Z)',
+        default=0,
+        help='Optional localization details, for information purpose only'
+    )
+    comment = fields.Html('Additional Information')
     removal_strategy_id = fields.Many2one(
         comodel_name='product.removal',
         string='Removal Strategy',
@@ -94,12 +110,12 @@ class Location(models.Model):
              '(the availability of this method depends on the \'Expiration Dates\' setting).',
     )
     warehouse_view_ids = fields.One2many(
-        'stock.warehouse',
-        'view_location_id',
+        comodel_name='stock.warehouse',
+        inverse_name='view_location_id',
         readonly=True,
     )
     warehouse_id = fields.Many2one(
-        'stock.warehouse',
+        comodel_name='stock.warehouse',
         compute='_compute_warehouse_id', store=True,
     )
     storage_category_id = fields.Many2one(
@@ -108,22 +124,28 @@ class Location(models.Model):
         check_company=True,
     )
     last_inventory_date = fields.Date(
-        'Last Inventory',
+        string='Last Inventory',
         readonly=True,
         help='Date of the last inventory at this location.',
     )
+    cyclic_inventory_frequency = fields.Integer(
+        string='Inventory Frequency',
+        default=0,
+        help='When different than 0, inventory count date for products stored at this location '
+             'will be automatically set at the defined frequency.'
+    )
     next_inventory_date = fields.Date(
-        'Next Expected',
+        string='Next Expected',
         compute='_compute_next_inventory_date', store=True,
         help='Date for next planned inventory based on cyclic schedule.',
     )
     scrap_location = fields.Boolean(
-        'Is a Scrap Location?',
+        string='Is a Scrap Location?',
         default=False,
         help='Check this box to allow using this location to put scrapped/damaged goods.',
     )
     replenish_location = fields.Boolean(
-        'Replenish Location',
+        string='Replenish Location',
         compute='_compute_replenish_location', store=True,
         readonly=False,
         copy=False,
@@ -131,12 +153,12 @@ class Location(models.Model):
              'at this particular location',
     )
     is_empty = fields.Boolean(
-        'Is Empty',
+        string='Is Empty',
         compute='_compute_is_empty',
         search='_search_is_empty',
     )
     child_internal_location_ids = fields.Many2many(
-        'stock.location',
+        comodel_name='stock.location',
         string='Internal locations among descendants',
         compute='_compute_child_internal_location_ids',
         recursive=True,
@@ -147,14 +169,14 @@ class Location(models.Model):
         'location_id',
         'Contains',
     )
+    quant_ids = fields.One2many(
+        'stock.quant',
+        'location_id'
+    )
     putaway_rule_ids = fields.One2many(
         'stock.putaway.rule',
         'location_in_id',
         'Putaway Rules',
-    )
-    quant_ids = fields.One2many(
-        'stock.quant',
-        'location_id'
     )
     # used to compute weight
     outgoing_move_line_ids = fields.One2many(
@@ -166,12 +188,6 @@ class Location(models.Model):
         'stock.move.line',
         'location_dest_id',
     )
-    cyclic_inventory_frequency = fields.Integer(
-        'Inventory Frequency',
-        default=0,
-        help='When different than 0, inventory count date for products stored at this location '
-             'will be automatically set at the defined frequency.'
-    )
     net_weight = fields.Float(
         'Net Weight',
         compute='_compute_weight',
@@ -180,22 +196,6 @@ class Location(models.Model):
         'Forecasted Weight',
         compute='_compute_weight',
     )
-    posx = fields.Integer(
-        'Corridor (X)',
-        default=0,
-        help='Optional localization details, for information purpose only'
-    )
-    posy = fields.Integer(
-        'Shelves (Y)',
-        default=0,
-        help='Optional localization details, for information purpose only'
-    )
-    posz = fields.Integer(
-        'Height (Z)',
-        default=0,
-        help='Optional localization details, for information purpose only'
-    )
-    comment = fields.Html('Additional Information')
 
 
     _sql_constraints = [
@@ -210,6 +210,7 @@ class Location(models.Model):
             'The inventory frequency (days) for a location must be non-negative'
         )
     ]
+
 
     @api.constrains('replenish_location', 'location_id', 'usage')
     def _check_replenish_location(self):
@@ -356,22 +357,6 @@ class Location(models.Model):
                 vals['name'] = _('%s (copy)', location.name)
         return vals_list
 
-    @api.depends(
-        'outgoing_move_line_ids.quantity_product_uom',
-        'incoming_move_line_ids.quantity_product_uom',
-        'outgoing_move_line_ids.state',
-        'incoming_move_line_ids.state',
-        'outgoing_move_line_ids.product_id.weight',
-        'outgoing_move_line_ids.product_id.weight',
-        'quant_ids.quantity',
-        'quant_ids.product_id.weight'
-    )
-    def _compute_weight(self):
-        weight_by_location = self._get_weight()
-        for location in self:
-            location.net_weight = weight_by_location[location]['net_weight']
-            location.forecast_weight = weight_by_location[location]['forecast_weight']
-
     @api.depends('name', 'location_id.complete_name', 'usage')
     def _compute_complete_name(self):
         for location in self:
@@ -452,6 +437,22 @@ class Location(models.Model):
         for location in self:
             location.is_empty = groups.get(location, 0) <= 0
 
+    @api.depends(
+        'outgoing_move_line_ids.quantity_product_uom',
+        'incoming_move_line_ids.quantity_product_uom',
+        'outgoing_move_line_ids.state',
+        'incoming_move_line_ids.state',
+        'outgoing_move_line_ids.product_id.weight',
+        'outgoing_move_line_ids.product_id.weight',
+        'quant_ids.quantity',
+        'quant_ids.product_id.weight'
+    )
+    def _compute_weight(self):
+        weight_by_location = self._get_weight()
+        for location in self:
+            location.net_weight = weight_by_location[location]['net_weight']
+            location.forecast_weight = weight_by_location[location]['forecast_weight']
+
     @api.onchange('usage')
     def _onchange_usage(self):
         if self.usage not in ('internal', 'inventory'):
@@ -520,7 +521,8 @@ class Location(models.Model):
         putaway_location = None
         locations = self.child_internal_location_ids
         if putaway_rules:
-            # get current product qty (qty in current quants and future qty on assigned ml) of all child locations
+            # get current product qty (qty in current quants and future qty on assigned ml)
+            # of all child locations
             qty_by_location = defaultdict(lambda: 0)
             if locations.storage_category_id:
                 if package and package.package_type_id:
@@ -541,7 +543,9 @@ class Location(models.Model):
                         ['location_id'],
                         ['package_id:count_distinct']
                     )
-                    qty_by_location.update({location_dest.id: count for location_dest, count in move_line_data})
+                    qty_by_location.update(
+                        {location_dest.id: count for location_dest, count in move_line_data}
+                    )
                     for location, count in quant_data:
                         qty_by_location[location.id] += count
                 else:
@@ -563,7 +567,9 @@ class Location(models.Model):
                         ['location_id'],
                         ['quantity:sum']
                     )
-                    qty_by_location.update({location.id: quantity_sum for location, quantity_sum in quant_data})
+                    qty_by_location.update(
+                        {location.id: quantity_sum for location, quantity_sum in quant_data}
+                    )
                     for location_dest, quantity_list, uoms in move_line_data:
                         current_qty = sum(
                             ml_uom._compute_quantity(

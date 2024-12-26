@@ -19,16 +19,17 @@ class Company(models.Model):
 
     # used for resupply routes between warehouses that belong to this company
     internal_transit_location_id = fields.Many2one(
-        'stock.location',
-        'Internal Transit Location',
+        comodel_name='stock.location',
+        string='Internal Transit Location',
         check_company=True,
         ondelete='restrict',
     )
     stock_move_email_validation = fields.Boolean(
-        'Email Confirmation picking', default=False,
+        string='Email Confirmation picking',
+        default=False,
     )
     stock_mail_confirmation_template_id = fields.Many2one(
-        'mail.template',
+        comodel_name='mail.template',
         string='Email Template confirmation picking',
         default=_default_confirmation_mail_template,
         domain=[('model', '=', 'stock.picking')],
@@ -79,13 +80,16 @@ class Company(models.Model):
             company.sudo()._set_per_company_inter_company_locations(inter_company_location)
         test_mode = getattr(threading.current_thread(), 'testing', False)
         if test_mode:
-            self.env['stock.warehouse'].sudo().create([{'company_id': company.id} for company in companies])
+            self.env['stock.warehouse'].sudo().create(
+                [{'company_id': company.id} for company in companies]
+            )
         return companies
 
     def _create_transit_location(self):
-        '''Create a transit location with company_id being the given company_id. This is needed
-           in case of resuply routes between warehouses belonging to the same company, because
-           we don't want to create accounting entries at that time.
+        '''
+        Create a transit location with company_id being the given company_id. This is needed
+        in case of resuply routes between warehouses belonging to the same company, because
+        we don't want to create accounting entries at that time.
         '''
         parent_location = self.env.ref('stock.stock_location_locations', raise_if_not_found=False)
         for company in self:
@@ -96,9 +100,7 @@ class Company(models.Model):
                 'company_id': company.id,
                 'active': False
             })
-
             company.write({'internal_transit_location_id': location.id})
-
             company.partner_id.with_company(company).write({
                 'property_stock_customer': location.id,
                 'property_stock_supplier': location.id,
@@ -113,7 +115,11 @@ class Company(models.Model):
                 'location_id': parent_location.id,
                 'company_id': company.id,
             })
-            self.env['ir.default'].set('product.template', 'property_stock_inventory', inventory_loss_location.id, company_id=company.id)
+            self.env['ir.default'].set(
+                'product.template',
+                'property_stock_inventory',
+                inventory_loss_location.id, company_id=company.id
+            )
 
     def _create_production_location(self):
         parent_location = self.env.ref('stock.stock_location_locations_virtual', raise_if_not_found=False)
@@ -124,7 +130,11 @@ class Company(models.Model):
                 'location_id': parent_location.id,
                 'company_id': company.id,
             })
-            self.env['ir.default'].set('product.template', 'property_stock_production', production_location.id, company_id=company.id)
+            self.env['ir.default'].set(
+                'product.template',
+                'property_stock_production',
+                production_location.id, company_id=company.id
+            )
 
     def _create_scrap_location(self):
         parent_location = self.env.ref('stock.stock_location_locations_virtual', raise_if_not_found=False)
@@ -169,36 +179,50 @@ class Company(models.Model):
 
     @api.model
     def create_missing_transit_location(self):
-        company_without_transit = self.env['res.company'].search([('internal_transit_location_id', '=', False)])
+        company_without_transit = self.env['res.company'].search(
+            [('internal_transit_location_id', '=', False)]
+        )
         company_without_transit._create_transit_location()
-
-    @api.model
-    def create_missing_inventory_loss_location(self):
-        company_ids  = self.env['res.company'].search([])
-        inventory_loss_product_template_field = self.env['ir.model.fields']._get('product.template', 'property_stock_inventory')
-        companies_having_property = self.env['ir.default'].sudo().search([('field_id', '=', inventory_loss_product_template_field.id)]).mapped('company_id')
-        company_without_property = company_ids - companies_having_property
-        company_without_property._create_inventory_loss_location()
 
     @api.model
     def create_missing_production_location(self):
         company_ids  = self.env['res.company'].search([])
-        production_product_template_field = self.env['ir.model.fields']._get('product.template', 'property_stock_production')
-        companies_having_property = self.env['ir.default'].sudo().search([('field_id', '=', production_product_template_field.id)]).mapped('company_id')
+        production_product_template_field = self.env['ir.model.fields']._get(
+            'product.template', 'property_stock_production'
+        )
+        companies_having_property = self.env['ir.default'].sudo().search(
+            [('field_id', '=', production_product_template_field.id)]
+        ).mapped('company_id')
         company_without_property = company_ids - companies_having_property
         company_without_property._create_production_location()
 
     @api.model
+    def create_missing_inventory_loss_location(self):
+        company_ids  = self.env['res.company'].search([])
+        inventory_loss_product_template_field = self.env['ir.model.fields']._get(
+            'product.template', 'property_stock_inventory'
+        )
+        companies_having_property = self.env['ir.default'].sudo().search(
+            [('field_id', '=', inventory_loss_product_template_field.id)]
+        ).mapped('company_id')
+        company_without_property = company_ids - companies_having_property
+        company_without_property._create_inventory_loss_location()
+
+    @api.model
     def create_missing_scrap_location(self):
         company_ids  = self.env['res.company'].search([])
-        companies_having_scrap_loc = self.env['stock.location'].search([('scrap_location', '=', True)]).mapped('company_id')
+        companies_having_scrap_loc = self.env['stock.location'].search(
+            [('scrap_location', '=', True)]
+        ).mapped('company_id')
         company_without_property = company_ids - companies_having_scrap_loc
         company_without_property._create_scrap_location()
 
     @api.model
     def create_missing_scrap_sequence(self):
         company_ids  = self.env['res.company'].search([])
-        company_has_scrap_seq = self.env['ir.sequence'].search([('code', '=', 'stock.scrap')]).mapped('company_id')
+        company_has_scrap_seq = self.env['ir.sequence'].search(
+            [('code', '=', 'stock.scrap')]
+        ).mapped('company_id')
         company_todo_sequence = company_ids - company_has_scrap_seq
         company_todo_sequence._create_scrap_sequence()
 

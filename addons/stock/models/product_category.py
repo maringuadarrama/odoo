@@ -22,7 +22,8 @@ class ProductCategory(models.Model):
              'then 1600 will be reserved'
     )
     removal_strategy_id = fields.Many2one(
-        'product.removal', 'Force Removal Strategy',
+        comodel_name='product.removal',
+        string='Force Removal Strategy',
         tracking=True,
         help='Set a specific removal strategy that will be used regardless of the source location '
              'for this product category.\n\n'
@@ -39,17 +40,24 @@ class ProductCategory(models.Model):
         domain=[('product_categ_selectable', '=', True)],
     )
     parent_route_ids = fields.Many2many(
-        'stock.route', string='Parent Routes', compute='_compute_parent_route_ids',
+        comodel_name='stock.route',
+        string='Parent Routes',
+        compute='_compute_parent_route_ids',
     )
     total_route_ids = fields.Many2many(
-        'stock.route',
+        comodel_name='stock.route',
         string='Total routes',
-        compute='_compute_total_route_ids', readonly=True,
+        compute='_compute_total_route_ids',
+        readonly=True,
         search='_search_total_route_ids',
     )
-    putaway_rule_ids = fields.One2many('stock.putaway.rule', 'category_id', 'Putaway Rules')
+    putaway_rule_ids = fields.One2many(
+        comodel_name='stock.putaway.rule',
+        inverse_name='category_id',
+        string='Putaway Rules',
+    )
     filter_for_stock_putaway_rule = fields.Boolean(
-        'stock.putaway.rule',
+        string='stock.putaway.rule',
         store=False,
         search='_search_filter_for_stock_putaway_rule',
     )
