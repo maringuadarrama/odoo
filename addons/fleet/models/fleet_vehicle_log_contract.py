@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from dateutil.relativedelta import relativedelta
@@ -12,10 +11,12 @@ class FleetVehicleLogContract(models.Model):
     _description = 'Vehicle Contract'
     _order = 'state desc,expiration_date'
 
+
     def compute_next_year_date(self, strdate):
         oneyear = relativedelta(years=1)
         start_date = fields.Date.from_string(strdate)
         return fields.Date.to_string(start_date + oneyear)
+
 
     vehicle_id = fields.Many2one('fleet.vehicle', 'Vehicle', required=True, check_company=True, tracking=True)
     cost_subtype_id = fields.Many2one('fleet.service.type', 'Type', help='Cost type purchased with this cost', domain=[('category', '=', 'contract')])
