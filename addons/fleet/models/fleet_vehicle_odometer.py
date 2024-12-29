@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
@@ -9,12 +8,12 @@ class FleetVehicleOdometer(models.Model):
     _description = 'Odometer log for a vehicle'
     _order = 'date desc'
 
+    vehicle_id = fields.Many2one('fleet.vehicle', 'Vehicle', required=True)
+    driver_id = fields.Many2one(related='vehicle_id.driver_id', string='Driver', readonly=False)
+    unit = fields.Selection(related='vehicle_id.odometer_unit', string='Unit', readonly=True)
     name = fields.Char(compute='_compute_vehicle_log_name', store=True)
     date = fields.Date(default=fields.Date.context_today)
-    value = fields.Float('Odometer Value', aggregator="max")
-    vehicle_id = fields.Many2one('fleet.vehicle', 'Vehicle', required=True)
-    unit = fields.Selection(related='vehicle_id.odometer_unit', string="Unit", readonly=True)
-    driver_id = fields.Many2one(related="vehicle_id.driver_id", string="Driver", readonly=False)
+    value = fields.Float('Odometer Value', aggregator='max')
 
     @api.depends('vehicle_id', 'date')
     def _compute_vehicle_log_name(self):

@@ -17,11 +17,12 @@ class FleetVehicleModelBrand(models.Model):
 
     @api.depends('model_ids')
     def _compute_model_count(self):
-        model_data = self.env['fleet.vehicle.model']._read_group([
-            ('brand_id', 'in', self.ids),
-        ], ['brand_id'], ['__count'])
+        model_data = self.env['fleet.vehicle.model']._read_group(
+            [('brand_id', 'in', self.ids)],
+            ['brand_id'],
+            ['__count']
+        )
         models_brand = {brand.id: count for brand, count in model_data}
-
         for record in self:
             record.model_count = models_brand.get(record.id, 0)
 
@@ -34,5 +35,4 @@ class FleetVehicleModelBrand(models.Model):
             'name': 'Models',
             'context': {'search_default_brand_id': self.id, 'default_brand_id': self.id}
         }
-
         return view

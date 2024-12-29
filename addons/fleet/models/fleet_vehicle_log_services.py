@@ -11,24 +11,42 @@ class FleetVehicleLogServices(models.Model):
     _description = 'Services for vehicles'
 
 
-    active = fields.Boolean(default=True)
-    vehicle_id = fields.Many2one('fleet.vehicle', 'Vehicle', required=True)
-    amount = fields.Monetary('Cost')
-    description = fields.Char('Description')
-    odometer_id = fields.Many2one('fleet.vehicle.odometer', 'Odometer', help='Odometer measure of the vehicle at the moment of this log')
-    odometer_unit = fields.Selection(related='vehicle_id.odometer_unit', string="Unit", readonly=True)
-    odometer = fields.Float(
-        compute="_compute_odometer",
-        inverse='_set_odometer',
-        string='Odometer Value',
+    company_id = fields.Many2one(
+        comodel_name='res.company',
+        string='Company',
+        default=lambda self: self.env.company,
+    )
+    currency_id = fields.Many2one(
+        related='company_id.currency_id',
+    )
+    vehicle_id = fields.Many2one(
+        comodel_name='fleet.vehicle',
+        string='Vehicle',
+        required=True,
+    )
+    manager_id = fields.Many2one(
+        related='vehicle_id.manager_id',
+        store=True,
+        string='Fleet Manager',
+    )
+    odometer_unit = fields.Selection(
+        related='vehicle_id.odometer_unit',
+        string='Unit',
+        readonly=True,
+    )
+    odometer_id = fields.Many2one(
+        comodel_name='fleet.vehicle.odometer',
+        string='Odometer',
         help='Odometer measure of the vehicle at the moment of this log',
     )
-    date = fields.Date(help='Date when the cost has been executed', default=fields.Date.context_today)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    currency_id = fields.Many2one(related='company_id.currency_id')
+    odometer = fields.Float(
+        string='Odometer Value',
+        compute='_compute_odometer',
+        inverse='_set_odometer',
+        help='Odometer measure of the vehicle at the moment of this log',
+    )
     vendor_id = fields.Many2one('res.partner', 'Vendor')
-    manager_id = fields.Many2one('res.users', 'Fleet Manager', related='vehicle_id.manager_id', store=True)
-    purchaser_id = fields.Many2one('res.partner', string="Driver", compute='_compute_purchaser_id', readonly=False, store=True)
+    purchaser_id = fields.Many2one('res.partner', string='Driver', compute='_compute_purchaser_id', store=True, readonly=False)
     service_type_id = fields.Many2one(
         'fleet.service.type',
         'Service Type',
@@ -37,6 +55,10 @@ class FleetVehicleLogServices(models.Model):
             'fleet.type_service_service_7',
             raise_if_not_found=False
         ),
+    )
+    date = fields.Date(
+        default=fields.Date.context_today,
+        help='Date when the cost has been executed',
     )
     state = fields.Selection(
         [
@@ -50,8 +72,11 @@ class FleetVehicleLogServices(models.Model):
         group_expand=True,
         tracking=True
     )
+    description = fields.Char('Description')
+    amount = fields.Monetary('Cost')
     inv_ref = fields.Char('Vendor Reference')
     notes = fields.Text()
+    active = fields.Boolean(default=True)
 
 
     @api.model_create_multi

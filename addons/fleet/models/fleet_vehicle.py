@@ -31,7 +31,8 @@ class FleetVehicle(models.Model):
 
 
     company_id = fields.Many2one(
-        'res.company', 'Company',
+        comodel_name='res.company',
+        string='Company',
         default=lambda self: self.env.company,
     )
     currency_id = fields.Many2one(related='company_id.currency_id')
