@@ -54,15 +54,6 @@ class ProductTemplate(models.Model):
         readonly=False,
         help='Ensure the traceability of a storable product in your warehouse.',
     )
-    sale_delay = fields.Integer(
-        string='Customer Lead Time',
-        default=0,
-        help='Delivery lead time, in days. It\'s the number of days, promised to the customer, '
-             'between the confirmation of the sales order and the delivery.',
-    )
-    description_picking = fields.Text('Description on Picking', translate=True)
-    description_pickingout = fields.Text('Description on Delivery Orders', translate=True)
-    description_pickingin = fields.Text('Description on Receptions', translate=True)
     qty_available = fields.Float(
         string='Quantity On Hand',
         digits='Product Unit of Measure',
@@ -95,13 +86,6 @@ class ProductTemplate(models.Model):
     # to influence computed field.
     location_id = fields.Many2one('stock.location', 'Location', store=False)
     warehouse_id = fields.Many2one('stock.warehouse', 'Warehouse', store=False)
-    is_storable = fields.Boolean(
-        string='Track Inventory',
-        default=False,
-        compute='compute_is_storable', store=True, precompute=True,
-        readonly=False,
-        help='A storable product is a product for which you manage stock.',
-    )
     route_ids = fields.Many2many(
         'stock.route',
         'stock_route_product',
@@ -117,6 +101,21 @@ class ProductTemplate(models.Model):
         string='Routes can be selected on this product',
         default=lambda self: self.env['stock.route'].search_count([('product_selectable', '=', True)]),
         compute='_compute_has_available_route_ids',
+    )
+    is_storable = fields.Boolean(
+        string='Track Inventory',
+        default=False,
+        compute='compute_is_storable', store=True, precompute=True,
+        readonly=False,
+        help='A storable product is a product for which you manage stock.',
+    )
+    show_on_hand_qty_status_button = fields.Boolean(compute='_compute_show_qty_status_button')
+    show_forecasted_qty_status_button = fields.Boolean(compute='_compute_show_qty_status_button')
+    sale_delay = fields.Integer(
+        string='Customer Lead Time',
+        default=0,
+        help='Delivery lead time, in days. It\'s the number of days, promised to the customer, '
+             'between the confirmation of the sales order and the delivery.',
     )
     nbr_reordering_rules = fields.Integer(
         string='Reordering Rules',
@@ -141,8 +140,9 @@ class ProductTemplate(models.Model):
         compute_sudo=False,
         help='Number of outgoing stock moves in the past 12 months',
     )
-    show_on_hand_qty_status_button = fields.Boolean(compute='_compute_show_qty_status_button')
-    show_forecasted_qty_status_button = fields.Boolean(compute='_compute_show_qty_status_button')
+    description_picking = fields.Text('Description on Picking', translate=True)
+    description_pickingout = fields.Text('Description on Delivery Orders', translate=True)
+    description_pickingin = fields.Text('Description on Receptions', translate=True)
     # TDE FIXME: seems only visible in a view - remove me ?
     route_from_categ_ids = fields.Many2many(
         related='categ_id.total_route_ids', related_sudo=False, string='Category Routes'
@@ -279,6 +279,10 @@ class ProductTemplate(models.Model):
             [('product_selectable', '=', True)]
         )
 
+    @api.depends('is_storable')
+    def _compute_tracking(self):
+        self.filtered(lambda t: not t.is_storable and t.tracking != 'none').tracking = 'none'
+
     def _compute_quantities_dict(self):
         variants_available = {
             p['id']: p
@@ -318,10 +322,6 @@ class ProductTemplate(models.Model):
             template.virtual_available = res[template.id]['virtual_available']
             template.incoming_qty = res[template.id]['incoming_qty']
             template.outgoing_qty = res[template.id]['outgoing_qty']
-
-    @api.depends('is_storable')
-    def _compute_tracking(self):
-        self.filtered(lambda t: not t.is_storable and t.tracking != 'none').tracking = 'none'
 
     def _compute_nbr_moves(self):
         res = defaultdict(lambda: {'moves_in': 0, 'moves_out': 0})
@@ -368,16 +368,6 @@ class ProductTemplate(models.Model):
             }
         return res
 
-    @api.model
-    def _get_action_view_related_putaway_rules(self, domain):
-        return {
-            'name': _('Putaway Rules'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.putaway.rule',
-            'view_mode': 'list',
-            'domain': domain,
-        }
-
     def _search_qty_available(self, operator, value):
         domain = [('qty_available', operator, value)]
         product_variant_query = self.env['product.product']._search(domain)
@@ -399,8 +389,15 @@ class ProductTemplate(models.Model):
         return [('product_variant_ids', 'in', product_variant_query)]
 
     def _compute_nbr_reordering_rules(self):
-        res = {k: {'nbr_reordering_rules': 0, 'reordering_min_qty': 0, 'reordering_max_qty': 0} for k in self.ids}
-        product_data = self.env['stock.warehouse.orderpoint']._read_group([('product_id.product_tmpl_id', 'in', self.ids)], ['product_id'], ['__count', 'product_min_qty:sum', 'product_max_qty:sum'])
+        res = {
+            k: {'nbr_reordering_rules': 0, 'reordering_min_qty': 0, 'reordering_max_qty': 0}
+            for k in self.ids
+        }
+        product_data = self.env['stock.warehouse.orderpoint']._read_group(
+            [('product_id.product_tmpl_id', 'in', self.ids)],
+            ['product_id'],
+            ['__count', 'product_min_qty:sum', 'product_max_qty:sum']
+        )
         for product, count, product_min_qty, product_max_qty in product_data:
             product_tmpl_id = product.product_tmpl_id.id
             res[product_tmpl_id]['nbr_reordering_rules'] += count
@@ -412,6 +409,7 @@ class ProductTemplate(models.Model):
                 template.reordering_min_qty = 0
                 template.reordering_max_qty = 0
                 continue
+
             template.nbr_reordering_rules = res[template.id]['nbr_reordering_rules']
             template.reordering_min_qty = res[template.id]['reordering_min_qty']
             template.reordering_max_qty = res[template.id]['reordering_max_qty']
@@ -420,6 +418,7 @@ class ProductTemplate(models.Model):
     def action_open_quants(self):
         if 'product_variant' in self.env.context:
             return self.env['product.product'].browse(self.env.context['default_product_id']).action_open_quants()
+
         return self.product_variant_ids.filtered(lambda p: p.active or p.qty_available != 0).action_open_quants()
 
     def action_update_quantity_on_hand(self):
@@ -430,6 +429,7 @@ class ProductTemplate(models.Model):
         ]
         if any(self.env.user.has_group(g) for g in advanced_option_groups) or self.tracking != 'none':
             return self.action_open_quants()
+
         else:
             default_product_id = self.env.context.get('default_product_id', len(self.product_variant_ids) == 1 and self.product_variant_id.id)
             action = self.env['ir.actions.actions']._for_xml_id('stock.action_change_product_quantity')
@@ -439,6 +439,16 @@ class ProductTemplate(models.Model):
                 default_product_tmpl_id=self.id
             )
             return action
+
+    @api.model
+    def _get_action_view_related_putaway_rules(self, domain):
+        return {
+            'name': _('Putaway Rules'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.putaway.rule',
+            'view_mode': 'list',
+            'domain': domain,
+        }
 
     def action_view_related_putaway_rules(self):
         self.ensure_one()
@@ -489,10 +499,15 @@ class ProductTemplate(models.Model):
         if not self.env.user.has_group('stock.group_stock_multi_warehouses') and len(products) == 1:
             company = products.company_id or self.env.company
             warehouse = self.env['stock.warehouse'].search([('company_id', '=', company.id)], limit=1)
-            return self.env.ref('stock.action_report_stock_rule').report_action(None, data={
-                'product_id': products.id,
-                'warehouse_ids': warehouse.ids,
-            }, config=False)
+            return self.env.ref('stock.action_report_stock_rule').report_action(
+                None,
+                data={
+                    'product_id': products.id,
+                    'warehouse_ids': warehouse.ids,
+                },
+                config=False
+            )
+
         action = self.env['ir.actions.actions']._for_xml_id('stock.action_stock_rules_report')
         action['context'] = self.env.context
         return action

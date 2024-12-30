@@ -23,24 +23,6 @@ class StockRoute(models.Model):
         help='If the active field is set to False, it will allow you to hide the route without removing it.'
     )
     sequence = fields.Integer('Sequence', default=0)
-    product_selectable = fields.Boolean(
-        'Applicable on Product',
-        default=True,
-        help='When checked, the route will be selectable in the Inventory tab of the Product form.',
-    )
-    product_categ_selectable = fields.Boolean(
-        'Applicable on Product Category',
-        help='When checked, the route will be selectable on the Product Category.',
-    )
-    warehouse_selectable = fields.Boolean(
-        'Applicable on Warehouse',
-        help='When a warehouse is selected for this route, '
-             'this route should be seen as the default route when products pass through this warehouse.',
-    )
-    packaging_selectable = fields.Boolean(
-        'Applicable on Packaging',
-        help='When checked, the route will be selectable on the Product Packaging.',
-    )
     supplied_wh_id = fields.Many2one(
         'stock.warehouse',
         'Supplied Warehouse',
@@ -62,21 +44,6 @@ class StockRoute(models.Model):
         domain=[('id', 'in', warehouse_domain_ids)],
         copy=False,
     )
-    rule_ids = fields.One2many(
-        'stock.rule',
-        'route_id',
-        'Rules',
-        copy=True,
-    )
-    product_ids = fields.Many2many(
-        'product.template',
-        'stock_route_product',
-        'route_id',
-        'product_id',
-        'Products',
-        copy=False,
-        check_company=True,
-    )
     categ_ids = fields.Many2many(
         'product.category',
         'stock_route_categ',
@@ -93,6 +60,39 @@ class StockRoute(models.Model):
         'Packagings',
         check_company=True,
         copy=False,
+    )
+    product_ids = fields.Many2many(
+        'product.template',
+        'stock_route_product',
+        'route_id',
+        'product_id',
+        'Products',
+        copy=False,
+        check_company=True,
+    )
+    product_selectable = fields.Boolean(
+        'Applicable on Product',
+        default=True,
+        help='When checked, the route will be selectable in the Inventory tab of the Product form.',
+    )
+    product_categ_selectable = fields.Boolean(
+        'Applicable on Product Category',
+        help='When checked, the route will be selectable on the Product Category.',
+    )
+    warehouse_selectable = fields.Boolean(
+        'Applicable on Warehouse',
+        help='When a warehouse is selected for this route, '
+             'this route should be seen as the default route when products pass through this warehouse.',
+    )
+    packaging_selectable = fields.Boolean(
+        'Applicable on Packaging',
+        help='When checked, the route will be selectable on the Product Packaging.',
+    )
+    rule_ids = fields.One2many(
+        'stock.rule',
+        'route_id',
+        'Rules',
+        copy=True,
     )
 
 

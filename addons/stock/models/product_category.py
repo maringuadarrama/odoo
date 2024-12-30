@@ -36,7 +36,11 @@ class ProductCategory(models.Model):
              'when there are several packages containing the same product.',
     )
     route_ids = fields.Many2many(
-        'stock.route', 'stock_route_categ', 'categ_id', 'route_id', 'Routes',
+        'stock.route',
+        'stock_route_categ',
+        'categ_id',
+        'route_id',
+        string='Routes',
         domain=[('product_categ_selectable', '=', True)],
     )
     parent_route_ids = fields.Many2many(

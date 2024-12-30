@@ -129,6 +129,16 @@ class StockLot(models.Model):
                 error_lines='\n'.join(error_message_lines),
             ))
 
+    def _check_create(self):
+        active_picking_id = self.env.context.get('active_picking_id', False)
+        if active_picking_id:
+            picking_id = self.env['stock.picking'].browse(active_picking_id)
+            if picking_id and not picking_id.picking_type_id.use_create_lots:
+                raise UserError(_(
+                    'You are not allowed to create a lot or serial number with this operation type. '
+                    'To change this, go on the operation type and tick the box \'Create New Lots/Serial Numbers\'.'
+                ))
+
     @api.model_create_multi
     def create(self, vals_list):
         self._check_create()
@@ -247,16 +257,6 @@ class StockLot(models.Model):
                 return self.env['stock.lot'].generate_lot_names(last_serial.name, 2)[1]['lot_name']
 
         return False
-
-    def _check_create(self):
-        active_picking_id = self.env.context.get('active_picking_id', False)
-        if active_picking_id:
-            picking_id = self.env['stock.picking'].browse(active_picking_id)
-            if picking_id and not picking_id.picking_type_id.use_create_lots:
-                raise UserError(_(
-                    'You are not allowed to create a lot or serial number with this operation type. '
-                    'To change this, go on the operation type and tick the box \'Create New Lots/Serial Numbers\'.'
-                ))
 
     def _set_single_location(self):
         quants = self.quant_ids.filtered(lambda q: q.quantity > 0)

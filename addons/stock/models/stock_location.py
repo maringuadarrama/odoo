@@ -37,11 +37,6 @@ class Location(models.Model):
         index=True,
         help='Let this field empty if this location is shared between companies',
     )
-    active = fields.Boolean(
-        string='Active',
-        default=True,
-        help='By unchecking the active field, you may hide a location without deleting it.'
-    )
     usage = fields.Selection(
         [
             ('supplier', 'Vendor Location'),
@@ -78,24 +73,11 @@ class Location(models.Model):
         compute='_compute_complete_name', store=True,
         recursive=True,
     )
-    parent_path = fields.Char(index=True)
-    barcode = fields.Char('Barcode', copy=False)
-    posx = fields.Integer(
-        string='Corridor (X)',
-        default=0,
-        help='Optional localization details, for information purpose only'
+    active = fields.Boolean(
+        string='Active',
+        default=True,
+        help='By unchecking the active field, you may hide a location without deleting it.'
     )
-    posy = fields.Integer(
-        string='Shelves (Y)',
-        default=0,
-        help='Optional localization details, for information purpose only'
-    )
-    posz = fields.Integer(
-        string='Height (Z)',
-        default=0,
-        help='Optional localization details, for information purpose only'
-    )
-    comment = fields.Html('Additional Information')
     removal_strategy_id = fields.Many2one(
         comodel_name='product.removal',
         string='Removal Strategy',
@@ -123,16 +105,34 @@ class Location(models.Model):
         string='Storage Category',
         check_company=True,
     )
-    last_inventory_date = fields.Date(
-        string='Last Inventory',
-        readonly=True,
-        help='Date of the last inventory at this location.',
+    parent_path = fields.Char(index=True)
+    barcode = fields.Char('Barcode', copy=False)
+    posx = fields.Integer(
+        string='Corridor (X)',
+        default=0,
+        help='Optional localization details, for information purpose only'
     )
+    posy = fields.Integer(
+        string='Shelves (Y)',
+        default=0,
+        help='Optional localization details, for information purpose only'
+    )
+    posz = fields.Integer(
+        string='Height (Z)',
+        default=0,
+        help='Optional localization details, for information purpose only'
+    )
+    comment = fields.Html('Additional Information')
     cyclic_inventory_frequency = fields.Integer(
         string='Inventory Frequency',
         default=0,
         help='When different than 0, inventory count date for products stored at this location '
              'will be automatically set at the defined frequency.'
+    )
+    last_inventory_date = fields.Date(
+        string='Last Inventory',
+        readonly=True,
+        help='Date of the last inventory at this location.',
     )
     next_inventory_date = fields.Date(
         string='Next Expected',
@@ -189,11 +189,11 @@ class Location(models.Model):
         'location_dest_id',
     )
     net_weight = fields.Float(
-        'Net Weight',
+        string='Net Weight',
         compute='_compute_weight',
     )
     forecast_weight = fields.Float(
-        'Forecasted Weight',
+        string='Forecasted Weight',
         compute='_compute_weight',
     )
 
