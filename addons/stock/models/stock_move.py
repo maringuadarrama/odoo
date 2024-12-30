@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from ast import literal_eval
@@ -64,6 +63,27 @@ class StockMove(models.Model):
     # TODO: delete this field `show_operations`
     show_operations = fields.Boolean(related='picking_id.picking_type_id.show_operations')
     picking_code = fields.Selection(related='picking_id.picking_type_id.code', readonly=True)
+    group_id = fields.Many2one(
+        comodel_name='procurement.group',
+        string='Procurement Group',
+        default=_default_group_id,
+        index=True,
+    )
+    partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Destination Address ',
+        compute='_compute_partner_id', store=True,
+        readonly=False,
+        index='btree_not_null',
+        help='Optional address where goods are to be delivered, specifically used for allotment',
+    )
+    # used to depict a restriction on the ownership of quants to consider when marking this move as 'done'
+    restrict_partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Owner ',
+        check_company=True,
+        index='btree_not_null',
+    )
     location_id = fields.Many2one(
         comodel_name='stock.location',
         string='Source Location',
@@ -134,6 +154,43 @@ class StockMove(models.Model):
         default='0',
         compute='_compute_priority', store=True,
     )
+    state = fields.Selection(
+        [
+            ('draft', 'New'),
+            ('waiting', 'Waiting Another Move'),
+            ('confirmed', 'Waiting Availability'),
+            ('partially_available', 'Partially Available'),
+            ('assigned', 'Available'),
+            ('done', 'Done'),
+            ('cancel', 'Cancelled')
+        ],
+        string='Status',
+        default='draft',
+        readonly=True,
+        copy=False,
+        index=True,
+        help='* New: The stock move is created but not confirmed.\n'
+             '* Waiting Another Move: A linked stock move should be done before this one.\n'
+             '* Waiting Availability: The stock move is confirmed but the product can\'t be reserved.\n'
+             '* Available: The product of the stock move is reserved.\n'
+             '* Done: The product has been transferred and the transfer has been confirmed.'
+    )
+    procure_method = fields.Selection(
+        [
+            ('make_to_stock', 'Default: Take From Stock'),
+            ('make_to_order', 'Advanced: Apply Procurement Rules')
+        ],
+        string='Supply Method',
+        required=True,
+        default='make_to_stock',
+        copy=False,
+        help='By default, the system will take from the stock in the source '
+             'location and passively wait for availability. '
+             'The other possibility allows you to directly create a procurement '
+             'on the source location (and thus ignore its current stock) to gather products. '
+             'If we want to chain moves and have this one to wait for the previous, '
+             'this second option should be chosen.'
+    )
     product_id = fields.Many2one(
         comodel_name='product.product',
         string='Product',
@@ -144,10 +201,11 @@ class StockMove(models.Model):
     )
     # TDE FIXME: make it stored, otherwise group will not work
     product_tmpl_id = fields.Many2one(
-        related='product_id.product_tmpl_id',
-        string='Product Template',
+        related='product_id.product_tmpl_id', string='Product Template',
     )
-    has_tracking = fields.Selection(related='product_id.tracking', string='Product with Tracking')
+    has_tracking = fields.Selection(
+        related='product_id.tracking', string='Product with Tracking',
+    )
     is_storable = fields.Boolean(related='product_id.is_storable')
     product_uom_category_id = fields.Many2one(related='product_id.uom_id.category_id')
     product_uom = fields.Many2one(
@@ -189,83 +247,33 @@ class StockMove(models.Model):
              'the product reservation, and should be done with care.',
     )
     product_packaging_id = fields.Many2one(
-        'product.packaging',
-        'Packaging',
+        comodel_name='product.packaging',
+        string='Packaging',
         check_company=True,
         domain=[('product_id', '=', product_id)],
     )
     product_packaging_qty = fields.Float(
-        string='Reserved Packaging Quantity', compute='_compute_product_packaging_qty',
+        string='Reserved Packaging Quantity',
+        compute='_compute_product_packaging_qty',
     )
     product_packaging_quantity = fields.Float(
-        string='Done Packaging Quantity', compute='_compute_product_packaging_quantity',
+        string='Done Packaging Quantity',
+        compute='_compute_product_packaging_quantity',
     )
     availability = fields.Float(
-        'Forecasted Quantity',
+        string='Forecasted Quantity',
         compute='_compute_product_availability',
         readonly=True,
         help='Quantity in stock that can still be reserved for this move',
     )
     forecast_availability = fields.Float(
-        'Forecast Availability',
+        string='Forecast Availability',
         digits='Product Unit of Measure',
         compute='_compute_forecast_information', compute_sudo=True,
     )
     forecast_expected_date = fields.Datetime(
-        'Forecasted Expected date',
+        string='Forecasted Expected date',
         compute='_compute_forecast_information', compute_sudo=True,
-    )
-    partner_id = fields.Many2one(
-        comodel_name='res.partner',
-        string='Destination Address ',
-        compute='_compute_partner_id', store=True,
-        readonly=False,
-        index='btree_not_null',
-        help='Optional address where goods are to be delivered, specifically used for allotment',
-    )
-    # used to depict a restriction on the ownership of quants to consider when marking this move as 'done'
-    restrict_partner_id = fields.Many2one(
-        comodel_name='res.partner',
-        string='Owner ',
-        check_company=True,
-        index='btree_not_null',
-    )
-    state = fields.Selection(
-        [
-            ('draft', 'New'),
-            ('waiting', 'Waiting Another Move'),
-            ('confirmed', 'Waiting Availability'),
-            ('partially_available', 'Partially Available'),
-            ('assigned', 'Available'),
-            ('done', 'Done'),
-            ('cancel', 'Cancelled')
-        ],
-        string='Status',
-        default='draft',
-        readonly=True,
-        copy=False,
-        index=True,
-        help='* New: The stock move is created but not confirmed.\n'
-             '* Waiting Another Move: A linked stock move should be done before this one.\n'
-             '* Waiting Availability: The stock move is confirmed but the product can\'t be reserved.\n'
-             '* Available: The product of the stock move is reserved.\n'
-             '* Done: The product has been transferred and the transfer has been confirmed.'
-    )
-    procure_method = fields.Selection(
-        [
-            ('make_to_stock', 'Default: Take From Stock'),
-            ('make_to_order', 'Advanced: Apply Procurement Rules')
-        ],
-        string='Supply Method',
-        required=True,
-        default='make_to_stock',
-        copy=False,
-        help='By default, the system will take from the stock in the source '
-             'location and passively wait for availability. '
-             'The other possibility allows you to directly create a procurement '
-             'on the source location (and thus ignore its current stock) to gather products. '
-             'If we want to chain moves and have this one to wait for the previous, '
-             'this second option should be chosen.'
     )
     # used to record the product cost set by the user during a picking confirmation (when costing
     # method used is 'average price' or 'real'). Value given in company currency and in product uom.
@@ -291,14 +299,13 @@ class StockMove(models.Model):
         string='Scrapped',
         readonly=True
     )
-    group_id = fields.Many2one(
-        comodel_name='procurement.group',
-        string='Procurement Group',
-        default=_default_group_id,
-        index=True,
-    )
     route_ids = fields.Many2many(
-        'stock.route', 'stock_route_move', 'move_id', 'route_id', 'Destination route', help='Preferred route')
+        'stock.route',
+        'stock_route_move',
+        'move_id', 'route_id',
+        string='Destination route',
+        help='Preferred route',
+    )
     rule_id = fields.Many2one(
         comodel_name='stock.rule',
         string='Stock Rule',
@@ -306,7 +313,10 @@ class StockMove(models.Model):
         ondelete='restrict',
         help='The stock rule that created this stock move',
     )
-    move_line_ids = fields.One2many('stock.move.line', 'move_id')
+    move_line_ids = fields.One2many(
+        'stock.move.line',
+        'move_id',
+    )
     move_lines_count = fields.Integer(compute='_compute_move_lines_count')
     returned_move_ids = fields.One2many(
         'stock.move',
@@ -315,12 +325,18 @@ class StockMove(models.Model):
         help='Optional: all returned moves created from this move',
     )
     move_dest_ids = fields.Many2many(
-        'stock.move', 'stock_move_move_rel', 'move_orig_id', 'move_dest_id', 'Destination Moves',
+        'stock.move',
+        'stock_move_move_rel',
+        'move_orig_id', 'move_dest_id',
+        string='Destination Moves',
         copy=False,
         help='Optional: next stock move when chaining them'
     )
     move_orig_ids = fields.Many2many(
-        'stock.move', 'stock_move_move_rel', 'move_dest_id', 'move_orig_id', 'Original Move',
+        'stock.move',
+        'stock_move_move_rel',
+        'move_dest_id', 'move_orig_id',
+        string='Original Move',
         copy=False,
         help='Optional: previous stock move when chaining them'
     )

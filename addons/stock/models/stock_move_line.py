@@ -37,6 +37,11 @@ class StockMoveLine(models.Model):
         compute='_compute_picking_type_id',
         search='_search_picking_type_id',
     )
+    picking_code = fields.Selection(related='picking_type_id.code', readonly=True)
+    picking_type_use_create_lots = fields.Boolean(related='picking_type_id.use_create_lots', readonly=True)
+    picking_type_use_existing_lots = fields.Boolean(related='picking_type_id.use_existing_lots', readonly=True)
+    picking_type_entire_packs = fields.Boolean(related='picking_id.picking_type_id.show_entire_packs', readonly=True)
+    picking_partner_id = fields.Many2one(related='picking_id.partner_id', readonly=True)
     picking_location_id = fields.Many2one(related='picking_id.location_id')
     picking_location_dest_id = fields.Many2one(related='picking_id.location_dest_id')
     move_id = fields.Many2one(
@@ -45,7 +50,26 @@ class StockMoveLine(models.Model):
         check_company=True,
         index=True,
     )
+    date = fields.Datetime(
+        string='Date',
+        required=True,
+        default=fields.Datetime.now,
+        help='Creation date of this move line until updated due to: quantity being increased, '
+             '\'picked\' status has updated, or move line is done.'
+    )
     scheduled_date = fields.Datetime(related='move_id.date', string='Scheduled Date')
+    state = fields.Selection(related='move_id.state', store=True, related_sudo=False)
+    reference = fields.Char(related='move_id.reference', store=True, related_sudo=False, readonly=False)
+    origin = fields.Char(related='move_id.origin', string='Source')
+    is_inventory = fields.Boolean(related='move_id.is_inventory')
+    is_locked = fields.Boolean(related='move_id.is_locked', readonly=True)
+    owner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='From Owner',
+        check_company=True,
+        index='btree_not_null',
+        help='When validating the transfer, the products will be taken from this owner.',
+    )
     location_id = fields.Many2one(
         comodel_name='stock.location',
         string='From',
@@ -55,7 +79,9 @@ class StockMoveLine(models.Model):
         check_company=True,
         domain=[('usage', '!=', 'view')],
     )
-    location_usage = fields.Selection(related='location_id.usage', string='Source Location Type')
+    location_usage = fields.Selection(
+        related='location_id.usage', string='Source Location Type',
+    )
     location_dest_id = fields.Many2one(
         comodel_name='stock.location',
         string='To',
@@ -65,7 +91,9 @@ class StockMoveLine(models.Model):
         check_company=True,
         domain=[('usage', '!=', 'view')],
     )
-    location_dest_usage = fields.Selection(related='location_dest_id.usage', string='Destination Location Type')
+    location_dest_usage = fields.Selection(
+        related='location_dest_id.usage', string='Destination Location Type',
+    )
     product_id = fields.Many2one(
         comodel_name='product.product',
         string='Product',
@@ -74,8 +102,13 @@ class StockMoveLine(models.Model):
         ondelete='cascade',
         index=True,
     )
-    product_uom_category_id = fields.Many2one(related='product_id.uom_id.category_id')
-    product_category_name = fields.Char(related='product_id.categ_id.complete_name', string='Product Category')
+    tracking = fields.Selection(related='product_id.tracking', readonly=True)
+    product_uom_category_id = fields.Many2one(
+        related='product_id.uom_id.category_id',
+    )
+    product_category_name = fields.Char(
+        related='product_id.categ_id.complete_name', string='Product Category',
+    )
     product_uom_id = fields.Many2one(
         comodel_name='uom.uom',
         string='Unit of Measure',
@@ -135,36 +168,16 @@ class StockMoveLine(models.Model):
         domain=[('product_id', '=', product_id)],
     )
     lot_name = fields.Char('Lot/Serial Number Name')
-    date = fields.Datetime(
-        string='Date',
-        required=True,
-        default=fields.Datetime.now,
-        help='Creation date of this move line until updated due to: quantity being increased, '
-             '\'picked\' status has updated, or move line is done.'
-    )
-    owner_id = fields.Many2one(
-        comodel_name='res.partner',
-        string='From Owner',
-        check_company=True,
-        index='btree_not_null',
-        help='When validating the transfer, the products will be taken from this owner.',
-    )
+    lots_visible = fields.Boolean(compute='_compute_lots_visible')
     consume_line_ids = fields.Many2many('stock.move.line', 'stock_move_line_consume_rel', 'consume_line_id', 'produce_line_id')
     produce_line_ids = fields.Many2many('stock.move.line', 'stock_move_line_consume_rel', 'produce_line_id', 'consume_line_id')
     quant_id = fields.Many2one('stock.quant', 'Pick From', store=False)  # Dummy field for the detailed operation view
-    picking_code = fields.Selection(related='picking_type_id.code', readonly=True)
-    picking_type_use_create_lots = fields.Boolean(related='picking_type_id.use_create_lots', readonly=True)
-    picking_type_use_existing_lots = fields.Boolean(related='picking_type_id.use_existing_lots', readonly=True)
-    lots_visible = fields.Boolean(compute='_compute_lots_visible')
-    picking_partner_id = fields.Many2one(related='picking_id.partner_id', readonly=True)
-    picking_type_entire_packs = fields.Boolean(related='picking_id.picking_type_id.show_entire_packs', readonly=True)
-    state = fields.Selection(related='move_id.state', store=True, related_sudo=False)
-    is_inventory = fields.Boolean(related='move_id.is_inventory')
-    is_locked = fields.Boolean(related='move_id.is_locked', readonly=True)
-    reference = fields.Char(related='move_id.reference', store=True, related_sudo=False, readonly=False)
-    origin = fields.Char(related='move_id.origin', string='Source')
-    tracking = fields.Selection(related='product_id.tracking', readonly=True)
-    picked = fields.Boolean('Picked', compute='_compute_picked', store=True, readonly=False, copy=False)
+    picked = fields.Boolean(
+        string='Picked',
+        compute='_compute_picked', store=True,
+        readonly=False,
+        copy=False,
+    )
     description_picking = fields.Text(string='Description picking')
 
 
