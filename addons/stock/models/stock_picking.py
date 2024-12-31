@@ -1208,6 +1208,40 @@ class Picking(models.Model):
         self.move_ids._do_unreserve()
         self.package_level_ids.filtered(lambda p: not p.move_ids).unlink()
 
+    def _create_backorder(self, backorder_moves=None):
+        '''
+        This method is called when the user chose to create a backorder. It will create a new
+        picking, the backorder, and move the stock.moves that are not `done` or `cancel` into it.
+        '''
+        backorders = self.env['stock.picking']
+        bo_to_assign = self.env['stock.picking']
+        for picking in self:
+            if backorder_moves:
+                moves_to_backorder = backorder_moves.filtered(lambda m: m.picking_id == picking)
+            else:
+                moves_to_backorder = picking.move_ids.filtered(lambda x: x.state not in ('done', 'cancel'))
+            moves_to_backorder._recompute_state()
+            if moves_to_backorder:
+                backorder_picking = picking.copy({
+                    'name': '/',
+                    'move_ids': [],
+                    'move_line_ids': [],
+                    'backorder_id': picking.id
+                })
+                moves_to_backorder.write({'picking_id': backorder_picking.id, 'picked': False})
+                moves_to_backorder.move_line_ids.package_level_id.write({'picking_id': backorder_picking.id})
+                moves_to_backorder.mapped('move_line_ids').write({'picking_id': backorder_picking.id})
+                backorders |= backorder_picking
+                backorder_picking.user_id = False
+                picking.message_post(
+                    body=_('The backorder %s has been created.', backorder_picking._get_html_link())
+                )
+                if backorder_picking.picking_type_id.reservation_method == 'at_confirm':
+                    bo_to_assign |= backorder_picking
+        if bo_to_assign:
+            bo_to_assign.action_assign()
+        return backorders
+
     def action_split_transfer(self):
         if all(
             float_is_zero(m.quantity, precision_rounding=m.product_uom.rounding)
@@ -1248,7 +1282,6 @@ class Picking(models.Model):
         backorder_moves = moves._create_backorder()
         backorder_moves += self.move_ids.filtered(lambda m: m.quantity == 0)
         self._create_backorder(backorder_moves=backorder_moves)
-
 
     def _should_show_transfers(self):
         '''Whether the different transfers should be displayed on the pre action done wizards.'''
@@ -1315,40 +1348,6 @@ class Picking(models.Model):
                 picking.action_confirm()
         to_confirm = self.move_ids.filtered(lambda m: m.state == 'draft' and m.quantity)
         to_confirm._action_confirm()
-
-    def _create_backorder(self, backorder_moves=None):
-        '''
-        This method is called when the user chose to create a backorder. It will create a new
-        picking, the backorder, and move the stock.moves that are not `done` or `cancel` into it.
-        '''
-        backorders = self.env['stock.picking']
-        bo_to_assign = self.env['stock.picking']
-        for picking in self:
-            if backorder_moves:
-                moves_to_backorder = backorder_moves.filtered(lambda m: m.picking_id == picking)
-            else:
-                moves_to_backorder = picking.move_ids.filtered(lambda x: x.state not in ('done', 'cancel'))
-            moves_to_backorder._recompute_state()
-            if moves_to_backorder:
-                backorder_picking = picking.copy({
-                    'name': '/',
-                    'move_ids': [],
-                    'move_line_ids': [],
-                    'backorder_id': picking.id
-                })
-                moves_to_backorder.write({'picking_id': backorder_picking.id, 'picked': False})
-                moves_to_backorder.move_line_ids.package_level_id.write({'picking_id': backorder_picking.id})
-                moves_to_backorder.mapped('move_line_ids').write({'picking_id': backorder_picking.id})
-                backorders |= backorder_picking
-                backorder_picking.user_id = False
-                picking.message_post(
-                    body=_('The backorder %s has been created.', backorder_picking._get_html_link())
-                )
-                if backorder_picking.picking_type_id.reservation_method == 'at_confirm':
-                    bo_to_assign |= backorder_picking
-        if bo_to_assign:
-            bo_to_assign.action_assign()
-        return backorders
 
     def _log_activity_get_documents(self, orig_obj_changes, stream_field, stream, groupby_method=False):
         '''
