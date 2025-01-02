@@ -51,13 +51,21 @@ class Location(models.Model):
         required=True,
         default='internal',
         index=True,
-        help='* Vendor Location: Virtual location representing the source location for products coming from your vendors'
-             '\n* View: Virtual location used to create a hierarchical structures for your warehouse, aggregating its child locations ; cannot directly contain products'
-             '\n* Internal Location: Physical locations inside your own warehouses,'
-             '\n* Customer Location: Virtual location representing the destination location for products sent to your customers'
-             '\n* Inventory Loss: Virtual location serving as counterpart for inventory operations used to correct stock levels (Physical inventories)'
-             '\n* Production: Virtual counterpart location for production operations: this location consumes the components and produces finished products'
-             '\n* Transit Location: Counterpart location that should be used in inter-company or inter-warehouses operations',
+        help='''
+        * Vendor Location: Virtual location representing the 
+        source location for products coming from your vendors\n
+        * Customer Location: Virtual location representing the 
+        destination location for products sent to your customers\n
+        * View: Virtual location used to create a hierarchical structures for your warehouse, 
+        aggregating its child locations; cannot directly contain products\n
+        * Inventory Loss: Virtual location serving as counterpart for inventory operations 
+        used to correct stock levels (Physical inventories)\n
+        * Production: Virtual counterpart location for production operations: 
+        this location consumes the components and produces finished products\n
+        * Transit Location: Counterpart location that should be used in inter-company 
+        or inter-warehouses operations\n
+        * Internal Location: Physical locations inside your own warehouses\n
+        ''',
     )
     location_id = fields.Many2one(
         comodel_name='stock.location',
@@ -66,17 +74,6 @@ class Location(models.Model):
         index=True,
         help='The parent location that includes this location. '
              'Example : The \'Dispatch Zone\' is the \'Gate 1\' parent location.',
-    )
-    name = fields.Char('Location Name', required=True)
-    complete_name = fields.Char(
-        string='Full Location Name',
-        compute='_compute_complete_name', store=True,
-        recursive=True,
-    )
-    active = fields.Boolean(
-        string='Active',
-        default=True,
-        help='By unchecking the active field, you may hide a location without deleting it.'
     )
     removal_strategy_id = fields.Many2one(
         comodel_name='product.removal',
@@ -91,6 +88,11 @@ class Location(models.Model):
              'FEFO: products/lots with the closest removal date will be moved out first '
              '(the availability of this method depends on the \'Expiration Dates\' setting).',
     )
+    storage_category_id = fields.Many2one(
+        comodel_name='stock.storage.category',
+        string='Storage Category',
+        check_company=True,
+    )
     warehouse_view_ids = fields.One2many(
         comodel_name='stock.warehouse',
         inverse_name='view_location_id',
@@ -100,12 +102,18 @@ class Location(models.Model):
         comodel_name='stock.warehouse',
         compute='_compute_warehouse_id', store=True,
     )
-    storage_category_id = fields.Many2one(
-        comodel_name='stock.storage.category',
-        string='Storage Category',
-        check_company=True,
+    name = fields.Char('Location Name', required=True)
+    complete_name = fields.Char(
+        string='Full Location Name',
+        compute='_compute_complete_name', store=True,
+        recursive=True,
     )
     parent_path = fields.Char(index=True)
+    active = fields.Boolean(
+        string='Active',
+        default=True,
+        help='By unchecking the active field, you may hide a location without deleting it.'
+    )
     barcode = fields.Char('Barcode', copy=False)
     posx = fields.Integer(
         string='Corridor (X)',
@@ -291,7 +299,12 @@ class Location(models.Model):
             if not values['active']:
                 for location in self:
                     warehouses = self.env['stock.warehouse'].search(
-                        [('active', '=', True), '|', ('lot_stock_id', '=', location.id), ('view_location_id', '=', location.id)],
+                        [
+                            ('active', '=', True),
+                            '|',
+                            ('lot_stock_id', '=', location.id),
+                            ('view_location_id', '=', location.id)
+                        ],
                         limit=1
                     )
                     if warehouses:
@@ -303,10 +316,18 @@ class Location(models.Model):
                         ))
 
             if not self.env.context.get('do_not_check_quant'):
-                children_location = self.env['stock.location'].with_context(active_test=False).search([('id', 'child_of', self.ids)])
+                children_location = self.env['stock.location'].with_context(
+                    active_test=False
+                ).search([('id', 'child_of', self.ids)])
                 internal_children_locations = children_location.filtered(lambda l: l.usage == 'internal')
                 children_quants = self.env['stock.quant'].search(
-                    ['&', '|', ('quantity', '!=', 0), ('reserved_quantity', '!=', 0), ('location_id', 'in', internal_children_locations.ids)]
+                    [
+                        '&',
+                        '|',
+                        ('quantity', '!=', 0),
+                        ('reserved_quantity', '!=', 0),
+                        ('location_id', 'in', internal_children_locations.ids)
+                    ]
                 )
                 if children_quants and not values['active']:
                     raise UserError(_(
@@ -315,9 +336,9 @@ class Location(models.Model):
                     ))
 
                 else:
-                    super(Location, children_location - self).with_context(do_not_check_quant=True).write({
-                        'active': values['active'],
-                    })
+                    super(Location, children_location - self).with_context(
+                        do_not_check_quant=True
+                    ).write({'active': values['active']})
         res = super().write(values)
         self.invalidate_model(['warehouse_id'])
         return res
@@ -365,7 +386,7 @@ class Location(models.Model):
             else:
                 location.complete_name = location.name
 
-    @api.depends('cyclic_inventory_frequency', 'last_inventory_date', 'usage', 'company_id')
+    @api.depends('company_id', 'usage', 'cyclic_inventory_frequency', 'last_inventory_date')
     def _compute_next_inventory_date(self):
         for location in self:
             if (
@@ -392,7 +413,7 @@ class Location(models.Model):
             else:
                 location.next_inventory_date = False
 
-    @api.depends('warehouse_view_ids', 'location_id')
+    @api.depends('location_id', 'warehouse_view_ids')
     def _compute_warehouse_id(self):
         warehouses = self.env['stock.warehouse'].search(
             [('view_location_id', 'parent_of', self.ids)]
@@ -424,6 +445,22 @@ class Location(models.Model):
             if loc.usage != 'internal':
                 loc.replenish_location = False
 
+    @api.depends(
+        'outgoing_move_line_ids.quantity_product_uom',
+        'incoming_move_line_ids.quantity_product_uom',
+        'outgoing_move_line_ids.state',
+        'incoming_move_line_ids.state',
+        'outgoing_move_line_ids.product_id.weight',
+        'incoming_move_line_ids.product_id.weight',
+        'quant_ids.quantity',
+        'quant_ids.product_id.weight'
+    )
+    def _compute_weight(self):
+        weight_by_location = self._get_weight()
+        for location in self:
+            location.net_weight = weight_by_location[location]['net_weight']
+            location.forecast_weight = weight_by_location[location]['forecast_weight']
+
     def _compute_is_empty(self):
         groups = self.env['stock.quant']._read_group(
             [
@@ -436,22 +473,6 @@ class Location(models.Model):
         groups = dict(groups)
         for location in self:
             location.is_empty = groups.get(location, 0) <= 0
-
-    @api.depends(
-        'outgoing_move_line_ids.quantity_product_uom',
-        'incoming_move_line_ids.quantity_product_uom',
-        'outgoing_move_line_ids.state',
-        'incoming_move_line_ids.state',
-        'outgoing_move_line_ids.product_id.weight',
-        'outgoing_move_line_ids.product_id.weight',
-        'quant_ids.quantity',
-        'quant_ids.product_id.weight'
-    )
-    def _compute_weight(self):
-        weight_by_location = self._get_weight()
-        for location in self:
-            location.net_weight = weight_by_location[location]['net_weight']
-            location.forecast_weight = weight_by_location[location]['forecast_weight']
 
     @api.onchange('usage')
     def _onchange_usage(self):
@@ -476,9 +497,6 @@ class Location(models.Model):
             return [('id', 'not in', list(location_ids))]
 
         return [('id', 'in', list(location_ids))]
-
-    def _check_access_putaway(self):
-        return self
 
     def _get_putaway_strategy(
         self, product, quantity=0, package=None, packaging=None, additional_qty=None
@@ -627,9 +645,82 @@ class Location(models.Model):
                 )
         return next_inventory_date
 
+    def _get_weight(self, excluded_sml_ids=False):
+        '''
+        Returns a dictionary with the net and forecasted weight of the location.
+        param excluded_sml_ids: set of stock.move.line ids to exclude from the computation
+        '''
+        result = defaultdict(lambda: defaultdict(float))
+        if not excluded_sml_ids:
+            excluded_sml_ids = set()
+        Product = self.env['product.product']
+        StockMoveLine = self.env['stock.move.line']
+        quants = self.env['stock.quant'].read_group(
+            [('location_id', 'in', self.ids)],
+            ['quantity'],
+            ['location_id', 'product_id'],
+            lazy=False,
+        )
+        base_domain = [
+            ('state', 'not in', ['draft', 'done', 'cancel']),
+            ('id', 'not in', tuple(excluded_sml_ids))
+        ]
+        outgoing_move_lines = StockMoveLine.read_group(
+            expression.AND(
+                [[('location_id', 'in', self.ids)], base_domain]
+            ),
+            ['quantity_product_uom'],
+            ['location_id', 'product_id'],
+            lazy=False
+        )
+        incoming_move_lines = StockMoveLine.read_group(
+            expression.AND(
+                [[('location_dest_id', 'in', self.ids)], base_domain]
+            ),
+            ['quantity_product_uom'],
+            ['location_dest_id', 'product_id'],
+            lazy=False
+        )
+        product_ids = {
+            record['product_id'][0]
+            for record in quants + outgoing_move_lines + incoming_move_lines
+        }
+        weight_per_product = {
+            weight['id']: weight['weight']
+            for weight in Product.browse(product_ids).read(['weight'])
+        }
+        for quant in quants:
+            weight = quant['quantity'] * weight_per_product[quant['product_id'][0]]
+            result[self.browse(quant['location_id'][0])]['net_weight'] += weight
+            result[self.browse(quant['location_id'][0])]['forecast_weight'] += weight
+        for line in outgoing_move_lines:
+            result[self.browse(line['location_id'][0])]['forecast_weight'] -= (
+                line['quantity_product_uom'] * weight_per_product[line['product_id'][0]]
+            )
+        for line in incoming_move_lines:
+            result[self.browse(line['location_dest_id'][0])]['forecast_weight'] += (
+                line['quantity_product_uom'] * weight_per_product[line['product_id'][0]]
+            )
+        return result
+
     def should_bypass_reservation(self):
         self.ensure_one()
         return self.usage in ('supplier', 'customer', 'inventory', 'production') or self.scrap_location
+
+    def _is_outgoing(self):
+        self.ensure_one()
+        if self.usage == 'customer':
+            return True
+
+        # Can also be True if location is inter-company transit
+        inter_comp_location = self.env.ref(
+            'stock.stock_location_inter_company',
+            raise_if_not_found=False
+        )
+        return self._child_of(inter_comp_location)
+
+    def _check_access_putaway(self):
+        return self
 
     def _check_can_be_used(self, product, quantity=0, package=None, location_qty=0):
         '''
@@ -707,70 +798,3 @@ class Location(models.Model):
     def _child_of(self, other_location):
         self.ensure_one()
         return self.parent_path.startswith(other_location.parent_path)
-
-    def _is_outgoing(self):
-        self.ensure_one()
-        if self.usage == 'customer':
-            return True
-
-        # Can also be True if location is inter-company transit
-        inter_comp_location = self.env.ref('stock.stock_location_inter_company', raise_if_not_found=False)
-        return self._child_of(inter_comp_location)
-
-    def _get_weight(self, excluded_sml_ids=False):
-        '''
-        Returns a dictionary with the net and forecasted weight of the location.
-        param excluded_sml_ids: set of stock.move.line ids to exclude from the computation
-        '''
-        result = defaultdict(lambda: defaultdict(float))
-        if not excluded_sml_ids:
-            excluded_sml_ids = set()
-        Product = self.env['product.product']
-        StockMoveLine = self.env['stock.move.line']
-        quants = self.env['stock.quant'].read_group(
-            [('location_id', 'in', self.ids)],
-            ['quantity'],
-            ['location_id', 'product_id'],
-            lazy=False,
-        )
-        base_domain = [
-            ('state', 'not in', ['draft', 'done', 'cancel']),
-            ('id', 'not in', tuple(excluded_sml_ids))
-        ]
-        outgoing_move_lines = StockMoveLine.read_group(
-            expression.AND(
-                [[('location_id', 'in', self.ids)], base_domain]
-            ),
-            ['quantity_product_uom'],
-            ['location_id', 'product_id'],
-            lazy=False
-        )
-        incoming_move_lines = StockMoveLine.read_group(
-            expression.AND(
-                [[('location_dest_id', 'in', self.ids)], base_domain]
-            ),
-            ['quantity_product_uom'],
-            ['location_dest_id', 'product_id'],
-            lazy=False
-        )
-        product_ids = {
-            record['product_id'][0]
-            for record in quants + outgoing_move_lines + incoming_move_lines
-        }
-        weight_per_product = {
-            weight['id']: weight['weight']
-            for weight in Product.browse(product_ids).read(['weight'])
-        }
-        for quant in quants:
-            weight = quant['quantity'] * weight_per_product[quant['product_id'][0]]
-            result[self.browse(quant['location_id'][0])]['net_weight'] += weight
-            result[self.browse(quant['location_id'][0])]['forecast_weight'] += weight
-        for line in outgoing_move_lines:
-            result[self.browse(line['location_id'][0])]['forecast_weight'] -= (
-                line['quantity_product_uom'] * weight_per_product[line['product_id'][0]]
-            )
-        for line in incoming_move_lines:
-            result[self.browse(line['location_dest_id'][0])]['forecast_weight'] += (
-                line['quantity_product_uom'] * weight_per_product[line['product_id'][0]]
-            )
-        return result

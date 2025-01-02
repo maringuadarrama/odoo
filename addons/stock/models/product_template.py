@@ -97,10 +97,12 @@ class ProductTemplate(models.Model):
         help='Depending on the modules installed, this will allow you to define the route of '
              'the product: whether it will be bought, manufactured, replenished on order, etc.',
     )
-    has_available_route_ids = fields.Boolean(
-        string='Routes can be selected on this product',
-        default=lambda self: self.env['stock.route'].search_count([('product_selectable', '=', True)]),
-        compute='_compute_has_available_route_ids',
+    description_picking = fields.Text('Description on Picking', translate=True)
+    description_pickingout = fields.Text('Description on Delivery Orders', translate=True)
+    description_pickingin = fields.Text('Description on Receptions', translate=True)
+    # TDE FIXME: seems only visible in a view - remove me ?
+    route_from_categ_ids = fields.Many2many(
+        related='categ_id.total_route_ids', related_sudo=False, string='Category Routes'
     )
     is_storable = fields.Boolean(
         string='Track Inventory',
@@ -108,6 +110,11 @@ class ProductTemplate(models.Model):
         compute='compute_is_storable', store=True, precompute=True,
         readonly=False,
         help='A storable product is a product for which you manage stock.',
+    )
+    has_available_route_ids = fields.Boolean(
+        string='Routes can be selected on this product',
+        default=lambda self: self.env['stock.route'].search_count([('product_selectable', '=', True)]),
+        compute='_compute_has_available_route_ids',
     )
     show_on_hand_qty_status_button = fields.Boolean(compute='_compute_show_qty_status_button')
     show_forecasted_qty_status_button = fields.Boolean(compute='_compute_show_qty_status_button')
@@ -139,13 +146,6 @@ class ProductTemplate(models.Model):
         compute='_compute_nbr_moves',
         compute_sudo=False,
         help='Number of outgoing stock moves in the past 12 months',
-    )
-    description_picking = fields.Text('Description on Picking', translate=True)
-    description_pickingout = fields.Text('Description on Delivery Orders', translate=True)
-    description_pickingin = fields.Text('Description on Receptions', translate=True)
-    # TDE FIXME: seems only visible in a view - remove me ?
-    route_from_categ_ids = fields.Many2many(
-        related='categ_id.total_route_ids', related_sudo=False, string='Category Routes'
     )
 
 
@@ -188,7 +188,13 @@ class ProductTemplate(models.Model):
             new_uom = self.env['uom.uom'].browse(vals['uom_id'])
             updated = self.filtered(lambda template: template.uom_id != new_uom)
             done_moves = self.env['stock.move'].sudo().search(
-                [('product_id', 'in', updated.with_context(active_test=False).mapped('product_variant_ids').ids)],
+                [
+                    (
+                        'product_id',
+                        'in',
+                        updated.with_context(active_test=False).mapped('product_variant_ids').ids
+                    )
+                ],
                 limit=1
             )
             if done_moves:
@@ -259,7 +265,11 @@ class ProductTemplate(models.Model):
         storage_category_capacity_vals = []
         for storage_category_capacity in self.product_variant_ids.storage_category_capacity_ids:
             product_attribute_value = storage_category_capacity.product_id.product_template_attribute_value_ids.product_attribute_value_id
-            storage_category_capacity_vals.append(storage_category_capacity.copy_data({'product_id': new_product_dict[product_attribute_value]})[0])
+            storage_category_capacity_vals.append(
+                storage_category_capacity.copy_data(
+                    {'product_id': new_product_dict[product_attribute_value]}
+                )[0]
+            )
         self.env['stock.storage.category.capacity'].create(storage_category_capacity_vals)
         return new_products
 
@@ -325,18 +335,26 @@ class ProductTemplate(models.Model):
 
     def _compute_nbr_moves(self):
         res = defaultdict(lambda: {'moves_in': 0, 'moves_out': 0})
-        incoming_moves = self.env['stock.move.line']._read_group([
+        incoming_moves = self.env['stock.move.line']._read_group(
+            [
                 ('product_id.product_tmpl_id', 'in', self.ids),
                 ('state', '=', 'done'),
                 ('picking_code', '=', 'incoming'),
                 ('date', '>=', fields.Datetime.now() - relativedelta(years=1))
-            ], ['product_id'], ['__count'])
-        outgoing_moves = self.env['stock.move.line']._read_group([
+            ],
+            ['product_id'],
+            ['__count']
+        )
+        outgoing_moves = self.env['stock.move.line']._read_group(
+            [
                 ('product_id.product_tmpl_id', 'in', self.ids),
                 ('state', '=', 'done'),
                 ('picking_code', '=', 'outgoing'),
                 ('date', '>=', fields.Datetime.now() - relativedelta(years=1))
-            ], ['product_id'], ['__count'])
+            ],
+            ['product_id'],
+            ['__count']
+        )
         for product, count in incoming_moves:
             product_tmpl_id = product.product_tmpl_id.id
             res[product_tmpl_id]['moves_in'] += count
@@ -431,7 +449,10 @@ class ProductTemplate(models.Model):
             return self.action_open_quants()
 
         else:
-            default_product_id = self.env.context.get('default_product_id', len(self.product_variant_ids) == 1 and self.product_variant_id.id)
+            default_product_id = self.env.context.get(
+                'default_product_id',
+                len(self.product_variant_ids) == 1 and self.product_variant_id.id
+            )
             action = self.env['ir.actions.actions']._for_xml_id('stock.action_change_product_quantity')
             action['context'] = dict(
                 self.env.context,
@@ -454,8 +475,8 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         domain = [
             '|',
-                ('product_id.product_tmpl_id', '=', self.id),
-                ('category_id', '=', self.categ_id.id),
+            ('product_id.product_tmpl_id', '=', self.id),
+            ('category_id', '=', self.categ_id.id),
         ]
         return self._get_action_view_related_putaway_rules(domain)
 
@@ -477,8 +498,9 @@ class ProductTemplate(models.Model):
         action = self.env['ir.actions.actions']._for_xml_id('stock.action_product_production_lot_form')
         action['domain'] = [
             ('product_id.product_tmpl_id', '=', self.id),
-            '|', ('location_id', '=', False),
-                 ('location_id', 'any', self.env['stock.location']._check_company_domain(self._context['allowed_company_ids']))
+            '|',
+            ('location_id', '=', False),
+            ('location_id', 'any', self.env['stock.location']._check_company_domain(self._context['allowed_company_ids']))
         ]
         action['context'] = {
             'default_product_tmpl_id': self.id,
@@ -508,11 +530,15 @@ class ProductTemplate(models.Model):
                 config=False
             )
 
-        action = self.env['ir.actions.actions']._for_xml_id('stock.action_stock_rules_report')
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'stock.action_stock_rules_report'
+        )
         action['context'] = self.env.context
         return action
 
     def action_product_tmpl_forecast_report(self):
         self.ensure_one()
-        action = self.env['ir.actions.actions']._for_xml_id('stock.stock_forecasted_product_template_action')
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'stock.stock_forecasted_product_template_action'
+        )
         return action

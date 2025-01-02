@@ -37,24 +37,15 @@ class StockLot(models.Model):
         return partner_locations + locations.warehouse_id.search([]).lot_stock_id
 
 
-    name = fields.Char(
-        string='Lot/Serial Number',
-        required=True,
-        default=lambda self: self.env['ir.sequence'].next_by_code('stock.lot.serial'),
-        index='trigram',
-        help='Unique Lot/Serial Number',
-    )
-    ref = fields.Char(
-        string='Internal Reference',
-        help='Internal reference number in case it differs from the manufacturer\'s lot/serial number',
-    )
     product_id = fields.Many2one(
         comodel_name='product.product',
         string='Product',
         required=True,
         check_company=True,
-        domain=("[('tracking', '!=', 'none'), ('is_storable', '=', True)] + "
-                "([('product_tmpl_id', '=', context['default_product_tmpl_id'])] if context.get('default_product_tmpl_id') else [])"),
+        domain=('''
+            [('tracking', '!=', 'none'), ('is_storable', '=', True)] + 
+            ([('product_tmpl_id', '=', context['default_product_tmpl_id'])] if context.get('default_product_tmpl_id') else [])
+        '''),
         index=True,
     )
     product_uom_id = fields.Many2one(
@@ -67,6 +58,19 @@ class StockLot(models.Model):
         readonly=False,
         index=True,
     )
+    name = fields.Char(
+        string='Lot/Serial Number',
+        required=True,
+        default=lambda self: self.env['ir.sequence'].next_by_code('stock.lot.serial'),
+        index='trigram',
+        help='Unique Lot/Serial Number',
+    )
+    ref = fields.Char(
+        string='Internal Reference',
+        help='Internal reference number in case it differs from the '
+             'manufacturer\'s lot/serial number',
+    )
+    note = fields.Html(string='Description')
     quant_ids = fields.One2many(
         comodel_name='stock.quant',
         inverse_name='lot_id',
@@ -87,8 +91,9 @@ class StockLot(models.Model):
         domain=[('usage', '!=', 'view')],
         group_expand='_read_group_location_id'
     )
-    note = fields.Html(string='Description')
-    display_complete = fields.Boolean(compute='_compute_display_complete')
+    display_complete = fields.Boolean(
+        compute='_compute_display_complete'
+    )
     delivery_ids = fields.Many2many(
         comodel_name='stock.picking',
         string='Transfers',
@@ -107,7 +112,8 @@ class StockLot(models.Model):
         ]
         groupby = ['company_id', 'product_id', 'name']
         if any(not lot.company_id for lot in self):
-            # We need to check across other companies to not have duplicates between 'no-company' and a company.
+            # We need to check across other companies to not have duplicates
+            # between 'no-company' and a company.
             self = self.sudo()
         records = self._read_group(domain, groupby, ['__count'], order='company_id DESC')
         error_message_lines = set()
@@ -115,7 +121,8 @@ class StockLot(models.Model):
         for company, product, name, count in records:
             if not company:
                 cross_lots[(product, name)] = count
-            # For company-specific lots, we check that there is no duplicate with 'no-company' lots, but NOT between specific-company ones.
+            # For company-specific lots, we check that there is no duplicate 
+            # with 'no-company' lots, but NOT between specific-company ones.
             if (company and (cross_lots.get((product, name), 0) + count) > 1) or count > 1:
                 error_message_lines.add(_(
                     ' - Product: %(product)s, Lot/Serial Number: %(lot)s',
@@ -135,8 +142,9 @@ class StockLot(models.Model):
             picking_id = self.env['stock.picking'].browse(active_picking_id)
             if picking_id and not picking_id.picking_type_id.use_create_lots:
                 raise UserError(_(
-                    'You are not allowed to create a lot or serial number with this operation type. '
-                    'To change this, go on the operation type and tick the box \'Create New Lots/Serial Numbers\'.'
+                    'You are not allowed to create a lot or serial number with '
+                    'this operation type. To change this, go on the operation type '
+                    'and tick the box \'Create New Lots/Serial Numbers\'.'
                 ))
 
     @api.model_create_multi
@@ -208,117 +216,20 @@ class StockLot(models.Model):
             lot.product_qty = sum(quants.mapped('quantity'))
 
     def _compute_delivery_ids(self):
-        delivery_ids_by_lot = self._find_delivery_ids_by_lot()
+        delivery_ids_by_lot = self._get_delivery_ids_by_lot()
         for lot in self:
             lot.delivery_ids = delivery_ids_by_lot[lot.id]
             lot.delivery_count = len(lot.delivery_ids)
 
     def _compute_last_delivery_partner_id(self):
         serial_products = self.filtered(lambda l: l.product_id.tracking == 'serial')
-        delivery_ids_by_lot = serial_products._find_delivery_ids_by_lot()
+        delivery_ids_by_lot = serial_products._get_delivery_ids_by_lot()
         (self - serial_products).last_delivery_partner_id = False
         for lot in serial_products:
             if lot.product_id.tracking == 'serial' and len(delivery_ids_by_lot[lot.id]) > 0:
                 lot.last_delivery_partner_id = self.env['stock.picking'].browse(delivery_ids_by_lot[lot.id]).sorted(key='date_done', reverse=True)[0].partner_id
             else:
                 lot.last_delivery_partner_id = False
-
-    @api.model
-    def generate_lot_names(self, first_lot, count):
-        '''Generate `lot_names` from a string.'''
-        # We look if the first lot contains at least one digit.
-        caught_initial_number = regex_findall(r'\d+', first_lot)
-        if not caught_initial_number:
-            return self.generate_lot_names(first_lot + '0', count)
-
-        # We base the series on the last number found in the base lot.
-        initial_number = caught_initial_number[-1]
-        padding = len(initial_number)
-        # We split the lot name to get the prefix and suffix.
-        splitted = regex_split(initial_number, first_lot)
-        # initial_number could appear several times, e.g. BAV023B00001S00001
-        prefix = initial_number.join(splitted[:-1])
-        suffix = splitted[-1]
-        initial_number = int(initial_number)
-        return [{
-            'lot_name': '%s%s%s' % (prefix, str(initial_number + i).zfill(padding), suffix),
-        } for i in range(0, count)]
-
-    @api.model
-    def _get_next_serial(self, company, product):
-        '''Return the next serial number to be attributed to the product.'''
-        if product.tracking != 'none':
-            last_serial = self.env['stock.lot'].search(
-                ['|', ('company_id', '=', company.id), ('company_id', '=', False), ('product_id', '=', product.id)],
-                limit=1,
-                order='id DESC'
-            )
-            if last_serial:
-                return self.env['stock.lot'].generate_lot_names(last_serial.name, 2)[1]['lot_name']
-
-        return False
-
-    def _set_single_location(self):
-        quants = self.quant_ids.filtered(lambda q: q.quantity > 0)
-        if len(quants.location_id) == 1:
-            unpack = len(quants.package_id.quant_ids) > 1
-            quants.move_quants(location_dest_id=self.location_id, message=_('Lot/Serial Number Relocated'), unpack=unpack)
-        elif len(quants.location_id) > 1:
-            raise UserError(_(
-                'You can only move a lot/serial to a new location if it exists in a single location.'
-            ))
-
-    @api.model
-    def _get_outgoing_domain(self):
-        return [
-            '|',
-            ('picking_code', '=', 'outgoing'),
-            ('produce_line_ids', '!=', False),
-        ]
-
-    def _find_delivery_ids_by_lot(self, lot_path=None, delivery_by_lot=None):
-        if lot_path is None:
-            lot_path = set()
-        domain = [
-            ('lot_id', 'in', self.ids),
-            ('state', '=', 'done'),
-        ]
-        domain_restriction = self._get_outgoing_domain()
-        domain = expression.AND([domain, domain_restriction])
-        move_lines = self.env['stock.move.line'].search(domain)
-        moves_by_lot = {
-            lot_id: {'producing_lines': set(), 'barren_lines': set()}
-            for lot_id in move_lines.lot_id.ids
-        }
-        for line in move_lines:
-            if line.produce_line_ids:
-                moves_by_lot[line.lot_id.id]['producing_lines'].add(line.id)
-            else:
-                moves_by_lot[line.lot_id.id]['barren_lines'].add(line.id)
-        if delivery_by_lot is None:
-            delivery_by_lot = dict()
-        for lot in self:
-            delivery_ids = set()
-
-            if moves_by_lot.get(lot.id):
-                producing_move_lines = self.env['stock.move.line'].browse(moves_by_lot[lot.id]['producing_lines'])
-                barren_move_lines = self.env['stock.move.line'].browse(moves_by_lot[lot.id]['barren_lines'])
-
-                if producing_move_lines:
-                    lot_path.add(lot.id)
-                    next_lots = producing_move_lines.produce_line_ids.lot_id.filtered(lambda l: l.id not in lot_path)
-                    next_lots_ids = set(next_lots.ids)
-                    # If some producing lots are in lot_path, it means that they have been previously processed.
-                    # Their results are therefore already in delivery_by_lot and we add them to delivery_ids directly.
-                    delivery_ids.update(*(delivery_by_lot.get(lot_id, []) for lot_id in (producing_move_lines.produce_line_ids.lot_id - next_lots).ids))
-
-                    for lot_id, delivery_ids_set in next_lots._find_delivery_ids_by_lot(lot_path=lot_path, delivery_by_lot=delivery_by_lot).items():
-                        if lot_id in next_lots_ids:
-                            delivery_ids.update(delivery_ids_set)
-                delivery_ids.update(barren_move_lines.picking_id.ids)
-
-            delivery_by_lot[lot.id] = list(delivery_ids)
-        return delivery_by_lot
 
     def _search_product_qty(self, operator, value):
         if operator not in OPERATORS:
@@ -366,6 +277,105 @@ class StockLot(models.Model):
 
         return [('id', 'in', ids)]
 
+    @api.model
+    def _get_next_serial(self, company, product):
+        '''Return the next serial number to be attributed to the product.'''
+        if product.tracking != 'none':
+            last_serial = self.env['stock.lot'].search(
+                ['|', ('company_id', '=', company.id), ('company_id', '=', False), ('product_id', '=', product.id)],
+                limit=1,
+                order='id DESC'
+            )
+            if last_serial:
+                return self.env['stock.lot'].generate_lot_names(last_serial.name, 2)[1]['lot_name']
+
+        return False
+
+    @api.model
+    def _get_outgoing_domain(self):
+        return [
+            '|',
+            ('picking_code', '=', 'outgoing'),
+            ('produce_line_ids', '!=', False),
+        ]
+
+    def _get_delivery_ids_by_lot(self, lot_path=None, delivery_by_lot=None):
+        if lot_path is None:
+            lot_path = set()
+        domain = [
+            ('lot_id', 'in', self.ids),
+            ('state', '=', 'done'),
+        ]
+        domain_restriction = self._get_outgoing_domain()
+        domain = expression.AND([domain, domain_restriction])
+        move_lines = self.env['stock.move.line'].search(domain)
+        moves_by_lot = {
+            lot_id: {'producing_lines': set(), 'barren_lines': set()}
+            for lot_id in move_lines.lot_id.ids
+        }
+        for line in move_lines:
+            if line.produce_line_ids:
+                moves_by_lot[line.lot_id.id]['producing_lines'].add(line.id)
+            else:
+                moves_by_lot[line.lot_id.id]['barren_lines'].add(line.id)
+        if delivery_by_lot is None:
+            delivery_by_lot = dict()
+        for lot in self:
+            delivery_ids = set()
+            if moves_by_lot.get(lot.id):
+                producing_move_lines = self.env['stock.move.line'].browse(moves_by_lot[lot.id]['producing_lines'])
+                barren_move_lines = self.env['stock.move.line'].browse(moves_by_lot[lot.id]['barren_lines'])
+
+                if producing_move_lines:
+                    lot_path.add(lot.id)
+                    next_lots = producing_move_lines.produce_line_ids.lot_id.filtered(lambda l: l.id not in lot_path)
+                    next_lots_ids = set(next_lots.ids)
+                    # If some producing lots are in lot_path, it means that they have been previously processed.
+                    # Their results are therefore already in delivery_by_lot and we add them to delivery_ids directly.
+                    delivery_ids.update(*(delivery_by_lot.get(lot_id, []) for lot_id in (producing_move_lines.produce_line_ids.lot_id - next_lots).ids))
+
+                    for lot_id, delivery_ids_set in next_lots._get_delivery_ids_by_lot(lot_path=lot_path, delivery_by_lot=delivery_by_lot).items():
+                        if lot_id in next_lots_ids:
+                            delivery_ids.update(delivery_ids_set)
+                delivery_ids.update(barren_move_lines.picking_id.ids)
+            delivery_by_lot[lot.id] = list(delivery_ids)
+        return delivery_by_lot
+
+    @api.model
+    def generate_lot_names(self, first_lot, count):
+        '''Generate `lot_names` from a string.'''
+        # We look if the first lot contains at least one digit.
+        caught_initial_number = regex_findall(r'\d+', first_lot)
+        if not caught_initial_number:
+            return self.generate_lot_names(first_lot + '0', count)
+
+        # We base the series on the last number found in the base lot.
+        initial_number = caught_initial_number[-1]
+        padding = len(initial_number)
+        # We split the lot name to get the prefix and suffix.
+        splitted = regex_split(initial_number, first_lot)
+        # initial_number could appear several times, e.g. BAV023B00001S00001
+        prefix = initial_number.join(splitted[:-1])
+        suffix = splitted[-1]
+        initial_number = int(initial_number)
+        return [{
+            'lot_name': '%s%s%s' % (prefix, str(initial_number + i).zfill(padding), suffix),
+        } for i in range(0, count)]
+
+    def _set_single_location(self):
+        quants = self.quant_ids.filtered(lambda q: q.quantity > 0)
+        if len(quants.location_id) == 1:
+            unpack = len(quants.package_id.quant_ids) > 1
+            quants.move_quants(
+                location_dest_id=self.location_id,
+                message=_('Lot/Serial Number Relocated'),
+                unpack=unpack
+            )
+        elif len(quants.location_id) > 1:
+            raise UserError(_(
+                'You can only move a lot/serial to a new location if it exists in a single location.'
+            ))
+
     def action_lot_open_quants(self):
         self = self.with_context(search_default_lot_id=self.id, create=False)
         if self.env.user.has_group('stock.group_stock_manager'):
@@ -374,7 +384,6 @@ class StockLot(models.Model):
 
     def action_lot_open_transfers(self):
         self.ensure_one()
-
         action = {
             'res_model': 'stock.picking',
             'type': 'ir.actions.act_window'
