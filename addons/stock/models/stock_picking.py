@@ -155,10 +155,13 @@ class Picking(models.Model):
              'before being ready.\n'
              ' * Waiting: The transfer is waiting for the availability of some products.\n'
              '(a) The shipping policy is \'As soon as possible\': no product could be reserved.\n'
-             '(b) The shipping policy is \'When all products are ready\': not all the products could be reserved.\n'
+             '(b) The shipping policy is \'When all products are ready\': '
+             'not all the products could be reserved.\n'
              ' * Ready: The transfer is ready to be processed.\n'
-             '(a) The shipping policy is \'As soon as possible\': at least one product has been reserved.\n'
-             '(b) The shipping policy is \'When all products are ready\': all product have been reserved.\n'
+             '(a) The shipping policy is \'As soon as possible\': '
+             'at least one product has been reserved.\n'
+             '(b) The shipping policy is \'When all products are ready\': '
+             'all product have been reserved.\n'
              ' * Done: The transfer has been processed.\n'
              ' * Cancelled: The transfer has been cancelled.'
     )
@@ -245,7 +248,11 @@ class Picking(models.Model):
         'stock.move',
         'picking_id',
         string='Stock move',
-        domain=['|', ('package_level_id', '=', False), ('picking_type_entire_packs', '=', False)]
+        domain=[
+            '|',
+            ('package_level_id', '=', False),
+            ('picking_type_entire_packs', '=', False),
+        ]
     )
     move_line_ids = fields.One2many(
         'stock.move.line',

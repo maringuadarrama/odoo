@@ -30,7 +30,7 @@ class PackageType(models.Model):
 
 
     _sql_constraints = [
-        ('barcode_uniq', 'unique(barcode)', 'A barcode can only be assigned to one package type!'),
+        ('barcode_uniq', 'UNIQUE(barcode)', 'A barcode can only be assigned to one package type!'),
         ('positive_height', 'CHECK(height>=0.0)', 'Height must be positive'),
         ('positive_width', 'CHECK(width>=0.0)', 'Width must be positive'),
         ('positive_length', 'CHECK(packaging_length>=0.0)', 'Length must be positive'),
