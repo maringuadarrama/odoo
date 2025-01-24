@@ -10,9 +10,26 @@ from odoo.tools import str2bool
 class PaymentTransaction(models.Model):
     _inherit = 'payment.transaction'
 
-    sale_order_ids = fields.Many2many('sale.order', 'sale_order_transaction_rel', 'transaction_id', 'sale_order_id',
-                                      string='Sales Orders', copy=False, readonly=True)
-    sale_order_ids_nbr = fields.Integer(compute='_compute_sale_order_ids_nbr', string='# of Sales Orders')
+
+    sale_order_ids = fields.Many2many(
+        comodel_name='sale.order',
+        relation='sale_order_transaction_rel',
+        column1='transaction_id',
+        column2='sale_order_id',
+        string='Sales Orders',
+        readonly=True,
+        copy=False,
+    )
+    sale_order_ids_nbr = fields.Integer(
+        string='# of Sales Orders',
+        compute='_compute_sale_order_ids_nbr',
+    )
+
+
+    @api.depends('sale_order_ids')
+    def _compute_sale_order_ids_nbr(self):
+        for trans in self:
+            trans.sale_order_ids_nbr = len(trans.sale_order_ids)
 
     def _compute_sale_order_reference(self, order):
         self.ensure_one()
@@ -24,83 +41,17 @@ class PaymentTransaction(models.Model):
         else:
             # self.provider_id.so_reference_type is empty
             order_reference = False
-
-        invoice_journal = self.env['account.journal'].search([('type', '=', 'sale'), ('company_id', '=', self.env.company.id)], limit=1)
+        invoice_journal = self.env['account.journal'].search(
+            [('type', '=', 'sale'), ('company_id', '=', self.env.company.id)],
+            limit=1,
+        )
         if invoice_journal:
             order_reference = invoice_journal._process_reference_for_sale_order(order_reference)
-
         return order_reference
 
-    @api.depends('sale_order_ids')
-    def _compute_sale_order_ids_nbr(self):
-        for trans in self:
-            trans.sale_order_ids_nbr = len(trans.sale_order_ids)
-
-    def _post_process(self):
-        """ Override of `payment` to add Sales-specific logic to the post-processing.
-
-        In particular, for pending transactions, we send the quotation by email; for authorized
-        transactions, we confirm the quotation; for confirmed transactions, we automatically confirm
-        the quotation and generate invoices.
-        """
-        for pending_tx in self.filtered(lambda tx: tx.state == 'pending'):
-            super(PaymentTransaction, pending_tx)._post_process()
-            sales_orders = pending_tx.sale_order_ids.filtered(
-                lambda so: so.state in ['draft', 'sent']
-            )
-            sales_orders.filtered(
-                lambda so: so.state == 'draft'
-            ).with_context(tracking_disable=True).action_quotation_sent()
-
-            if pending_tx.provider_id.code == 'custom':
-                for order in pending_tx.sale_order_ids:
-                    order.reference = pending_tx._compute_sale_order_reference(order)
-
-            if pending_tx.operation == 'validation':
-                continue
-            # Send the payment status email.
-            # The transactions are manually cached while in a sudoed environment to prevent an
-            # AccessError: In some circumstances, sending the mail would generate the report assets
-            # during the rendering of the mail body, causing a cursor commit, a flush, and forcing
-            # the re-computation of the pending computed fields of the `mail.compose.message`,
-            # including part of the template. Since that template reads the order's transactions and
-            # the re-computation of the field is not done with the same environment, reading fields
-            # that were not already available in the cache could trigger an AccessError (e.g., if
-            # the payment was initiated by a public user).
-            sales_orders.mapped('transaction_ids')
-            sales_orders._send_payment_succeeded_for_order_mail()
-
-        for authorized_tx in self.filtered(lambda tx: tx.state == 'authorized'):
-            super(PaymentTransaction, authorized_tx)._post_process()
-            confirmed_orders = authorized_tx._check_amount_and_confirm_order()
-            if authorized_tx.operation == 'validation':
-                continue
-            if remaining_orders := (authorized_tx.sale_order_ids - confirmed_orders):
-                remaining_orders._send_payment_succeeded_for_order_mail()
-
-        super(PaymentTransaction, self.filtered(
-            lambda tx: tx.state not in ['pending', 'authorized', 'done'])
-        )._post_process()
-
-        for done_tx in self.filtered(lambda tx: tx.state == 'done'):
-            confirmed_orders = done_tx._check_amount_and_confirm_order()
-            if done_tx.operation == 'validation':
-                continue
-            (done_tx.sale_order_ids - confirmed_orders)._send_payment_succeeded_for_order_mail()
-
-            auto_invoice = str2bool(
-                self.env['ir.config_parameter'].sudo().get_param('sale.automatic_invoice')
-            )
-            if auto_invoice:
-                # Invoice the sales orders of confirmed transactions instead of only confirmed
-                # orders to create the invoice even if only a partial payment was made.
-                done_tx._invoice_sale_orders()
-            super(PaymentTransaction, done_tx)._post_process()  # Post the invoices.
-            if auto_invoice:
-                self._send_invoice()
-
     def _check_amount_and_confirm_order(self):
-        """ Confirm the sales order based on the amount of a transaction.
+        '''
+        Confirm the sales order based on the amount of a transaction.
 
         Confirm the sales orders only if the transaction amount (or the sum of the partial
         transaction amounts) is equal to or greater than the required amount for order confirmation
@@ -109,7 +60,7 @@ class PaymentTransaction(models.Model):
 
         :return: The confirmed sales orders.
         :rtype: a `sale.order` recordset
-        """
+        '''
         confirmed_orders = self.env['sale.order']
         for tx in self:
             # We only support the flow where exactly one quotation is linked to a transaction.
@@ -120,59 +71,9 @@ class PaymentTransaction(models.Model):
                     confirmed_orders |= quotation
         return confirmed_orders
 
-    def _log_message_on_linked_documents(self, message):
-        """ Override of payment to log a message on the sales orders linked to the transaction.
-
-        Note: self.ensure_one()
-
-        :param str message: The message to be logged
-        :return: None
-        """
-        super()._log_message_on_linked_documents(message)
-        author = self.env.user.partner_id if self.env.uid == SUPERUSER_ID else self.partner_id
-        for order in self.sale_order_ids or self.source_transaction_id.sale_order_ids:
-            order.message_post(body=message, author_id=author.id)
-
-    def _send_invoice(self):
-        for tx in self:
-            tx = tx.with_company(tx.company_id).with_context(
-                company_id=tx.company_id.id,
-            )
-            invoice_to_send = tx.invoice_ids.filtered(
-                lambda i: not i.is_move_sent and i.state == 'posted' and i._is_ready_to_be_sent()
-            )
-            invoice_to_send.is_move_sent = True # Mark invoice as sent
-            self.env['account.move.send'].with_user(SUPERUSER_ID)._generate_and_send_invoices(
-                invoice_to_send,
-                allow_raising=False,
-                allow_fallback_pdf=True,
-            )
-
-    def _cron_send_invoice(self):
-        """
-            Cron to send invoice that where not ready to be send directly after posting
-        """
-        if not self.env['ir.config_parameter'].sudo().get_param('sale.automatic_invoice'):
-            return
-
-        # No need to retrieve old transactions
-        retry_limit_date = datetime.now() - relativedelta.relativedelta(days=2)
-        # Retrieve all transactions matching the criteria for post-processing
-        self.search([
-            ('state', '=', 'done'),
-            ('is_post_processed', '=', True),
-            ('invoice_ids', 'in', self.env['account.move']._search([
-                ('is_move_sent', '=', False),
-                ('state', '=', 'posted'),
-            ])),
-            ('sale_order_ids.state', '=', 'sale'),
-            ('last_state_change', '>=', retry_limit_date),
-        ])._send_invoice()
-
     def _invoice_sale_orders(self):
         for tx in self.filtered(lambda tx: tx.sale_order_ids):
             tx = tx.with_company(tx.company_id)
-
             confirmed_orders = tx.sale_order_ids.filtered(lambda so: so.state == 'sale')
             if confirmed_orders:
                 # Filter orders between those fully paid and those partially paid.
@@ -196,9 +97,125 @@ class PaymentTransaction(models.Model):
                     invoice._portal_ensure_token()
                 tx.invoice_ids = [Command.set(invoices.ids)]
 
+    def _send_invoice(self):
+        for tx in self:
+            tx = tx.with_company(tx.company_id).with_context(
+                company_id=tx.company_id.id,
+            )
+            invoice_to_send = tx.invoice_ids.filtered(
+                lambda i: not i.is_move_sent and i.state == 'posted' and i._is_ready_to_be_sent()
+            )
+            invoice_to_send.is_move_sent = True # Mark invoice as sent
+            self.env['account.move.send'].with_user(SUPERUSER_ID)._generate_and_send_invoices(
+                invoice_to_send,
+                allow_raising=False,
+                allow_fallback_pdf=True,
+            )
+
+    def _post_process(self):
+        '''
+        Override of `payment` to add Sales-specific logic to the post-processing
+        In particular, for pending transactions, we send the quotation by email; for authorized
+        transactions, we confirm the quotation; for confirmed transactions, we automatically confirm
+        the quotation and generate invoices.
+        '''
+        for pending_tx in self.filtered(lambda tx: tx.state == 'pending'):
+            super(PaymentTransaction, pending_tx)._post_process()
+            sales_orders = pending_tx.sale_order_ids.filtered(
+                lambda so: so.state in ['draft', 'sent']
+            )
+            sales_orders.filtered(
+                lambda so: so.state == 'draft'
+            ).with_context(tracking_disable=True).action_quotation_sent()
+
+            if pending_tx.provider_id.code == 'custom':
+                for order in pending_tx.sale_order_ids:
+                    order.reference = pending_tx._compute_sale_order_reference(order)
+
+            if pending_tx.operation == 'validation':
+                continue
+
+            # Send the payment status email.
+            # The transactions are manually cached while in a sudoed environment to prevent an
+            # AccessError: In some circumstances, sending the mail would generate the report assets
+            # during the rendering of the mail body, causing a cursor commit, a flush, and forcing
+            # the re-computation of the pending computed fields of the `mail.compose.message`,
+            # including part of the template. Since that template reads the order's transactions and
+            # the re-computation of the field is not done with the same environment, reading fields
+            # that were not already available in the cache could trigger an AccessError (e.g., if
+            # the payment was initiated by a public user).
+            sales_orders.mapped('transaction_ids')
+            sales_orders._send_payment_succeeded_for_order_mail()
+
+        for authorized_tx in self.filtered(lambda tx: tx.state == 'authorized'):
+            super(PaymentTransaction, authorized_tx)._post_process()
+            confirmed_orders = authorized_tx._check_amount_and_confirm_order()
+            if authorized_tx.operation == 'validation':
+                continue
+
+            if remaining_orders := (authorized_tx.sale_order_ids - confirmed_orders):
+                remaining_orders._send_payment_succeeded_for_order_mail()
+
+        super(PaymentTransaction, self.filtered(
+            lambda tx: tx.state not in ['pending', 'authorized', 'done'])
+        )._post_process()
+
+        for done_tx in self.filtered(lambda tx: tx.state == 'done'):
+            confirmed_orders = done_tx._check_amount_and_confirm_order()
+            if done_tx.operation == 'validation':
+                continue
+
+            (done_tx.sale_order_ids - confirmed_orders)._send_payment_succeeded_for_order_mail()
+
+            auto_invoice = str2bool(
+                self.env['ir.config_parameter'].sudo().get_param('sale.automatic_invoice')
+            )
+            if auto_invoice:
+                # Invoice the sales orders of confirmed transactions instead of only confirmed
+                # orders to create the invoice even if only a partial payment was made.
+                done_tx._invoice_sale_orders()
+            super(PaymentTransaction, done_tx)._post_process()  # Post the invoices.
+            if auto_invoice:
+                self._send_invoice()
+
+    def _cron_send_invoice(self):
+        '''
+        Cron to send invoice that where not ready to be send directly after posting
+        '''
+        if not self.env['ir.config_parameter'].sudo().get_param('sale.automatic_invoice'):
+            return
+
+        # No need to retrieve old transactions
+        retry_limit_date = datetime.now() - relativedelta.relativedelta(days=2)
+        # Retrieve all transactions matching the criteria for post-processing
+        self.search([
+            ('state', '=', 'done'),
+            ('is_post_processed', '=', True),
+            ('invoice_ids', 'in', self.env['account.move']._search([
+                    ('is_move_sent', '=', False),
+                    ('state', '=', 'posted'),
+                ])
+            ),
+            ('sale_order_ids.state', '=', 'sale'),
+            ('last_state_change', '>=', retry_limit_date),
+        ])._send_invoice()
+
+    def _log_message_on_linked_documents(self, message):
+        ''' Override of payment to log a message on the sales orders linked to the transaction.
+
+        Note: self.ensure_one()
+
+        :param str message: The message to be logged
+        :return: None
+        '''
+        super()._log_message_on_linked_documents(message)
+        author = self.env.user.partner_id if self.env.uid == SUPERUSER_ID else self.partner_id
+        for order in self.sale_order_ids or self.source_transaction_id.sale_order_ids:
+            order.message_post(body=message, author_id=author.id)
+
     @api.model
     def _compute_reference_prefix(self, provider_code, separator, **values):
-        """ Override of payment to compute the reference prefix based on Sales-specific values.
+        ''' Override of payment to compute the reference prefix based on Sales-specific values.
 
         If the `values` parameter has an entry with 'sale_order_ids' as key and a list of (4, id, O)
         or (6, 0, ids) X2M command as value, the prefix is computed based on the sales order name(s)
@@ -210,7 +227,7 @@ class PaymentTransaction(models.Model):
                             have the structure {'sale_order_ids': [(X2M command), ...], ...}.
         :return: The computed reference prefix if order ids are found, the one of `super` otherwise
         :rtype: str
-        """
+        '''
         command_list = values.get('sale_order_ids')
         if command_list:
             # Extract sales order id(s) from the X2M commands
@@ -218,6 +235,7 @@ class PaymentTransaction(models.Model):
             orders = self.env['sale.order'].browse(order_ids).exists()
             if len(orders) == len(order_ids):  # All ids are valid
                 return separator.join(orders.mapped('name'))
+
         return super()._compute_reference_prefix(provider_code, separator, **values)
 
     def action_view_sales_orders(self):

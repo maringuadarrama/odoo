@@ -1,14 +1,13 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-
 {
     'name': 'Sales',
     'version': '1.2',
     'category': 'Sales/Sales',
     'summary': 'Sales internal machinery',
-    'description': """
-This module contains all the common features of Sales Management and eCommerce.
-    """,
+    'description': '''
+        This module contains all the common features of Sales Management and eCommerce.
+        ''',
     'depends': [
         'sales_team',
         'account_payment',  # -> account, payment, portal
@@ -42,7 +41,6 @@ This module contains all the common features of Sales Management and eCommerce.
 
         # Define sale order views before their references
         'views/sale_order_views.xml',
-
         'views/account_views.xml',
         'views/crm_team_views.xml',
         'views/mail_activity_views.xml',
@@ -57,7 +55,8 @@ This module contains all the common features of Sales Management and eCommerce.
         'views/sale_portal_templates.xml',
         'views/utm_campaign_views.xml',
 
-        'views/sale_menus.xml',  # Last because referencing actions defined in previous files
+        # Last because referencing actions defined in previous files
+        'views/menuitem_views.xml',
     ],
     'demo': [
         'data/product_demo.xml',
