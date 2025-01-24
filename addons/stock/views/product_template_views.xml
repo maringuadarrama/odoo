@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_search_view_inherit_stock" model="ir.ui.view">
+        <field name="name">product.template.search.inherit.stock</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view" />
+        <field name="arch" type="xml">
+            <filter name="combo" position="after">
+                <filter name="is_storable" string="Inventory Management"
+                    domain="[('is_storable','=',True)]" />
+            </filter>
+        </field>
+    </record>
+
+    <record id="product_template_search_form_view_stock" model="ir.ui.view">
+        <field name="name">product.template.search.stock.form</field>
+        <field name="model">product.template</field>
+        <field name="mode">primary</field>
+        <field name="inherit_id" ref="product.product_template_search_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='attribute_line_ids']" position="after">
+                <separator />
+                <field name="location_id" context="{'location': self}" filter_domain="[]" />
+                <field name="warehouse_id" context="{'warehouse_id': self}" filter_domain="[]" />
+                <separator />
+                <filter name="real_stock_available" string="Available Products"
+                    domain="[('qty_available','&gt;',0)]" />
+                <filter name="real_stock_negative" string="Negative Forecasted Quantity"
+                    domain="[('virtual_available','&lt;',0)]" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_stock_product_template_tree" model="ir.ui.view">
+        <field name="name">product.template.stock.list.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view" />
+        <field name="arch" type="xml">
+            <field name="uom_id" position="before">
+                <field name="show_on_hand_qty_status_button" column_invisible="True"
+                    groups="stock.group_stock_user" />
+                <field name="qty_available" invisible="not show_on_hand_qty_status_button"
+                    string="On Hand" optional="show" decoration-danger="qty_available &lt; 0"
+                    groups="stock.group_stock_user" />
+                <field name="virtual_available" invisible="not show_on_hand_qty_status_button"
+                    string="Forecasted" optional="show" decoration-danger="virtual_available &lt; 0"
+                    decoration-bf="1" groups="stock.group_stock_user" />
+            </field>
+            <field name="default_code" position="after">
+                <field name="responsible_id" widget="many2one_avatar_user" optional="hide"
+                    groups="stock.group_stock_user" />
+            </field>
+        </field>
+    </record>
+
+    <record id="product_template_kanban_stock_view" model="ir.ui.view">
+        <field name="name">Product Template Kanban Stock</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_kanban_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <field name="show_on_hand_qty_status_button" groups="stock.group_stock_user" />
+            </xpath>
+            <xpath expr="//field[@name='product_properties']" position="before">
+                <div groups="stock.group_stock_user"
+                    t-if="record.show_on_hand_qty_status_button.raw_value"> On hand: <field
+                        name="qty_available" /> <field name="uom_id" />
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_open_routes" model="ir.actions.server">
+        <field name="name">Routes</field>
+        <field name="model_id" ref="product.model_product_template" />
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_routes_diagram()</field>
+        <field name="groups_id" eval="[(4,ref('stock.group_stock_user'))]" />
+    </record>
+
+    <!-- view common to both template and product -->
+    <record id="view_template_property_form" model="ir.ui.view">
+        <field name="name">product.template.stock.property.form.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='type']" position="after">
+                <label for="is_storable" class="oe_inline" invisible="type != 'consu'" />
+                <div class="o_row w-100" invisible="type != 'consu'">
+                    <field name="is_storable" />
+                    <field name="tracking" invisible="not is_storable"
+                        groups="stock.group_production_lot" />
+                </div>
+            </xpath>
+            <xpath expr="//group[@name='group_lots_and_weight']" position="inside">
+                <label for="sale_delay" invisible="not sale_ok" />
+                <div invisible="not sale_ok">
+                    <field name="sale_delay" class="oe_inline" style="vertical-align:baseline" />
+                    days </div>
+            </xpath>
+            <xpath expr="//group[@name='group_lots_and_weight']" position="before">
+                <field name="has_available_route_ids" invisible="1" />
+                <group name="operations" string="Operations">
+                    <label for="route_ids" invisible="type == 'service'" />
+                    <div>
+                        <field name="route_ids" class="mb-0" widget="many2many_checkboxes"
+                            invisible="not has_available_route_ids or type == 'service'" />
+                        <button id="stock.view_diagram_button" name="%(action_open_routes)d" string="View Diagram"
+                            type="action" class="btn btn-link pt-0"
+                            icon="oi-arrow-right"
+                            context="{'default_product_tmpl_id': id}"
+                            invisible="type != 'consu'" />
+                    </div>
+                    <field name="route_from_categ_ids" widget="many2many_tags"
+                        invisible="not route_from_categ_ids" />
+                </group>
+            </xpath>
+            <xpath expr="//group[@name='group_lots_and_weight']" position="after">
+                <group name="traceability" string="Traceability"
+                    invisible="1" groups="stock.group_production_lot">
+                </group>
+                <group name="stock_property" string="Counterpart Locations"
+                    groups="base.group_no_one">
+                    <field name="property_stock_production" />
+                    <field name="property_stock_inventory" />
+                </group>
+            </xpath>
+            <page name="inventory" position="inside">
+                <group>
+                    <group string="Description for Receipts">
+                        <field name="description_pickingin" nolabel="1"
+                            placeholder="This note is added to receipt orders (e.g. where to store the product in the warehouse)." />
+                    </group>
+                    <group string="Description for Delivery Orders">
+                        <field name="description_pickingout" nolabel="1"
+                            placeholder="This note is added to delivery orders." />
+                    </group>
+                    <group string="Description for Internal Transfers"
+                        groups="stock.group_stock_multi_locations">
+                        <field name="description_picking" nolabel="1"
+                            placeholder="This note is added to internal transfer orders (e.g. where to pick the product in the warehouse)." />
+                    </group>
+                </group>
+            </page>
+            <xpath expr="//page[@name='inventory']" position="attributes">
+                <attribute name="groups" add="stock.group_stock_user" separator="," />
+            </xpath>
+        </field>
+    </record>
+
+    <!-- view used for product.template only -->
+    <record id="product_template_form_view_procurement_button" model="ir.ui.view">
+        <field name="name">product.template_procurement</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view" />
+        <field name="priority" eval="15" />
+        <field name="arch" type="xml">
+            <xpath expr="//header/button" position="before">
+                <button name="action_update_quantity_on_hand" string="Update Quantity"
+                    type="object"
+                    invisible="not is_storable" />
+                <button name="%(action_product_replenish)d" string="Replenish"
+                    type="action"
+                    context="{'default_product_tmpl_id': id}"
+                    invisible="type != 'consu'"
+                    groups="stock.group_stock_user" />
+            </xpath>
+            <button name="action_open_documents" position="before">
+                <t groups="stock.group_stock_user">
+                    <field name="tracking" invisible="1" />
+                    <field name="show_on_hand_qty_status_button" invisible="1" />
+                    <field name="show_forecasted_qty_status_button" invisible="1" />
+                    <button name="action_update_quantity_on_hand"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-cubes"
+                        invisible="not show_on_hand_qty_status_button">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_value d-flex gap-1">
+                                <field name="qty_available" nolabel="1" class="oe_inline" />
+                                <field name="uom_name" class="oe_inline" />
+                            </span>
+                            <span class="o_stat_text">On Hand</span>
+                        </div>
+                    </button>
+                    <button name="action_product_tmpl_forecast_report"
+                        type="object" class="oe_stat_button"
+                        icon="fa-area-chart"
+                        invisible="not show_forecasted_qty_status_button"
+                        context="{'default_product_tmpl_id': id}">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_value d-flex gap-1">
+                                <field name="virtual_available" nolabel="1" class="oe_inline" />
+                                <field name="uom_name" class="oe_inline" />
+                            </span>
+                            <span class="o_stat_text">Forecasted</span>
+                        </div>
+                    </button>
+                </t>
+            </button>
+            <button name="action_open_documents" position="after">
+                <t groups="stock.group_stock_user">
+                    <button name="action_view_orderpoints"
+                        type="object" class="oe_stat_button"
+                        icon="fa-refresh"
+                        invisible="not is_storable or nbr_reordering_rules != 1">
+                        <div class="d-flex flex-column">
+                            <div class="o_field_widget o_stat_info align-items-baseline flex-row gap-1 me-1">
+                                <span class="o_stat_text">Min:</span>
+                                <span class="o_stat_value">
+                                    <field name="reordering_min_qty" />
+                                </span>
+                            </div>
+                            <div class="o_field_widget o_stat_info align-items-baseline flex-row gap-1 me-1">
+                                <span class="o_stat_text">Max:</span>
+                                <span class="o_stat_value">
+                                    <field name="reordering_max_qty" />
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+                    <button name="action_view_orderpoints"
+                        type="object" class="oe_stat_button"
+                        icon="fa-refresh"
+                        invisible="not is_storable or nbr_reordering_rules == 1">
+                        <field name="nbr_reordering_rules" widget="statinfo" />
+                    </button>
+                    <button name="action_view_stock_move_lines"
+                        type="object" class="oe_stat_button"
+                        icon="fa-exchange"
+                        invisible="type != 'consu'"
+                        groups="stock.group_stock_user">
+                        <div class="d-flex flex-column">
+                            <div class="o_field_widget o_stat_info align-items-baseline flex-row gap-1 me-1">
+                                <span class="o_stat_text">In:</span>
+                                <span class="o_stat_value">
+                                    <field name="nbr_moves_in" />
+                                </span>
+                            </div>
+                            <div class="o_field_widget o_stat_info align-items-baseline flex-row gap-1 me-1">
+                                <span class="o_stat_text">Out:</span>
+                                <span class="o_stat_value">
+                                    <field name="nbr_moves_out" />
+                                </span>
+                            </div>
+                        </div>
+                    </button>
+                    <button name="action_open_product_lot"
+                        type="object" class="oe_stat_button"
+                        icon="fa-bars"
+                        invisible="tracking == 'none'"
+                        groups="stock.group_production_lot">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Lot/Serial Numbers</span>
+                        </div>
+                    </button>
+                    <button name="action_view_related_putaway_rules"
+                        type="object" class="oe_stat_button"
+                        icon="fa-random"
+                        invisible="type == 'service'"
+                        context="{
+                            'invisible_handle': True,
+                            'single_product': product_variant_count == 1,
+                        }"
+                        groups="stock.group_stock_multi_locations">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Putaway Rules</span>
+                        </div>
+                    </button>
+                    <button name="action_view_storage_category_capacity"
+                        type="object" class="oe_stat_button"
+                        icon="fa-cubes"
+                        invisible="type == 'service'"
+                        groups="stock.group_stock_multi_locations">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Storage Capacities</span>
+                        </div>
+                    </button>
+                </t>
+            </button>
+            <xpath expr="//label[@for='weight']" position="before">
+                <field name="responsible_id" widget="many2one_avatar_user"
+                    domain="[('share', '=', False)]"
+                    groups="stock.group_stock_user" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_action_product" model="ir.actions.act_window">
+        <field name="name">Products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="product_template_search_form_view_stock" />
+        <field name="context">{"search_default_goods": 1, 'default_is_storable': True}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No product found. Let's create one!
+            </p>
+            <p>
+                Track your stock quantities by creating storable products.
+            </p>
+        </field>
+    </record>
+</odoo>

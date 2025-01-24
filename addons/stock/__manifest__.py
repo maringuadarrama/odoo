@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
@@ -26,6 +25,7 @@
         'data/stock_data.xml',
         'data/stock_sequence_data.xml',
         'data/stock_traceability_report_data.xml',
+        'data/mail_template_data.xml',
 
         'report/report_stock_quantity.xml',
         'report/report_stock_reception.xml',
@@ -43,9 +43,8 @@
         'report/product_templates.xml',
         'report/product_packaging.xml',
         'report/report_return_slip.xml',
-        'data/mail_template_data.xml',
+        'report/report_stock_traceability.xml',
 
-        'views/stock_menu_views.xml',
         'wizard/stock_change_product_qty_views.xml',
         'wizard/stock_picking_return_views.xml',
         'wizard/stock_inventory_conflict.xml',
@@ -67,7 +66,8 @@
         'wizard/stock_quant_relocate.xml',
 
         'views/res_partner_views.xml',
-        'views/product_strategy_views.xml',
+        'views/stock_putaway_rule_views.xml',
+        'views/product_removal_views.xml',
         'views/stock_lot_views.xml',
         'views/stock_scrap_views.xml',
         'views/stock_quant_views.xml',
@@ -76,17 +76,22 @@
         'views/stock_move_views.xml',
         'views/stock_picking_views.xml',
         'views/stock_picking_type_views.xml',
-        'views/product_views.xml',
+        'views/product_category_views.xml',
+        'views/product_packaging_views.xml',
+        'views/product_template_views.xml',
+        'views/product_product_views.xml',
         'views/stock_location_views.xml',
+        'views/stock_route_views.xml',
         'views/stock_orderpoint_views.xml',
         'views/stock_storage_category_views.xml',
         'views/res_config_settings_views.xml',
-        'views/report_stock_traceability.xml',
         'views/stock_template.xml',
         'views/stock_rule_views.xml',
         'views/stock_package_level_views.xml',
         'views/stock_package_type_view.xml',
         'views/stock_forecasted.xml',
+        'views/stock_menuitem.xml',
+
     ],
     'installable': True,
     'application': True,

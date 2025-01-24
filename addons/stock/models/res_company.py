@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 import threading
 
 from odoo import _, api, fields, models
 
 
 class Company(models.Model):
-    _inherit = "res.company"
+    _inherit = 'res.company'
     _check_company_auto = True
+
 
     def _default_confirmation_mail_template(self):
         try:
@@ -15,39 +16,80 @@ class Company(models.Model):
         except ValueError:
             return False
 
+
     # used for resupply routes between warehouses that belong to this company
     internal_transit_location_id = fields.Many2one(
-        'stock.location', 'Internal Transit Location', ondelete="restrict", check_company=True)
-    stock_move_email_validation = fields.Boolean("Email Confirmation picking", default=False)
-    stock_mail_confirmation_template_id = fields.Many2one('mail.template', string="Email Template confirmation picking",
-        domain="[('model', '=', 'stock.picking')]",
+        comodel_name='stock.location',
+        string='Internal Transit Location',
+        check_company=True,
+        ondelete='restrict',
+    )
+    stock_move_email_validation = fields.Boolean(
+        string='Email Confirmation picking',
+        default=False,
+    )
+    stock_mail_confirmation_template_id = fields.Many2one(
+        comodel_name='mail.template',
+        string='Email Template confirmation picking',
         default=_default_confirmation_mail_template,
-        help="Email sent to the customer once the order is done.")
-    annual_inventory_month = fields.Selection([
-        ('1', 'January'),
-        ('2', 'February'),
-        ('3', 'March'),
-        ('4', 'April'),
-        ('5', 'May'),
-        ('6', 'June'),
-        ('7', 'July'),
-        ('8', 'August'),
-        ('9', 'September'),
-        ('10', 'October'),
-        ('11', 'November'),
-        ('12', 'December'),
-    ], string='Annual Inventory Month',
+        domain=[('model', '=', 'stock.picking')],
+        help='Email sent to the customer once the order is done.',
+    )
+    annual_inventory_month = fields.Selection(
+        [
+            ('1', 'January'),
+            ('2', 'February'),
+            ('3', 'March'),
+            ('4', 'April'),
+            ('5', 'May'),
+            ('6', 'June'),
+            ('7', 'July'),
+            ('8', 'August'),
+            ('9', 'September'),
+            ('10', 'October'),
+            ('11', 'November'),
+            ('12', 'December'),
+        ],
+        string='Annual Inventory Month',
         default='12',
-        help="Annual inventory month for products not in a location with a cyclic inventory date. Set to no month if no automatic annual inventory.")
+        help='Annual inventory month for products not in a location with a cyclic inventory date. '
+             'Set to no month if no automatic annual inventory.',
+    )
     annual_inventory_day = fields.Integer(
-        string='Day of the month', default=31,
-        help="""Day of the month when the annual inventory should occur. If zero or negative, then the first day of the month will be selected instead.
-        If greater than the last day of a month, then the last day of the month will be selected instead.""")
+        string='Day of the month',
+        default=31,
+        help='''Day of the month when the annual inventory should occur.
+             If zero or negative, then the first day of the month will be selected instead.
+             If greater than the last day of a month, then the last day of the month will be selected instead.
+             ''',
+    )
+
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        companies = super().create(vals_list)
+        # Unarchive inter-company location when multi-company is enabled.
+        inter_company_location = self.env.ref('stock.stock_location_inter_company')
+        if not inter_company_location.active:
+            inter_company_location.sudo().write({'active': True})
+        for company in companies:
+            company.sudo()._create_per_company_locations()
+            company.sudo()._create_per_company_sequences()
+            company.sudo()._create_per_company_picking_types()
+            company.sudo()._create_per_company_rules()
+            company.sudo()._set_per_company_inter_company_locations(inter_company_location)
+        test_mode = getattr(threading.current_thread(), 'testing', False)
+        if test_mode:
+            self.env['stock.warehouse'].sudo().create(
+                [{'company_id': company.id} for company in companies]
+            )
+        return companies
 
     def _create_transit_location(self):
-        '''Create a transit location with company_id being the given company_id. This is needed
-           in case of resuply routes between warehouses belonging to the same company, because
-           we don't want to create accounting entries at that time.
+        '''
+        Create a transit location with company_id being the given company_id. This is needed
+        in case of resuply routes between warehouses belonging to the same company, because
+        we don't want to create accounting entries at that time.
         '''
         parent_location = self.env.ref('stock.stock_location_locations', raise_if_not_found=False)
         for company in self:
@@ -58,16 +100,17 @@ class Company(models.Model):
                 'company_id': company.id,
                 'active': False
             })
-
             company.write({'internal_transit_location_id': location.id})
-
             company.partner_id.with_company(company).write({
                 'property_stock_customer': location.id,
                 'property_stock_supplier': location.id,
             })
 
     def _create_inventory_loss_location(self):
-        parent_location = self.env.ref('stock.stock_location_locations_virtual', raise_if_not_found=False)
+        parent_location = self.env.ref(
+            'stock.stock_location_locations_virtual',
+            raise_if_not_found=False
+        )
         for company in self:
             inventory_loss_location = self.env['stock.location'].create({
                 'name': 'Inventory adjustment',
@@ -75,10 +118,17 @@ class Company(models.Model):
                 'location_id': parent_location.id,
                 'company_id': company.id,
             })
-            self.env['ir.default'].set('product.template', 'property_stock_inventory', inventory_loss_location.id, company_id=company.id)
+            self.env['ir.default'].set(
+                'product.template',
+                'property_stock_inventory',
+                inventory_loss_location.id, company_id=company.id
+            )
 
     def _create_production_location(self):
-        parent_location = self.env.ref('stock.stock_location_locations_virtual', raise_if_not_found=False)
+        parent_location = self.env.ref(
+            'stock.stock_location_locations_virtual',
+            raise_if_not_found=False
+        )
         for company in self:
             production_location = self.env['stock.location'].create({
                 'name': 'Production',
@@ -86,10 +136,17 @@ class Company(models.Model):
                 'location_id': parent_location.id,
                 'company_id': company.id,
             })
-            self.env['ir.default'].set('product.template', 'property_stock_production', production_location.id, company_id=company.id)
+            self.env['ir.default'].set(
+                'product.template',
+                'property_stock_production',
+                production_location.id, company_id=company.id
+            )
 
     def _create_scrap_location(self):
-        parent_location = self.env.ref('stock.stock_location_locations_virtual', raise_if_not_found=False)
+        parent_location = self.env.ref(
+            'stock.stock_location_locations_virtual',
+            raise_if_not_found=False
+        )
         for company in self:
             scrap_location = self.env['stock.location'].create({
                 'name': 'Scrap',
@@ -103,7 +160,7 @@ class Company(models.Model):
         scrap_vals = []
         for company in self:
             scrap_vals.append({
-                'name': '%s Sequence scrap' % company.name,
+                'name': f'{company.name} Sequence scrap',
                 'code': 'stock.scrap',
                 'company_id': company.id,
                 'prefix': 'SP/',
@@ -116,8 +173,9 @@ class Company(models.Model):
 
     @api.model
     def create_missing_warehouse(self):
-        """ This hook is used to add a warehouse on the first company of the database
-        """
+        '''
+        This hook is used to add a warehouse on the first company of the database
+        '''
         existing_warehouses = self.env['stock.warehouse'].search([])
         if len(existing_warehouses) == 0:
             first_company = self.env['res.company'].search([], limit=1)
@@ -130,36 +188,50 @@ class Company(models.Model):
 
     @api.model
     def create_missing_transit_location(self):
-        company_without_transit = self.env['res.company'].search([('internal_transit_location_id', '=', False)])
+        company_without_transit = self.env['res.company'].search(
+            [('internal_transit_location_id', '=', False)]
+        )
         company_without_transit._create_transit_location()
-
-    @api.model
-    def create_missing_inventory_loss_location(self):
-        company_ids  = self.env['res.company'].search([])
-        inventory_loss_product_template_field = self.env['ir.model.fields']._get('product.template', 'property_stock_inventory')
-        companies_having_property = self.env['ir.default'].sudo().search([('field_id', '=', inventory_loss_product_template_field.id)]).mapped('company_id')
-        company_without_property = company_ids - companies_having_property
-        company_without_property._create_inventory_loss_location()
 
     @api.model
     def create_missing_production_location(self):
         company_ids  = self.env['res.company'].search([])
-        production_product_template_field = self.env['ir.model.fields']._get('product.template', 'property_stock_production')
-        companies_having_property = self.env['ir.default'].sudo().search([('field_id', '=', production_product_template_field.id)]).mapped('company_id')
+        production_product_template_field = self.env['ir.model.fields']._get(
+            'product.template', 'property_stock_production'
+        )
+        companies_having_property = self.env['ir.default'].sudo().search(
+            [('field_id', '=', production_product_template_field.id)]
+        ).mapped('company_id')
         company_without_property = company_ids - companies_having_property
         company_without_property._create_production_location()
 
     @api.model
+    def create_missing_inventory_loss_location(self):
+        company_ids  = self.env['res.company'].search([])
+        inventory_loss_product_template_field = self.env['ir.model.fields']._get(
+            'product.template', 'property_stock_inventory'
+        )
+        companies_having_property = self.env['ir.default'].sudo().search(
+            [('field_id', '=', inventory_loss_product_template_field.id)]
+        ).mapped('company_id')
+        company_without_property = company_ids - companies_having_property
+        company_without_property._create_inventory_loss_location()
+
+    @api.model
     def create_missing_scrap_location(self):
         company_ids  = self.env['res.company'].search([])
-        companies_having_scrap_loc = self.env['stock.location'].search([('scrap_location', '=', True)]).mapped('company_id')
+        companies_having_scrap_loc = self.env['stock.location'].search(
+            [('scrap_location', '=', True)]
+        ).mapped('company_id')
         company_without_property = company_ids - companies_having_scrap_loc
         company_without_property._create_scrap_location()
 
     @api.model
     def create_missing_scrap_sequence(self):
         company_ids  = self.env['res.company'].search([])
-        company_has_scrap_seq = self.env['ir.sequence'].search([('code', '=', 'stock.scrap')]).mapped('company_id')
+        company_has_scrap_seq = self.env['ir.sequence'].search(
+            [('code', '=', 'stock.scrap')]
+        ).mapped('company_id')
         company_todo_sequence = company_ids - company_has_scrap_seq
         company_todo_sequence._create_scrap_sequence()
 
@@ -180,28 +252,11 @@ class Company(models.Model):
     def _create_per_company_rules(self):
         self.ensure_one()
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        companies = super().create(vals_list)
-        # Unarchive inter-company location when multi-company is enabled.
-        inter_company_location = self.env.ref('stock.stock_location_inter_company')
-        if not inter_company_location.active:
-            inter_company_location.sudo().write({'active': True})
-        for company in companies:
-            company.sudo()._create_per_company_locations()
-            company.sudo()._create_per_company_sequences()
-            company.sudo()._create_per_company_picking_types()
-            company.sudo()._create_per_company_rules()
-            company.sudo()._set_per_company_inter_company_locations(inter_company_location)
-        test_mode = getattr(threading.current_thread(), 'testing', False)
-        if test_mode:
-            self.env['stock.warehouse'].sudo().create([{'company_id': company.id} for company in companies])
-        return companies
-
     def _set_per_company_inter_company_locations(self, inter_company_location):
         self.ensure_one()
         if not self.env.user.has_group('base.group_multi_company'):
             return
+
         other_companies = self.env['res.company'].search([('id', '!=', self.id)])
         other_companies.partner_id.with_company(self).write({
             'property_stock_customer': inter_company_location.id,

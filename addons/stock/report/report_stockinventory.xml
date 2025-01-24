@@ -34,8 +34,7 @@
                                         <td groups="stock.group_stock_multi_locations"></td>
                                         <td><span t-field="line.product_id">Laptop</span></td>
                                         <td groups="stock.group_production_lot"><span t-field="line.lot_id"/></td>
-                                        <td groups="stock.group_tracking_lot"><span t-field="line.package_id"/></td>
-                                        <td class="text-end"><span t-field="line.available_quantity">2</span> <span t-field="line.product_uom_id" groups="uom.group_uom">Units</span></td>
+                                        <td groups="stock.group_tracking_lot"><span t-field="line.package_id"/></td>                                        <td class="text-end"><span t-field="line.available_quantity">2</span> <span t-field="line.product_uom_id" groups="uom.group_uom">Units</span></td>
                                         <td class="text-end"><span t-field="line.quantity">5</span> <span t-field="line.product_uom_id" groups="uom.group_uom">Units</span></td>
                                         <td class="text-end">
                                             <!-- If 0, then leave blank so users have space to write a number -->

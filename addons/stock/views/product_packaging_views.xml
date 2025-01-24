@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_packaging_tree_view" model="ir.ui.view">
+        <field name="name">product.packaging.list.view.stock</field>
+        <field name="model">product.packaging</field>
+        <field name="inherit_id" ref="product.product_packaging_tree_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="package_type_id" groups="stock.group_tracking_lot" />
+                <field name="route_ids" groups="stock.group_adv_location" optional="hide"
+                    widget="many2many_tags" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_packaging_form_view" model="ir.ui.view">
+        <field name="name">product.packaging.form.view.stock</field>
+        <field name="model">product.packaging</field>
+        <field name="inherit_id" ref="product.product_packaging_form_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//label[@for='qty']" position="before">
+                <field name="package_type_id" groups="stock.group_tracking_lot" />
+            </xpath>
+            <xpath expr="//group[@name='qty']" position="after">
+                <group name="logistic">
+                    <field name="route_ids" groups="stock.group_adv_location"
+                        widget="many2many_tags" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
