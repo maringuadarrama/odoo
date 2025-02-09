@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import _, api, fields, models
@@ -23,12 +22,13 @@ class FleetVehicleModel(models.Model):
     _description = 'Model of a vehicle'
     _order = 'name asc'
 
+
     name = fields.Char('Model name', required=True, tracking=True)
+    active = fields.Boolean(default=True)
     brand_id = fields.Many2one('fleet.vehicle.model.brand', 'Manufacturer', required=True, tracking=True)
+    image_128 = fields.Image(related='brand_id.image_128', readonly=True)
     category_id = fields.Many2one('fleet.vehicle.model.category', 'Category', tracking=True)
     vendors = fields.Many2many('res.partner', 'fleet_vehicle_model_vendors', 'model_id', 'partner_id', string='Vendors')
-    image_128 = fields.Image(related='brand_id.image_128', readonly=True)
-    active = fields.Boolean(default=True)
     vehicle_type = fields.Selection([('car', 'Car'), ('bike', 'Bike')], default='car', required=True, tracking=True)
     transmission = fields.Selection([('manual', 'Manual'), ('automatic', 'Automatic')], 'Transmission', tracking=True)
     vehicle_count = fields.Integer(compute='_compute_vehicle_count', search='_search_vehicle_count')
@@ -44,23 +44,18 @@ class FleetVehicleModel(models.Model):
     horsepower = fields.Integer(tracking=True)
     horsepower_tax = fields.Float('Horsepower Taxation', tracking=True)
     electric_assistance = fields.Boolean(default=False, tracking=True)
-    power_unit = fields.Selection([
-        ('power', 'kW'),
-        ('horsepower', 'Horsepower')
-        ], 'Power Unit', default='power', required=True)
-    vehicle_properties_definition = fields.PropertiesDefinition('Vehicle Properties')
+    power_unit = fields.Selection(
+        [
+            ('power', 'kW'),
+            ('horsepower', 'Horsepower')
+        ],
+        string='Power Unit',
+        required=True,
+        default='power',
+    )
     vehicle_range = fields.Integer(string="Range")
+    vehicle_properties_definition = fields.PropertiesDefinition('Vehicle Properties')
 
-    @api.model
-    def _search_display_name(self, operator, value):
-        if operator in expression.NEGATIVE_TERM_OPERATORS:
-            positive_operator = expression.TERM_OPERATORS_NEGATION[operator]
-        else:
-            positive_operator = operator
-        domain = expression.OR([[('name', positive_operator, value)], [('brand_id.name', positive_operator, value)]])
-        if positive_operator != operator:
-            domain = ['!', *domain]
-        return domain
 
     @api.depends('brand_id')
     def _compute_display_name(self):
@@ -72,11 +67,24 @@ class FleetVehicleModel(models.Model):
 
     def _compute_vehicle_count(self):
         group = self.env['fleet.vehicle']._read_group(
-            [('model_id', 'in', self.ids)], ['model_id'], aggregates=['__count'],
+            [('model_id', 'in', self.ids)],
+            ['model_id'],
+            ['__count'],
         )
         count_by_model = {model.id: count for model, count in group}
         for model in self:
             model.vehicle_count = count_by_model.get(model.id, 0)
+
+    @api.model
+    def _search_display_name(self, operator, value):
+        if operator in expression.NEGATIVE_TERM_OPERATORS:
+            positive_operator = expression.TERM_OPERATORS_NEGATION[operator]
+        else:
+            positive_operator = operator
+        domain = expression.OR([[('name', positive_operator, value)], [('brand_id.name', positive_operator, value)]])
+        if positive_operator != operator:
+            domain = ['!', *domain]
+        return domain
 
     @api.model
     def _search_vehicle_count(self, operator, value):
@@ -110,5 +118,4 @@ class FleetVehicleModel(models.Model):
             'name': name,
             'context': context,
         }
-
         return view

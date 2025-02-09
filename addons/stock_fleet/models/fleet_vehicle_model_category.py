@@ -8,9 +8,16 @@ class FleetVehicleModelCategory(models.Model):
     _inherit = 'fleet.vehicle.model.category'
 
     weight_capacity = fields.Float(string="Max Weight")
-    weight_capacity_uom_name = fields.Char(string='Weight unit of measure label', compute='_compute_weight_capacity_uom_name')
+    weight_capacity_uom_name = fields.Char(
+        string='Weight unit of measure label',
+        compute='_compute_weight_capacity_uom_name',
+    )
     volume_capacity = fields.Float(string="Max Volume")
-    volume_capacity_uom_name = fields.Char(string='Volume unit of measure label', compute='_compute_volume_capacity_uom_name')
+    volume_capacity_uom_name = fields.Char(
+        string='Volume unit of measure label',
+        compute='_compute_volume_capacity_uom_name',
+    )
+
 
     def _compute_display_name(self):
         super()._compute_display_name()

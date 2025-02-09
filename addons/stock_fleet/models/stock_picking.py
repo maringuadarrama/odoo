@@ -8,8 +8,6 @@ class StockPicking(models.Model):
 
     zip = fields.Char(related='partner_id.zip', string='Zip', search="_search_zip")
 
-    def _search_zip(self, operator, value):
-        return [('partner_id.zip', operator, value)]
 
     def write(self, vals):
         res = super().write(vals)
@@ -21,6 +19,9 @@ class StockPicking(models.Model):
         else:
             self._reset_location()
         return res
+
+    def _search_zip(self, operator, value):
+        return [('partner_id.zip', operator, value)]
 
     def _reset_location(self):
         for picking in self:

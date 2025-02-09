@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="fleet_vehicle_log_contract_view_search" model="ir.ui.view">
+        <field name="name">fleet.vehicle.log.contract.search</field>
+        <field name="model">fleet.vehicle.log.contract</field>
+        <field name="arch" type="xml">
+            <search string="Vehicles Contracts">
+                <field name="vehicle_id" string="Vehicle"
+                    filter_domain="[('vehicle_id.name','ilike', self)]" />
+                <field name="driver_id" string="Driver"
+                    filter_domain="[('driver_id','child_of', self)]" />
+                <field name="vendor_id" string="Vendor"
+                    filter_domain="[('vendor_id','child_of', self)]" />
+                <filter name="open" string="In Progress"
+                    domain="[('state', '=', 'open')]" />
+                <filter name="expired" string="Expired"
+                    domain="[('state', '=', 'expired')]" />
+                <separator />
+                <filter name="inactive" string="Archived"
+                    domain="[('active', '=', False)]" />
+                <separator />
+                <filter name="activities_overdue" invisible="1" string="Late Activities"
+                    domain="[('my_activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"
+                    help="Show all records which has next action date is before today" />
+                <filter name="activities_today" invisible="1" string="Today Activities"
+                    domain="[('my_activity_date_deadline', '=', context_today().strftime('%Y-%m-%d'))]" />
+                <filter name="activities_upcoming_all" invisible="1" string="Future Activities"
+                    domain="[('my_activity_date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]" />
+                <group string="Group By" expand="0">
+                    <filter string="Vehicle" name="vehicle" context="{'group_by': 'vehicle_id'}" />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id='fleet_vehicle_log_contract_view_tree' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log.contract.list</field>
+        <field name="model">fleet.vehicle.log.contract</field>
+        <field name="arch" type="xml">
+            <list string="Contract logs"
+                default_order="expiration_date"
+                sample="1"
+                decoration-muted="state=='closed'"
+                decoration-warning="expires_today"
+                decoration-danger="days_left==0 and not expires_today and not has_open_contract">
+                <field name="active" column_invisible="True" />
+                <field name="expires_today" column_invisible="True" />
+                <field name="currency_id" column_invisible="True" />
+                <field name="name" class="fw-bold" />
+                <field name="start_date" />
+                <field name="expiration_date" widget="remaining_days" />
+                <field name="days_left" column_invisible="True" />
+                <field name="vehicle_id" />
+                <field name="vendor_id" />
+                <field name="driver_id" widget="many2one_avatar_user" />
+                <field name="cost_generated" widget="monetary" />
+                <field name="cost_frequency" />
+                <field name="state" widget="badge"
+                    decoration-info="state == 'open'"
+                    decoration-danger="state == 'expired' and not has_open_contract" />
+                <field name="activity_exception_decoration" widget="activity_exception" />
+            </list>
+        </field>
+    </record>
+
+    <record id='fleet_vehicle_log_contract_view_kanban' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log.contract.kanban</field>
+        <field name="model">fleet.vehicle.log.contract</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile" sample="1">
+                <progressbar field="activity_state"
+                    colors='{"planned": "success", "today": "warning", "overdue": "danger"}' />
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <field name="vehicle_id" class="fw-bold" widget="res_partner_many2one" />
+                            <field class="badge text-bg-secondary" name="state" />
+                        </div>
+                        <t
+                            t-if="luxon.DateTime.fromISO(record.expiration_date.raw_value) &lt; luxon.DateTime.local()"
+                            t-set="expiration_class" t-value="'text-danger fw-bold'" />
+                        <span t-att-class="expiration_class"><field name="start_date" /> - <field
+                                name="expiration_date" /></span>
+                        <field name="vendor_id" widget="res_partner_many2one" />
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="fleet_vehicle_log_contract_view_graph" model="ir.ui.view">
+        <field name="name">fleet.vehicle.log.contract.graph</field>
+        <field name="model">fleet.vehicle.log.contract</field>
+        <field name="arch" type="xml">
+            <graph string="Contract Costs Per Month" sample="1">
+                <field name="date" />
+                <field name="vehicle_id" />
+                <field name="amount" type="measure" />
+            </graph>
+        </field>
+    </record>
+
+    <record id="fleet_vehicle_log_contract_view_pivot" model="ir.ui.view">
+        <field name="model">fleet.vehicle.log.contract</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="expiration_date" type="col" />
+                <field name="cost_subtype_id" type="row" />
+                <field name="vehicle_id" type="row" />
+            </pivot>
+        </field>
+    </record>
+
+    <record id='fleet_vehicle_log_contract_view_form' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log_contract.form</field>
+        <field name="model">fleet.vehicle.log.contract</field>
+        <field name="arch" type="xml">
+            <form string="Contract logs">
+                <field name="company_id" invisible="1" />
+                <header>
+                    <field name="state" widget="statusbar" options="{'clickable': '1'}" />
+                </header>
+                <sheet>
+                    <field name="active" invisible="1" />
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                        invisible="active" />
+                    <field name="currency_id" invisible="1" />
+                    <div name="button_box" class="oe_button_box">
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" />
+                        </h1>
+                    </div>
+                    <group string="Information" col="2">
+                        <group col="1">
+                            <field name="ins_ref" />
+                            <field name="cost_subtype_id" />
+                            <field name="vendor_id" widget="many2one_avatar" />
+                            <field name="service_ids" widget="many2many_tags" />
+                            <field name="company_id" groups="base.group_multi_company" />
+                        </group>
+                        <group col="2">
+                            <field name="start_date" />
+                            <field name="expiration_date" required="cost_frequency != 'no'" />
+                            <field name="manager_id" widget="many2one_avatar_user" />
+                            <field name="driver_id" invisible="1" />
+                        </group>
+                    </group>
+                    <group string="Vehicle" col="2">
+                        <group col="1">
+                            <field name="vehicle_id" />
+                        </group>
+                        <group col="2">
+                            <field name="driver_id" widget="many2one_avatar_user" />
+                        </group>
+                    </group>
+                    <group string="Cost" col="2">
+                        <group>
+                            <field name="amount" string="Activation Cost"
+                                widget="monetary" class="w-25"
+                                help="Cost that is paid only once at the creation of the contract" />
+                            <label for="cost_generated" />
+                            <div class="o_row">
+                                <span class="w-25">
+                                    <field name="cost_generated" widget="monetary"
+                                        invisible="cost_frequency == 'no'" />
+                                </span>
+                                <field name="cost_frequency" />
+                            </div>
+                        </group>
+                        <group>
+                            <field name="date" />
+                        </group>
+                    </group>
+                    <separator string="Terms and Conditions" />
+                    <field name="notes" nolabel="1"
+                        placeholder="Write here all other information relative to this contract" />
+                </sheet>
+                <chatter />
+            </form>
+        </field>
+    </record>
+
+    <record id="fleet_vehicle_log_contract_view_activity" model="ir.ui.view">
+        <field name="name">fleet.vehicle.log.contract.activity</field>
+        <field name="model">fleet.vehicle.log.contract</field>
+        <field name="arch" type="xml">
+            <activity string="Vehicles Contracts">
+                <templates>
+                    <div t-name="activity-box">
+                        <field name="manager_id" widget="many2one_avatar_user" />
+                        <div class="ms-2">
+                            <field name="vehicle_id" display="full" class="o_text_block" />
+                        </div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
+    <record id='fleet_vehicle_log_contract_action' model='ir.actions.act_window'>
+        <field name="name">Contracts</field>
+        <field name="res_model">fleet.vehicle.log.contract</field>
+        <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new contract
+            </p>
+            <p>
+                Manage all your contracts (leasing, insurances, etc.) with
+                their related services, costs. Odoo will automatically warn
+                you when some contracts have to be renewed.
+            </p>
+            <p>
+                Each contract (e.g.: leasing) may include several services
+                (reparation, insurances, periodic maintenance).
+            </p>
+        </field>
+    </record>
+</odoo>
