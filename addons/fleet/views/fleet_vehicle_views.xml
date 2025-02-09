@@ -244,10 +244,10 @@
                                 domain="['|', ('company_id', '=', False ), ('company_id', '=', company_id)]" />
                             <field name="mobility_card" readonly="1"/>
                             <field name="future_driver_id" widget="many2one_avatar" />
-                            <field name="plan_to_change_car"
+<!--                             <field name="plan_to_change_car"
                                 invisible="vehicle_type != 'car'"
                                 groups="fleet.fleet_group_manager" />
-                            <field name="manager_id"
+ -->                            <field name="manager_id"
                                 widget="many2one_avatar_user"
                                 domain="[('share', '=', False), ('company_id', '=', company_id)]" />
                             <field name="location" />
