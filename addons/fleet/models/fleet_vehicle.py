@@ -56,10 +56,10 @@ class FleetVehicle(models.Model):
         tracking=True,
         help='Driver address of the vehicle',
     )
-    plan_to_change_car = fields.Boolean(
-        related='driver_id.plan_to_change_car', store=True,
-        readonly=False,
-    )
+    # plan_to_change_car = fields.Boolean(
+    #     related='driver_id.plan_to_change_car', store=True,
+    #     readonly=False,
+    # )
     mobility_card = fields.Char(
         related='driver_id.mobility_card', store=True
     )
