@@ -140,6 +140,13 @@ class SupplierInfo(models.Model):
         if self.product_id and self.product_id not in self.product_tmpl_id.product_variant_ids:
             self.product_id = False
 
+    def _sanitize_vals(self, vals):
+        '''Sanitize vals to sync product variant & template on read/write.'''
+        # add product's product_tmpl_id if none present in vals
+        if  vals.get('product_id') and not vals.get('product_tmpl_id'):
+            product = self.env['product.product'].browse(vals['product_id'])
+            vals['product_tmpl_id'] = product.product_tmpl_id.id
+
     def _get_filtered_supplier(self, company_id, product_id, params=False):
         return self.filtered(
             lambda s:
@@ -148,13 +155,6 @@ class SupplierInfo(models.Model):
                     s.partner_id.active and (not s.product_id or s.product_id == product_id)
                 )
         )
-
-    def _sanitize_vals(self, vals):
-        '''Sanitize vals to sync product variant & template on read/write.'''
-        # add product's product_tmpl_id if none present in vals
-        if  vals.get('product_id') and not vals.get('product_tmpl_id'):
-            product = self.env['product.product'].browse(vals['product_id'])
-            vals['product_tmpl_id'] = product.product_tmpl_id.id
 
     @api.model
     def get_import_templates(self):
