@@ -677,8 +677,12 @@ class Picking(models.Model):
         for picking in self:
             if not picking.move_line_ids and not picking.picking_type_id.use_create_lots:
                 picking.show_lots_text = False
-            elif group_production_lot_enabled and picking.picking_type_id.use_create_lots \
-                    and not picking.picking_type_id.use_existing_lots and picking.state != 'done':
+            elif (
+                group_production_lot_enabled
+                and picking.picking_type_id.use_create_lots
+                and not picking.picking_type_id.use_existing_lots
+                and picking.state != 'done'
+            ):
                 picking.show_lots_text = True
             else:
                 picking.show_lots_text = False
@@ -1129,8 +1133,10 @@ class Picking(models.Model):
                     for pl in package_level_ids:
                         pl.location_dest_id = pickings._get_entire_pack_location_dest(pl.move_line_ids) or pickings.location_dest_id.id
                     for move in move_lines_to_pack.move_id:
-                        if all(line.package_level_id for line in move.move_line_ids) \
-                                and len(move.move_line_ids.package_level_id) == 1:
+                        if (
+                            all(line.package_level_id for line in move.move_line_ids)
+                            and len(move.move_line_ids.package_level_id) == 1
+                        ):
                             move.package_level_id = move.move_line_ids.package_level_id
 
     def _get_lot_move_lines_for_sanity_check(self, none_done_picking_ids, separate_pickings=True):
@@ -1205,7 +1211,7 @@ class Picking(models.Model):
         if not self._should_show_transfers():
             if pickings_without_moves:
                 raise UserError(_(
-                    'You can\’t validate an empty transfer. '
+                    'You cannot validate an empty transfer. '
                     'Please add some products to move before proceeding.'
                 ))
 

@@ -283,8 +283,10 @@ class Warehouse(models.Model):
             depends = [
                 depend for depends in [value.get('depends', []) for value in global_rules.values()] for depend in depends
             ]
-            if any(rule in vals for rule in global_rules) or\
-                    any(depend in vals for depend in depends):
+            if (
+                any(rule in vals for rule in global_rules)
+                or any(depend in vals for depend in depends)
+            ):
                 warehouse._create_or_update_global_routes_rules()
 
             if 'active' in vals:
