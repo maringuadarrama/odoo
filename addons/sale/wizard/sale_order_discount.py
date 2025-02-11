@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools import float_repr
 
 
 class SaleOrderDiscount(models.TransientModel):
@@ -115,6 +116,7 @@ class SaleOrderDiscount(models.TransientModel):
                 discounted_price = line.price_unit * (1 - (line.discount or 0.0)/100)
                 total_price_per_tax_groups[line.tax_id] += (discounted_price * line.product_uom_qty)
 
+            discount_dp = self.env['decimal.precision'].precision_get('Discount')
             if not total_price_per_tax_groups:
                 # No valid lines on which the discount can be applied
                 return
@@ -129,7 +131,7 @@ class SaleOrderDiscount(models.TransientModel):
                         taxes=taxes,
                         description=_(
                             'Discount %(percent)s%%',
-                            percent=self.discount_percentage*100
+                            percent=float_repr(self.discount_percentage * 100, discount_dp),
                         ),
                     ),
                 }]
@@ -142,7 +144,7 @@ class SaleOrderDiscount(models.TransientModel):
                         description=_(
                             'Discount %(percent)s%%'
                             '- On products with the following taxes %(taxes)s',
-                            percent=self.discount_percentage*100,
+                            percent=float_repr(self.discount_percentage * 100, discount_dp),
                             taxes=', '.join(taxes.mapped('name'))
                         ),
                     ) for taxes, subtotal in total_price_per_tax_groups.items()

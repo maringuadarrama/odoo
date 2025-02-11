@@ -679,19 +679,19 @@
                                         placeholder="Type to find a product..."
                                         widget="sol_product_many2one"
                                         required="not display_type and not is_downpayment"
-                                        readonly="not product_updatable"
-                                        context="{
-                                        'partner_id': parent.partner_id,
-                                        'quantity': product_uom_qty,
-                                        'pricelist': parent.pricelist_id,
-                                        'uom':product_uom,
-                                        'company_id': parent.company_id,
-                                        'default_list_price': price_unit,
-                                        'default_uom_id': product_uom,
-                                    }"
+                                        readonly="id and not product_updatable"
+                                            context="{
+                                            'partner_id': parent.partner_id,
+                                            'quantity': product_uom_qty,
+                                            'pricelist': parent.pricelist_id,
+                                            'uom':product_uom,
+                                            'company_id': parent.company_id,
+                                            'default_list_price': price_unit,
+                                            'default_uom_id': product_uom,
+                                        }"
                                         options="{
-                                        'no_open': True,
-                                    }"
+                                            'no_open': True,
+                                        }"
                                         domain="[('sale_ok', '=', True)]"
                                         optional="show" />
                                     <field name="product_template_attribute_value_ids"
@@ -719,12 +719,12 @@
                                         optional="hide" />
                                     <field name="product_uom_qty"
                                         context="{
-                                        'partner_id': parent.partner_id,
-                                        'quantity': product_uom_qty,
-                                        'pricelist': parent.pricelist_id,
-                                        'uom': product_uom,
-                                        'company_id': parent.company_id
-                                    }"
+                                            'partner_id': parent.partner_id,
+                                            'quantity': product_uom_qty,
+                                            'pricelist': parent.pricelist_id,
+                                            'uom': product_uom,
+                                            'company_id': parent.company_id
+                                        }"
                                         readonly="is_downpayment"
                                         decoration-info="(not display_type and invoice_status == 'to invoice')"
                                         decoration-bf="(not display_type and invoice_status == 'to invoice')" />
@@ -764,10 +764,10 @@
                                     <field name="product_packaging_id"
                                         invisible="not product_id"
                                         context="{
-                                        'default_product_id': product_id,
-                                        'list_view_ref': 'product.product_packaging_tree_view',
-                                        'form_view_ref': 'product.product_packaging_form_view'
-                                    }"
+                                            'default_product_id': product_id,
+                                            'list_view_ref': 'product.product_packaging_tree_view',
+                                            'form_view_ref': 'product.product_packaging_form_view'
+                                        }"
                                         groups="product.group_stock_packaging"
                                         optional="show" />
                                     <field name="price_unit" readonly="qty_invoiced &gt; 0" />
