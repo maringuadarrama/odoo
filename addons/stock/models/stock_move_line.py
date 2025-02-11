@@ -1372,10 +1372,16 @@ class StockMoveLine(models.Model):
 
     def _prepare_new_lot_vals(self):
         self.ensure_one()
-        return {
+        vals = {
             'name': self.lot_name,
             'product_id': self.product_id.id,
         }
+        if (
+            self.product_id.company_id
+            and self.company_id in (self.product_id.company_id.all_child_ids | self.product_id.company_id)
+        ):
+            vals['company_id'] = self.company_id.id
+        return vals
 
     @api.model
     def _prepare_stock_move_vals(self):

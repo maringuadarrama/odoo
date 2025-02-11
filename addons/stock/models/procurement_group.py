@@ -209,7 +209,7 @@ class ProcurementGroup(models.Model):
 
         def extract_rule(rule_dict, route_ids, warehouse_id, location_dest_id):
             rule = self.env['stock.rule']
-            for route_id in route_ids:
+            for route_id in sorted(route_ids, key=lambda r: r.sequence):
                 sub_dict = rule_dict.get((location_dest_id.id, route_id.id))
                 if not sub_dict:
                     continue
@@ -321,7 +321,9 @@ class ProcurementGroup(models.Model):
         # Minimum stock rules
         domain = self._get_orderpoint_domain(company_id=company_id)
         orderpoints = self.env['stock.warehouse.orderpoint'].search(domain)
-        orderpoints.sudo()._procure_orderpoint_confirm(use_new_cursor=use_new_cursor, company_id=company_id, raise_user_error=False)
+        orderpoints.sudo()._procure_orderpoint_confirm(
+            use_new_cursor=use_new_cursor, company_id=company_id, raise_user_error=False
+        )
         task_done += 1
 
         if use_new_cursor:

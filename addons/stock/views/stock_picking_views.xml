@@ -452,6 +452,7 @@
                                     decoration-muted="scrapped == True or state == 'cancel' or (state == 'done' and is_locked == True)"
                                     editable="bottom">
                                     <field name="company_id" column_invisible="True" />
+                                    <field name="picking_id" column_invisible="True"/>
                                     <field name="name" column_invisible="True" />
                                     <field name="state" readonly="0" column_invisible="True" />
                                     <field name="picking_type_id" column_invisible="True" />

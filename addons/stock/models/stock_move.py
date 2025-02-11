@@ -2327,6 +2327,8 @@ class StockMove(models.Model):
         # self cannot contain moves that are either cancelled or done, therefore we can safely
         # unlink all associated move_line_ids
         moves_to_cancel._do_unreserve()
+        cancel_moves_origin = self.env['ir.config_parameter'].sudo().get_param('stock.cancel_moves_origin')
+        moves_to_cancel.state = 'cancel'
         for move in moves_to_cancel:
             siblings_states = (move.move_dest_ids.mapped('move_orig_ids') - move).mapped('state')
             if move.propagate_cancel:
@@ -2337,6 +2339,8 @@ class StockMove(models.Model):
                             m.state != 'done'
                             and m.location_dest_id == m.move_dest_ids.location_id
                     )._action_cancel()
+                    if cancel_moves_origin:
+                        move.move_orig_ids.sudo().filtered(lambda m: m.state != 'done')._action_cancel()
             else:
                 if all(state in ('done', 'cancel') for state in siblings_states):
                     move_dest_ids = move.move_dest_ids
@@ -2345,7 +2349,6 @@ class StockMove(models.Model):
                         'move_orig_ids': [Command.unlink(move.id)]
                     })
         moves_to_cancel.write({
-            'state': 'cancel',
             'move_orig_ids': [(5, 0, 0)],
             'procure_method': 'make_to_stock',
         })
@@ -2446,11 +2449,11 @@ class StockMove(models.Model):
         ):
             if len(
                 result_package.quant_ids.filtered(
-                    lambda q:
-                        not float_is_zero(
-                            abs(q.quantity) + abs(q.reserved_quantity),
-                            precision_rounding=q.product_uom_id.rounding
-                        )
+                    lambda q: float_compare(
+                        q.quantity,
+                        0.0,
+                        precision_rounding=q.product_uom_id.rounding
+                    ) > 0
                 ).mapped('location_id')
             ) > 1:
                 raise UserError(_(

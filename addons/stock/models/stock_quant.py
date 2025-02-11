@@ -6,6 +6,7 @@ import logging
 from ast import literal_eval
 from collections import namedtuple
 from collections import defaultdict
+from markupsafe import escape
 from psycopg2 import Error
 
 from odoo import _, api, fields, models, SUPERUSER_ID
@@ -562,7 +563,7 @@ class StockQuant(models.Model):
 
             quant.inventory_quantity = quant.inventory_quantity_auto_apply
             quant_to_inventory |= quant
-        quant_to_inventory.action_apply_inventory()
+        quant_to_inventory.with_context({'set_inventory_quantity_auto_apply': True}).action_apply_inventory()
 
     def _search(self, domain, *args, **kwargs):
         domain = [
@@ -701,7 +702,10 @@ class StockQuant(models.Model):
 
     @api.model
     def action_view_inventory(self):
-        ''' Similar to _get_quants_action except specific for inventory adjustments (i.e. inventory counts). '''
+        '''
+        Similar to _get_quants_action except specific for inventory adjustments
+        (i.e. inventory counts).
+        '''
         self = self._set_view_context()
         if not self.env['ir.config_parameter'].sudo().get_param('stock.skip_quant_tasks'):
             self._quant_tasks()
@@ -721,13 +725,17 @@ class StockQuant(models.Model):
             'help': '''
                 <p class="o_view_nocontent_smiling_face">
                     {}
-                </p><p>
-                    {} <span class="fa fa-long-arrow-right"/> {}</p>
-            '''.format(
-                _('Your stock is currently empty'),
-                _('Press the CREATE button to define quantity for each product in your stock or import them from a spreadsheet throughout Favorites'),
-                _('Import')
-            ),
+                </p>
+                <p>
+                    {} <span class="fa fa-cog"/>
+                </p>
+                '''.format(
+                    escape(_('Your stock is currently empty')),
+                    escape(_(
+                        'Press the "New" button to define the quantity for a product in '
+                        'your stock or import quantities from a spreadsheet via the Actions menu'
+                    ))
+                ),
         }
         return action
 
@@ -735,47 +743,59 @@ class StockQuant(models.Model):
         products_tracked_without_lot = []
         for quant in self:
             rounding = quant.product_uom_id.rounding
-            if fields.Float.is_zero(quant.inventory_diff_quantity, precision_rounding=rounding)\
-                    and fields.Float.is_zero(quant.inventory_quantity, precision_rounding=rounding)\
-                    and fields.Float.is_zero(quant.quantity, precision_rounding=rounding):
+            if (
+                fields.Float.is_zero(quant.inventory_diff_quantity, precision_rounding=rounding)
+                and fields.Float.is_zero(quant.inventory_quantity, precision_rounding=rounding)
+                and fields.Float.is_zero(quant.quantity, precision_rounding=rounding)
+            ):
                 continue
 
-            if quant.product_id.tracking in ['lot', 'serial'] and\
-                    not quant.lot_id and quant.inventory_quantity != quant.quantity and not quant.quantity:
+            if (
+                quant.product_id.tracking in ['lot', 'serial']
+                and not quant.lot_id
+                and quant.inventory_quantity != quant.quantity
+                and not quant.quantity
+            ):
                 products_tracked_without_lot.append(quant.product_id.id)
         # for some reason if multi-record, env.context doesn't pass to wizards...
         ctx = dict(self.env.context or {})
         ctx['default_quant_ids'] = self.ids
         quants_outdated = self.filtered(lambda quant: quant.is_outdated)
-        if quants_outdated:
-            ctx['default_quant_to_fix_ids'] = quants_outdated.ids
-            return {
-                'name': _('Conflict in Inventory Adjustment'),
-                'type': 'ir.actions.act_window',
-                'view_mode': 'form',
-                'views': [(False, 'form')],
-                'res_model': 'stock.inventory.conflict',
-                'target': 'new',
-                'context': ctx,
-            }
-        if products_tracked_without_lot:
-            ctx['default_product_ids'] = products_tracked_without_lot
-            return {
-                'name': _('Tracked Products in Inventory Adjustment'),
-                'type': 'ir.actions.act_window',
-                'view_mode': 'form',
-                'views': [(False, 'form')],
-                'res_model': 'stock.track.confirmation',
-                'target': 'new',
-                'context': ctx,
-            }
+        if not self.env.context.get('set_inventory_quantity_auto_apply'):
+            if quants_outdated:
+                ctx['default_quant_to_fix_ids'] = quants_outdated.ids
+                return {
+                    'name': _('Conflict in Inventory Adjustment'),
+                    'type': 'ir.actions.act_window',
+                    'view_mode': 'form',
+                    'views': [(False, 'form')],
+                    'res_model': 'stock.inventory.conflict',
+                    'target': 'new',
+                    'context': ctx,
+                }
+            if products_tracked_without_lot:
+                ctx['default_product_ids'] = products_tracked_without_lot
+                return {
+                    'name': _('Tracked Products in Inventory Adjustment'),
+                    'type': 'ir.actions.act_window',
+                    'view_mode': 'form',
+                    'views': [(False, 'form')],
+                    'res_model': 'stock.track.confirmation',
+                    'target': 'new',
+                    'context': ctx,
+                }
         self._apply_inventory()
         self.inventory_quantity_set = False
 
     def action_stock_quant_relocate(self):
-        if len(self.company_id) > 1 or any(not q.company_id.id for q in self) or any(q <= 0 for q in self.mapped('quantity')):
+        if (
+            len(self.company_id) > 1
+            or any(not q.company_id.id for q in self)
+            or any(q <= 0 for q in self.mapped('quantity'))
+        ):
             raise UserError(_(
-                'You can only move positive quantities stored in locations used by a single company per relocation.'
+                'You can only move positive quantities stored in locations '
+                'used by a single company per relocation.'
             ))
 
         context = {
@@ -795,10 +815,10 @@ class StockQuant(models.Model):
         self.ensure_one()
         action = {
             'name': _('History'),
-            'view_mode': 'list,form',
-            'res_model': 'stock.move.line',
-            'views': [(self.env.ref('stock.view_move_line_tree').id, 'list'), (False, 'form')],
             'type': 'ir.actions.act_window',
+            'res_model': 'stock.move.line',
+            'view_mode': 'list,form',
+            'views': [(self.env.ref('stock.view_move_line_tree').id, 'list'), (False, 'form')],
             'context': {
                 'search_default_inventory': 1,
                 'search_default_done': 1,
@@ -828,10 +848,10 @@ class StockQuant(models.Model):
             return {
                 'name': _('Quantities Already Set'),
                 'type': 'ir.actions.act_window',
+                'res_model': 'stock.inventory.warning',
                 'view_mode': 'form',
                 'views': [(view.id, 'form')],
                 'view_id': view.id,
-                'res_model': 'stock.inventory.warning',
                 'target': 'new',
                 'context': ctx,
             }
@@ -847,8 +867,8 @@ class StockQuant(models.Model):
         return {
             'name': _('Inventory Adjustment Reference / Reason'),
             'type': 'ir.actions.act_window',
-            'views': [(view.id, 'form')],
             'res_model': 'stock.inventory.adjustment.name',
+            'views': [(view.id, 'form')],
             'target': 'new',
             'context': ctx,
         }
@@ -859,10 +879,10 @@ class StockQuant(models.Model):
         return {
             'name': _('Quantities To Reset'),
             'type': 'ir.actions.act_window',
+            'res_model': 'stock.inventory.warning',
             'view_mode': 'form',
             'views': [(view.id, 'form')],
             'view_id': view.id,
-            'res_model': 'stock.inventory.warning',
             'target': 'new',
             'context': ctx,
         }
