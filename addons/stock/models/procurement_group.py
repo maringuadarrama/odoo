@@ -3,12 +3,10 @@
 import logging
 from collections import defaultdict, namedtuple, OrderedDict
 
-from odoo import SUPERUSER_ID, _, api, fields, models
+from odoo import _, api, fields, models
 from odoo.addons.stock.models.procurement_exception import ProcurementException
 from odoo.exceptions import UserError
-from odoo.modules.registry import Registry
 from odoo.osv import expression
-from odoo.sql_db import BaseCursor
 from odoo.tools import float_is_zero
 from odoo.tools.misc import split_every
 
@@ -40,7 +38,6 @@ class ProcurementGroup(models.Model):
     _name = 'procurement.group'
     _description = 'Procurement Group'
     _order = 'id desc'
-
     Procurement = namedtuple(
         'Procurement',
         [
@@ -51,11 +48,11 @@ class ProcurementGroup(models.Model):
 
 
     partner_id = fields.Many2one(
-        'res.partner',
-        'Partner',
+        comodel_name='res.partner',
+        string='Partner',
     )
     name = fields.Char(
-        'Reference',
+        string='Reference',
         default=lambda self: self.env['ir.sequence'].next_by_code('procurement.group') or '',
         required=True,
     )
@@ -64,17 +61,11 @@ class ProcurementGroup(models.Model):
         string='Delivery Type'
     )
     stock_move_ids = fields.One2many(
-        'stock.move',
-        'group_id',
+        comodel_name='stock.move',
+        inverse_name='group_id',
         string='Related Stock Moves',
     )
 
-
-    @api.model
-    def _skip_procurement(self, procurement):
-        return procurement.product_id.type != 'consu' or float_is_zero(
-            procurement.product_qty, precision_rounding=procurement.product_uom.rounding
-        )
 
     @api.model
     def run(self, procurements, raise_user_error=True):
@@ -133,9 +124,17 @@ class ProcurementGroup(models.Model):
         return True
 
     @api.model
+    def _skip_procurement(self, procurement):
+        return procurement.product_id.type != 'consu' or float_is_zero(
+            procurement.product_qty, precision_rounding=procurement.product_uom.rounding
+        )
+
+    @api.model
     def _search_rule_for_warehouses(self, route_ids, packaging_id, product_id, warehouse_ids, domain):
         if warehouse_ids:
-            domain = expression.AND([['|', ('warehouse_id', 'in', warehouse_ids.ids), ('warehouse_id', '=', False)], domain])
+            domain = expression.AND(
+                [['|', ('warehouse_id', 'in', warehouse_ids.ids), ('warehouse_id', '=', False)], domain]
+            )
         valid_route_ids = set()
         if route_ids:
             valid_route_ids |= set(route_ids.ids)
@@ -263,7 +262,10 @@ class ProcurementGroup(models.Model):
 
     @api.model
     def _check_intercomp_location(self, locations):
-        if self.env.user.has_group('base.group_multi_company') and locations.filtered(lambda location: location.usage == 'transit'):
+        if (
+            self.env.user.has_group('base.group_multi_company')
+            and locations.filtered(lambda location: location.usage == 'transit')
+        ):
             inter_comp_location = self.env.ref('stock.stock_location_inter_company', raise_if_not_found=False)
             return inter_comp_location and inter_comp_location.id in locations.ids
 
