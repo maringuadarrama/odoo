@@ -566,7 +566,7 @@ class FleetVehicle(models.Model):
         return {
             'name': _('Assignment Logs'),
             'type': 'ir.actions.act_window',
-            'res_model': 'fleet.vehicle.log.assignation',
+            'res_model': 'fleet.vehicle.assignation.log',
             'view_mode': 'list',
             'domain': [('vehicle_id', '=', self.id)],
             'context': {'default_driver_id': self.driver_id.id, 'default_vehicle_id': self.id}

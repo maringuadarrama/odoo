@@ -24,7 +24,7 @@ class FleetVehicleAssignationLog(models.Model):
     def _compute_attachment_number(self):
         attachment_data = self.env['ir.attachment']._read_group(
             [
-                ('res_model', '=', 'fleet.vehicle.log.assignation'),
+                ('res_model', '=', 'fleet.vehicle.assignation.log'),
                 ('res_id', 'in', self.ids)
             ],
             ['res_id'],
@@ -39,11 +39,11 @@ class FleetVehicleAssignationLog(models.Model):
         res = self.env['ir.actions.act_window']._for_xml_id('base.action_attachment')
         res['views'] = [[self.env.ref('fleet.view_attachment_kanban_inherit_fleet').id, 'kanban']]
         res['domain'] = [
-            ('res_model', '=', 'fleet.vehicle.log.assignation'),
+            ('res_model', '=', 'fleet.vehicle.assignation.log'),
             ('res_id', 'in', self.ids)
         ]
         res['context'] = {
-            'default_res_model': 'fleet.vehicle.log.assignation',
+            'default_res_model': 'fleet.vehicle.assignation.log',
             'default_res_id': self.id
         }
         return res

@@ -38,7 +38,7 @@ class Employee(models.Model):
                 employee.license_plate = ' '.join(employee.vehicle_ids.filtered('license_plate').mapped('license_plate')) or employee.private_car_plate
 
     def _compute_vehicle_count(self):
-        rg = self.env['fleet.vehicle.log.assignation']._read_group(
+        rg = self.env['fleet.vehicle.assignation.log']._read_group(
             [('driver_id', 'in', self.ids)],
             ['driver_id'],
             ['__count']
@@ -60,7 +60,7 @@ class Employee(models.Model):
         return {
             "name": "History Employee Cars",
             "type": "ir.actions.act_window",
-            "res_model": "fleet.vehicle.log.assignation",
+            "res_model": "fleet.vehicle.assignation.log",
             "views": [
                 [self.env.ref("fleet.fleet_vehicle_log_assignation_view_list").id, "list"],
                 [False, "form"]

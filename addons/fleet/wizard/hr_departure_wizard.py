@@ -23,7 +23,7 @@ class HrDepartureWizard(models.TransientModel):
         end date or end date > departure date, update the date. Also check fleet.vehicle to see if 
         there is any record with its dirver_id to be the employee, set them to False."""
         drivers = self.employee_id.user_id.partner_id | self.employee_id.sudo().work_contact_id
-        assignations = self.env['fleet.vehicle.log.assignation'].search(
+        assignations = self.env['fleet.vehicle.assignation.log'].search(
             [('driver_id', 'in', drivers.ids)]
         )
         for assignation in assignations:
