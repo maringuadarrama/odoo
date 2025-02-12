@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="fleet_vehicle_assignation_log_view_list" model="ir.ui.view">
+        <field name="name">fleet.vehicle.assignation.log.view.list</field>
+        <field name="model">fleet.vehicle.assignation.log</field>
+        <field name="arch" type="xml">
+            <list string="Assignment Logs"
+                default_order="date_start desc, id desc"
+                editable="bottom">
+                <field name="vehicle_id" />
+                <field name="driver_id" string="Current Driver"
+                    widget="many2one_avatar_user" />
+                <field name="date_start" />
+                <field name="date_end" />
+                <field name="attachment_number"
+                    optional="show" />
+                <button name="action_get_attachment_view" string="Attachments"
+                    type="object"
+                    icon="fa-paperclip" />
+            </list>
+        </field>
+    </record>
+</odoo>

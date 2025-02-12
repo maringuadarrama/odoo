@@ -43,24 +43,24 @@ class TestFleetVehicleLogServices(AccountTestInvoicingCommon):
             'vehicle_id': cls.car_1.id,
             'move_id': cls.bill.id,
         })
-        cls.fleet_service_type = cls.env['fleet.service.type'].create({
+        cls.fleet_service_type = cls.env['product.product'].create({
             'name': 'Test service type',
-            'category': 'service',
+            'type': 'service',
         })
 
     def test_service_bill_right_amount(self):
         self.bill.action_post()
 
         # check if the log service is created
-        self.assertEqual(self.car_1.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_1.log_services[0].amount, self.service_line.price_subtotal)
+        self.assertEqual(self.car_1.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_1.service_ids[0].amount, self.service_line.price_subtotal)
 
         self.bill.button_draft()
         self.service_line.price_unit = 110
         self.bill.action_post()
 
         # check if the log service's amount is equal to the new price
-        self.assertEqual(self.car_1.log_services[0].amount, self.service_line.price_unit)
+        self.assertEqual(self.car_1.service_ids[0].amount, self.service_line.price_unit)
 
     def test_service_bill_deletion(self):
         service_line_2 = self.env['account.move.line'].create({
@@ -73,32 +73,32 @@ class TestFleetVehicleLogServices(AccountTestInvoicingCommon):
         self.bill.action_post()
 
         # check if the log service is created
-        self.assertEqual(self.car_1.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_1.log_services[0].amount, self.service_line.price_subtotal)
-        self.assertEqual(self.car_2.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_2.log_services[0].amount, service_line_2.price_subtotal)
+        self.assertEqual(self.car_1.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_1.service_ids[0].amount, self.service_line.price_subtotal)
+        self.assertEqual(self.car_2.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_2.service_ids[0].amount, service_line_2.price_subtotal)
 
         self.bill.button_draft()
         self.service_line.unlink()
 
-        self.assertFalse(self.car_1.log_services)
-        self.assertEqual(self.car_2.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_2.log_services[0].amount, service_line_2.price_subtotal)
+        self.assertFalse(self.car_1.service_ids)
+        self.assertEqual(self.car_2.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_2.service_ids[0].amount, service_line_2.price_subtotal)
 
     def test_service_log_deletion(self):
         self.bill.action_post()
 
         # check if the log service is created
-        self.assertEqual(self.car_1.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_1.log_services[0].amount, self.service_line.price_subtotal)
+        self.assertEqual(self.car_1.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_1.service_ids[0].amount, self.service_line.price_subtotal)
 
         # a log services linked to a bill cannot be deleted
         with self.assertRaises(UserError):
-            self.car_1.log_services[0].unlink()
+            self.car_1.service_ids[0].unlink()
 
         log_service_without_bill = self.env['fleet.vehicle.log.services'].create({
             'vehicle_id': self.car_1.id,
-            'service_type_id': self.fleet_service_type.id,
+            'product_id': self.fleet_service_type.id,
             'amount': 1440,
         })
 
@@ -108,23 +108,23 @@ class TestFleetVehicleLogServices(AccountTestInvoicingCommon):
         self.bill.action_post()
 
         # check if the log service is created
-        self.assertEqual(self.car_1.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_1.log_services[0].amount, self.service_line.price_subtotal)
+        self.assertEqual(self.car_1.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_1.service_ids[0].amount, self.service_line.price_subtotal)
 
         self.bill.button_draft()
         self.service_line.vehicle_id = self.car_2
         self.bill.action_post()
 
-        self.assertFalse(self.car_1.log_services)
-        self.assertEqual(self.car_2.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_2.log_services[0].amount, self.service_line.price_subtotal)
+        self.assertFalse(self.car_1.service_ids)
+        self.assertEqual(self.car_2.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_2.service_ids[0].amount, self.service_line.price_subtotal)
 
         # remove the vehicle should also delete the service
         self.bill.button_draft()
         self.service_line.vehicle_id = False
         self.bill.action_post()
 
-        self.assertFalse(self.car_2.log_services)
+        self.assertFalse(self.car_2.service_ids)
         self.assertFalse(self.service_line.vehicle_log_service_ids)
 
         # putting car 2 back should create a new service
@@ -132,10 +132,10 @@ class TestFleetVehicleLogServices(AccountTestInvoicingCommon):
         self.service_line.vehicle_id = self.car_2
         self.bill.action_post()
 
-        self.assertEqual(self.car_2.log_services[0].account_move_line_id.move_id, self.bill)
-        self.assertEqual(self.car_2.log_services[0].amount, self.service_line.price_subtotal)
+        self.assertEqual(self.car_2.service_ids[0].account_move_line_id.move_id, self.bill)
+        self.assertEqual(self.car_2.service_ids[0].amount, self.service_line.price_subtotal)
 
-    def test_fleet_log_services_amount(self):
+    def test_fleet_service_ids_amount(self):
         other_currency = self.setup_other_currency('EUR')
         brand = self.env["fleet.vehicle.model.brand"].create({
             "name": "Audi",
