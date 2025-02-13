@@ -3,7 +3,7 @@
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 
-from odoo import api, fields, models, _
+from odoo import api, Command, fields, models, _
 from odoo.addons.fleet.models.fleet_vehicle_model import FUEL_TYPES
 
 
