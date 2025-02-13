@@ -25,25 +25,24 @@ class FleetVehicleModel(models.Model):
 
     name = fields.Char('Model name', required=True, tracking=True)
     active = fields.Boolean(default=True)
+    vendors = fields.Many2many('res.partner', 'fleet_vehicle_model_vendors', 'model_id', 'partner_id', string='Vendors')
     brand_id = fields.Many2one('fleet.vehicle.model.brand', 'Manufacturer', required=True, tracking=True)
     image_128 = fields.Image(related='brand_id.image_128', readonly=True)
-    category_id = fields.Many2one('fleet.vehicle.model.category', 'Category', tracking=True)
-    vendors = fields.Many2many('res.partner', 'fleet_vehicle_model_vendors', 'model_id', 'partner_id', string='Vendors')
     vehicle_type = fields.Selection([('car', 'Car'), ('bike', 'Bike')], default='car', required=True, tracking=True)
-    transmission = fields.Selection([('manual', 'Manual'), ('automatic', 'Automatic')], 'Transmission', tracking=True)
-    vehicle_count = fields.Integer(compute='_compute_vehicle_count', search='_search_vehicle_count')
-    model_year = fields.Integer(tracking=True)
-    color = fields.Char(tracking=True)
-    seats = fields.Integer(string='Seats Number', tracking=True)
+    category_id = fields.Many2one('fleet.vehicle.model.category', 'Category', tracking=True)
     doors = fields.Integer(string='Doors Number', tracking=True)
-    trailer_hook = fields.Boolean(default=False, string='Trailer Hitch', tracking=True)
-    default_co2 = fields.Float('CO2 Emissions', tracking=True)
-    co2_standard = fields.Char(tracking=True)
+    seats = fields.Integer(string='Seats Number', tracking=True)
+    transmission = fields.Selection([('manual', 'Manual'), ('automatic', 'Automatic')], 'Transmission', tracking=True)
     default_fuel_type = fields.Selection(FUEL_TYPES, 'Fuel Type', default='electric', tracking=True)
-    power = fields.Integer('Power', tracking=True)
-    horsepower = fields.Integer(tracking=True)
-    horsepower_tax = fields.Float('Horsepower Taxation', tracking=True)
-    electric_assistance = fields.Boolean(default=False, tracking=True)
+    fuel_tank_capacity = fields.Integer(
+        string="Tank capacity",
+        help="Fuel tank capacity in liters",
+    )
+    fuel_efficiency = fields.Float(
+        help="Fuel efficiency in kilometers per liter (km/L)"
+    )
+    cilinders = fields.Integer(string="Cilinders Number")
+    trailer_hook = fields.Boolean(default=False, string='Trailer Hitch', tracking=True)
     power_unit = fields.Selection(
         [
             ('power', 'kW'),
@@ -53,8 +52,17 @@ class FleetVehicleModel(models.Model):
         required=True,
         default='power',
     )
+    power = fields.Integer('Power', tracking=True)
+    horsepower = fields.Integer(tracking=True)
+    horsepower_tax = fields.Float('Horsepower Taxation', tracking=True)
+    default_co2 = fields.Float('CO2 Emissions', tracking=True)
+    co2_standard = fields.Char(tracking=True)
+    electric_assistance = fields.Boolean(default=False, tracking=True)
+    model_year = fields.Integer(tracking=True)
+    color = fields.Char(tracking=True)
     vehicle_range = fields.Integer(string="Range")
     vehicle_properties_definition = fields.PropertiesDefinition('Vehicle Properties')
+    vehicle_count = fields.Integer(compute='_compute_vehicle_count', search='_search_vehicle_count')
 
 
     @api.depends('brand_id')
@@ -105,17 +113,17 @@ class FleetVehicleModel(models.Model):
         self.ensure_one()
         context = {'default_model_id': self.id}
         if self.vehicle_count:
-            view_mode = 'kanban,list,form'
             name = _('Vehicles')
+            view_mode = 'kanban,list,form'
             context['search_default_model_id'] = self.id
         else:
-            view_mode = 'form'
             name = _('Vehicle')
+            view_mode = 'form'
         view = {
-            'type': 'ir.actions.act_window',
-            'view_mode': view_mode,
-            'res_model': 'fleet.vehicle',
             'name': name,
+            'type': 'ir.actions.act_window',
+            'res_model': 'fleet.vehicle',
+            'view_mode': view_mode,
             'context': context,
         }
         return view

@@ -11,9 +11,12 @@ from odoo.addons.fleet.models.fleet_vehicle_model import FUEL_TYPES
 MODEL_FIELDS_TO_VEHICLE = {
     'transmission': 'transmission', 'electric_assistance': 'electric_assistance',
     'color': 'color', 'seats': 'seats', 'doors': 'doors', 'trailer_hook': 'trailer_hook',
-    'default_co2': 'co2', 'co2_standard': 'co2_standard', 'default_fuel_type': 'fuel_type',
-    'power': 'power', 'horsepower': 'horsepower', 'horsepower_tax': 'horsepower_tax',
-    'vehicle_range': 'vehicle_range', 'power_unit': 'power_unit',
+    'default_co2': 'co2', 'co2_standard': 'co2_standard',
+    'default_fuel_type': 'fuel_type', 'fuel_tank_capacity': 'fuel_tank_capacity',
+    'fuel_efficiency': 'fuel_efficiency', 'cilinders': 'cilinders',
+    'power': 'power', 'power_unit': 'power_unit',
+    'horsepower': 'horsepower', 'horsepower_tax': 'horsepower_tax',
+    'vehicle_range': 'vehicle_range',
     'model_year': 'model_year', 'category_id': 'category_id',
 }
 
@@ -127,6 +130,22 @@ class FleetVehicle(models.Model):
         compute='_compute_model_fields', store=True,
         readonly=False,
     )
+    fuel_tank_capacity = fields.Integer(
+        string="Tank capacity",
+        compute='_compute_model_fields', store=True,
+        readonly=False,
+        help="Fuel tank capacity in liters",
+    )
+    fuel_efficiency = fields.Float(
+        compute='_compute_model_fields', store=True,
+        readonly=False,
+        help="Fuel efficiency in kilometers per liter (km/L)"
+    )
+    cilinders = fields.Integer(
+        string="Cilinders Number",
+        compute='_compute_model_fields', store=True,
+        readonly=False,
+    )
     trailer_hook = fields.Boolean(
         string='Trailer Hitch',
         default=False,
@@ -221,7 +240,12 @@ class FleetVehicle(models.Model):
         string='Chassis Number',
         copy=False,
         tracking=True,
-        help='Unique number written on the vehicle motor (VIN/SN number)',
+        help='Unique number written on the vehicle chassis (VIN/SN number).',
+    )
+    engine_sn = fields.Char(
+        string='Engine SN',
+        tracking=True,
+        help='Unique number written on the vehicle engine.',
     )
     description = fields.Html('Vehicle Description')
     vehicle_properties = fields.Properties(
@@ -246,9 +270,11 @@ class FleetVehicle(models.Model):
     assignment_ids = fields.One2many('fleet.vehicle.assignation.log', 'vehicle_id', 'Assignment Logs')
     service_ids = fields.One2many('fleet.vehicle.log.services', 'vehicle_id', 'Services Logs')
     contract_ids = fields.One2many('fleet.vehicle.log.contract', 'vehicle_id', 'Contracts')
+    log_ids = fields.One2many('fleet.vehicle.log', 'vehicle_id', 'Contracts')
     assignment_count = fields.Integer('Drivers History Count', compute='_compute_count_all')
     service_count = fields.Integer('Services', compute='_compute_count_all')
-    contract_count = fields.Integer('Contract Count', compute='_compute_count_all')
+    contract_count = fields.Integer('Contracts', compute='_compute_count_all')
+    log_count = fields.Integer('Logs', compute='_compute_count_all')
     first_contract_date = fields.Date(
         string='First Contract Date',
         default=fields.Date.today,
@@ -421,6 +447,7 @@ class FleetVehicle(models.Model):
         LogService = self.env['fleet.vehicle.log.services'].with_context(active_test=False)
         LogContract = self.env['fleet.vehicle.log.contract'].with_context(active_test=False)
         LogHistory = self.env['fleet.vehicle.assignation.log']
+        Log = self.env['fleet.vehicle.log'].with_context(active_test=False)
         service_data = LogService._read_group(
             [('vehicle_id', 'in', self.ids)], ['vehicle_id', 'active'], ['__count']
         )
@@ -430,22 +457,29 @@ class FleetVehicle(models.Model):
         historic_data = LogHistory._read_group(
             [('vehicle_id', 'in', self.ids)], ['vehicle_id'], ['__count']
         )
+        log_data = Log._read_group(
+            [('vehicle_id', 'in', self.ids)], ['vehicle_id'], ['__count']
+        )
 
         mapped_service_data = defaultdict(lambda: defaultdict(lambda: 0))
-        mapped_log_data = defaultdict(lambda: defaultdict(lambda: 0))
+        mapped_contract_data = defaultdict(lambda: defaultdict(lambda: 0))
         mapped_history_data = defaultdict(lambda: 0)
+        mapped_log_data = defaultdict(lambda: 0)
 
         for vehicle, active, count in service_data:
             mapped_service_data[vehicle.id][active] = count
         for vehicle, active, count in contract_data:
-            mapped_log_data[vehicle.id][active] = count
+            mapped_contract_data[vehicle.id][active] = count
         for vehicle, count in historic_data:
             mapped_history_data[vehicle.id] = count
+        for vehicle, count in log_data:
+            mapped_log_data[vehicle.id] = count
 
         for vehicle in self:
             vehicle.service_count = mapped_service_data[vehicle.id][vehicle.active]
-            vehicle.contract_count = mapped_log_data[vehicle.id][vehicle.active]
+            vehicle.contract_count = mapped_contract_data[vehicle.id][vehicle.active]
             vehicle.assignment_count = mapped_history_data[vehicle.id]
+            vehicle.log_count = mapped_log_data[vehicle.id]
 
     def _compute_move_ids(self):
         if not self.env.user.has_group('account.group_account_readonly'):
