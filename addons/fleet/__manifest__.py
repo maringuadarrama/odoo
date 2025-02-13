@@ -44,6 +44,7 @@
         'views/fleet_vehicle_model_views.xml',
         'views/fleet_vehicle_log_contract_views.xml',
         'views/fleet_vehicle_log_services_views.xml',
+        'views/fleet_vehicle_log_views.xml',
         'views/fleet_vehicle_assignation_log_views.xml',
         'views/fleet_vehicle_tag_views.xml',
         'views/fleet_vehicle_views.xml',

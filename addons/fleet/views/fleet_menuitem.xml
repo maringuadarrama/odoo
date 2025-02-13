@@ -51,6 +51,13 @@
         action="fleet_vehicle_log_services_action"
         groups="fleet_group_user" />
 
+    <menuitem
+        id="fleet_vehicle_log_menu"
+        parent="fleet_vehicles"
+        sequence="4"
+        action="action_fleet_vehicle_log"
+        groups="fleet_group_user" />
+
     <!-- "menu_fleet_reporting" -->
     <menuitem
         id="menu_fleet_reporting_costs"
