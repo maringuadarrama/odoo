@@ -29,3 +29,13 @@ class AccountMove(models.Model):
         for log_service_id, log in zip(log_ids, log_list):
             log_service_id.message_post(body=log)
         return posted
+
+    def button_draft(self):
+        res = super().button_draft()
+        for move in self:
+            move.line_ids.filtered(
+                lambda l: l.vehicle_id
+            ).sudo().vehicle_log_ids.with_context(
+                ignore_linked_bill_constraint=True
+            ).unlink()
+        return res
