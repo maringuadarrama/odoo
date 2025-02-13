@@ -2,3 +2,4 @@
 
 from . import fleet_vehicle_send_mail
 from . import hr_departure_wizard
+from . import account_automatic_entry_wizard

@@ -280,6 +280,14 @@ class FleetVehicle(models.Model):
         required=False,
         compute='_compute_contract_reminder',
     )
+    account_move_ids = fields.One2many(
+        comodel_name='account.move',
+        compute='_compute_move_ids',
+    )
+    bill_count = fields.Integer(
+        string="Bills Count",
+        compute='_compute_move_ids',
+    )
 
 
     @api.model_create_multi
@@ -439,6 +447,26 @@ class FleetVehicle(models.Model):
             vehicle.contract_count = mapped_log_data[vehicle.id][vehicle.active]
             vehicle.assignment_count = mapped_history_data[vehicle.id]
 
+    def _compute_move_ids(self):
+        if not self.env.user.has_group('account.group_account_readonly'):
+            self.account_move_ids = False
+            self.bill_count = 0
+            return
+
+        moves = self.env['account.move.line']._read_group(
+            domain=[
+                ('vehicle_id', 'in', self.ids),
+                ('parent_state', '!=', 'cancel'),
+                ('move_id.move_type', 'in', self.env['account.move'].get_purchase_types())
+            ],
+            groupby=['vehicle_id'],
+            aggregates=['move_id:array_agg'],
+        )
+        vehicle_move_mapping = {vehicle.id: set(move_ids) for vehicle, move_ids in moves}
+        for vehicle in self:
+            vehicle.account_move_ids = [Command.set(vehicle_move_mapping.get(vehicle.id, []))]
+            vehicle.bill_count = len(vehicle.account_move_ids)
+
     def _search_contract_renewal_due_soon(self, operator, value):
         params = self.env['ir.config_parameter'].sudo()
         delay_alert_contract = int(params.get_param('hr_fleet.delay_alert_contract', default=30))
@@ -583,3 +611,14 @@ class FleetVehicle(models.Model):
                 'default_vehicle_ids': self.ids,
             }
         }
+
+    def action_view_bills(self):
+        self.ensure_one()
+        form_view_ref = self.env.ref('account.view_move_form', False)
+        list_view_ref = self.env.ref('account_fleet.account_move_view_tree', False)
+        result = self.env['ir.actions.act_window']._for_xml_id('account.action_move_in_invoice_type')
+        result.update({
+            'domain': [('id', 'in', self.account_move_ids.ids)],
+            'views': [(list_view_ref.id, 'list'), (form_view_ref.id, 'form')],
+        })
+        return result

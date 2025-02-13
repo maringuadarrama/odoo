@@ -124,12 +124,30 @@
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
                         invisible="active" />
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_account_move"
+                            type="object" class="oe_stat_button"
+                            icon="fa-pencil-square-o"
+                            invisible="not account_move_line_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span title="Service's Bill"
+                                    class="o_stat_text text-success"
+                                    invisible="account_move_state != 'posted'"
+                                >Service's Bill</span>
+                                <span title="Service's Bill"
+                                    class="o_stat_text text-warning"
+                                    invisible="account_move_state == 'posted'"
+                                >Service's Bill</span>
+                            </div>
+                        </button>
+                    </div>
                     <group col="2">
                         <group>
                             <field name="vendor_id" widget="many2one_avatar" />
                             <field name="date" />
                             <field name="product_id" />
-                            <field name="amount" widget="monetary" />
+                            <field name="amount" widget="monetary"
+                                readonly="account_move_line_id" />
                         </group>
                         <group>
                             <field name="vehicle_id" />
