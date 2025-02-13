@@ -74,6 +74,7 @@
                 <field name="manager_id" widget="many2one_avatar_user" optional="hide" />
                 <field name="odometer" readonly="1" optional="hide" />
                 <field name="vin_sn" readonly="1" optional="hide" />
+                <field name="engine_sn" readonly="1" optional="hide" />
                 <field name="acquisition_date" readonly="1" />
                 <field name="tag_ids" widget="many2many_tags"
                     readonly="1"
@@ -181,18 +182,27 @@
                     <field name="company_id" invisible="1" />
                     <field name="currency_id" invisible="1" />
                     <field name="country_code" invisible="1" />
-                    <div class="oe_button_box" name="button_box">
+                    <field name="active" invisible="1" />
+                    <field name="vehicle_type" invisible="1" />
+                    <div name="button_box" class="oe_button_box">
+                        <button name="action_view_bills"
+                            type="object" class="oe_stat_button"
+                            icon="fa-pencil-square-o"
+                            invisible="bill_count == 0"
+                            help="show the vendor bills for this vehicle">
+                            <field name="bill_count" string="Bills" widget="statinfo" />
+                        </button>
                         <button name="action_open_assignation_logs"
                             type="object" class="oe_stat_button"
                             icon="fa-history">
-                            <field name="assignment_count" widget="statinfo" string="Drivers History" />
+                            <field name="assignment_count" string="Drivers History" widget="statinfo" />
                         </button>
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button"
                             icon="fa-book"
                             context="{'xml_id':'fleet_vehicle_log_contract_action', 'search_default_inactive': not active}"
                             help="show the contract for this vehicle">
-                            <field name="contract_count" widget="statinfo" string="Contracts" />
+                            <field name="contract_count" string="Contracts" widget="statinfo" />
                         </button>
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button"
@@ -200,7 +210,7 @@
                             context="{'xml_id':'fleet_vehicle_log_services_action', 'search_default_inactive': not active}"
                             invisible="service_activity != 'none'"
                             help="show the services logs for this vehicle">
-                            <field name="service_count" widget="statinfo" string="Services" />
+                            <field name="service_count" string="Services" widget="statinfo" />
                         </button>
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button text-danger"
@@ -208,7 +218,7 @@
                             context="{'xml_id':'fleet_vehicle_log_services_action', 'search_default_inactive': not active}"
                             invisible="service_activity != 'overdue'"
                             help="show the services logs for this vehicle">
-                            <field name="service_count" widget="statinfo" string="Services" />
+                            <field name="service_count" string="Services" widget="statinfo" />
                         </button>
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button text-warning"
@@ -216,33 +226,41 @@
                             context="{'xml_id':'fleet_vehicle_log_services_action', 'search_default_inactive': not active}"
                             invisible="service_activity != 'today'"
                             help="show the services logs for this vehicle">
-                            <field name="service_count" widget="statinfo" string="Services" />
+                            <field name="service_count" string="Services" widget="statinfo" />
+                        </button>
+                        <button name="return_action_to_open"
+                            type="object" class="oe_stat_button"
+                            icon="fa-book"
+                            context="{'xml_id':'action_fleet_vehicle_log', 'search_default_inactive': not active}"
+                            help="show the contract for this vehicle">
+                            <field name="log_count" string="Logs" widget="statinfo" />
                         </button>
                     </div>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
                         invisible="active" />
                     <field name="image_128" widget='image' class="oe_avatar" />
-                    <div class="oe_title">
-                        <label for="model_id" />
+                    <div name="title" class="oe_title">
+                        <label for="name" />
                         <h1>
-                            <field name="model_id" placeholder="e.g. Model S" class="w-100" />
+                            <field name="name" />
                         </h1>
+                        <label for="model_id" />
+                        <h2>
+                            <field name="model_id" placeholder="e.g. Model S" />
+                        </h2>
                         <label for="license_plate" />
                         <h2>
                             <field name="license_plate" class="oe_inline" placeholder="e.g. PAE 326" />
                         </h2>
-                        <label for="tag_ids" class="me-3" />
+                        <label for="tag_ids" />
                         <field name="tag_ids" widget="many2many_tags"
                             options="{'color_field': 'color', 'no_create_edit': True}" />
                     </div>
                     <group col="2">
                         <group string="Driver">
-                            <field name="active" invisible="1" />
-                            <field name="vehicle_type" invisible="1" />
                             <field name="driver_id"
                                 widget="many2one_avatar"
                                 domain="['|', ('company_id', '=', False ), ('company_id', '=', company_id)]" />
-                            <field name="mobility_card" readonly="1"/>
                             <field name="future_driver_id" widget="many2one_avatar" />
                             <field name="plan_to_change_car"
                                 invisible="vehicle_type != 'car'"
@@ -250,15 +268,15 @@
                             <field name="manager_id"
                                 widget="many2one_avatar_user"
                                 domain="[('share', '=', False), ('company_id', '=', company_id)]" />
-                            <field name="location" />
+                            <field name="acquisition_date" invisible="vehicle_type != 'car'" />
+                            <field name="write_off_date" invisible="vehicle_type != 'car'" />
+                            <field name="next_assignation_date" />
                             <field name="company_id" groups="base.group_multi_company" />
                         </group>
                         <group string="Vehicle">
                             <field name="category_id" />
-                            <field name="acquisition_date" invisible="vehicle_type != 'car'" />
-                            <field name="write_off_date" invisible="vehicle_type != 'car'" />
-                            <field name="next_assignation_date" />
-                            <field name="vin_sn" />
+                            <field name="location" />
+                            <field name="mobility_card" readonly="1"/>
                             <label for="odometer" invisible="vehicle_type != 'car'" />
                             <div invisible="vehicle_type != 'car'">
                                 <field name="odometer" class="oe_inline" />
@@ -270,6 +288,59 @@
                     </group>
                     <field name="vehicle_properties" columns="2" />
                     <notebook>
+                        <page name="page_model" string="Model">
+                            <group>
+                                <group name="group_model" string="Model">
+                                    <field name="vin_sn" />
+                                    <field name="model_year" />
+                                    <field name="transmission"
+                                        invisible="vehicle_type != 'car'" />
+                                    <field name="color" />
+                                    <field name="seats"
+                                        invisible="vehicle_type != 'car'" />
+                                    <field name="doors"
+                                        invisible="vehicle_type != 'car'" />
+                                    <field name="trailer_hook"
+                                        invisible="vehicle_type != 'car'" />
+                                    <field name="electric_assistance"
+                                        invisible="vehicle_type != 'bike'" />
+                                </group>
+                                <group string="Engine" invisible="vehicle_type != 'car'">
+                                    <field name="engine_sn" />
+                                    <field name="power_unit" />
+                                    <label for="power"
+                                        invisible="power_unit != 'power'" />
+                                    <div class="o_row"
+                                        invisible="power_unit != 'power'">
+                                        <field name="power" />
+                                        <span>kW</span>
+                                    </div>
+                                    <field name="horsepower"
+                                        invisible="power_unit != 'horsepower'" />
+                                    <label for="vehicle_range" />
+                                    <div class="o_row">
+                                        <field name="vehicle_range" />
+                                        <span>km</span>
+                                    </div>
+                                    <field name="fuel_type" />
+                                    <label for="fuel_tank_capacity" />
+                                    <div class="o_row">
+                                        <field name="fuel_tank_capacity" /><span>L</span>
+                                    </div>
+                                    <field name="cilinders" />
+                                    <label for="fuel_efficiency" />
+                                    <div class="o_row">
+                                        <field name="fuel_efficiency" /><span>km/L</span>
+                                    </div>
+                                    <label for="co2" />
+                                    <div class="o_row" name="co2">
+                                        <field name="co2" />
+                                        <span>g/km</span>
+                                    </div>
+                                    <field name="co2_standard" />
+                                </group>
+                            </group>
+                        </page>
                         <page name="page_contract_info" string="Contract Info">
                             <group>
                                 <group string="Contract">
@@ -277,41 +348,6 @@
                                     <field name="car_value" widget="monetary" />
                                     <field name="net_car_value" widget="monetary" />
                                     <field name="residual_value" widget="monetary" />
-                                </group>
-                            </group>
-                        </page>
-                        <page name="page_model" string="Model">
-                            <group>
-                                <group name="group_model" string="Model">
-                                    <field name="model_year" />
-                                    <field name="transmission" invisible="vehicle_type != 'car'" />
-                                    <field name="color" />
-                                    <field name="seats" invisible="vehicle_type != 'car'" />
-                                    <field name="doors" invisible="vehicle_type != 'car'" />
-                                    <field name="trailer_hook" invisible="vehicle_type != 'car'" />
-                                    <field name="electric_assistance"
-                                        invisible="vehicle_type != 'bike'" />
-                                </group>
-                                <group string="Engine" invisible="vehicle_type != 'car'">
-                                    <field name="power_unit" />
-                                    <label for="power" invisible="power_unit != 'power'" />
-                                    <div class="o_row" invisible="power_unit != 'power'">
-                                        <field name="power" />
-                                        <span>kW</span>
-                                    </div>
-                                    <field name="horsepower" invisible="power_unit != 'horsepower'" />
-                                    <label for="vehicle_range" />
-                                    <div class="o_row">
-                                        <field name="vehicle_range" />
-                                        <span>km</span>
-                                    </div>
-                                    <field name="fuel_type" />
-                                    <label for="co2" />
-                                    <div class="o_row" name="co2">
-                                        <field name="co2" />
-                                        <span>g/km</span>
-                                    </div>
-                                    <field name="co2_standard" />
                                 </group>
                             </group>
                         </page>

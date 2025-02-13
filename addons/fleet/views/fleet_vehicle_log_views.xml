@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <record id='fleet_vehicle_log_services_view_search' model='ir.ui.view'>
-        <field name="name">fleet.vehicle.log.services.search</field>
-        <field name="model">fleet.vehicle.log.services</field>
+    <record id='view_search_fleet_vehicle_log' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log.search</field>
+        <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
             <search string="Services Logs">
                 <field name="vehicle_id" />
@@ -20,11 +20,11 @@
         </field>
     </record>
 
-    <record id='fleet_vehicle_log_services_view_tree' model='ir.ui.view'>
-        <field name="name">fleet.vehicle.log.services.list</field>
-        <field name="model">fleet.vehicle.log.services</field>
+    <record id='view_list_fleet_vehicle_log' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log.list</field>
+        <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
-            <list string="Services Logs" multi_edit="1" expand="1">
+            <list string="Logs" multi_edit="1" expand="1">
                 <field name="currency_id" column_invisible="True" />
                 <field name="date" readonly="1" />
                 <field name="vehicle_id" readonly="1" widget="many2one_avatar" />
@@ -43,9 +43,9 @@
         </field>
     </record>
 
-    <record id='fleet_vehicle_log_services_view_kanban' model='ir.ui.view'>
-        <field name="name">fleet.vehicle.log.services.kanban</field>
-        <field name="model">fleet.vehicle.log.services</field>
+    <record id='view_kanban_fleet_vehicle_log' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log.kanban</field>
+        <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
             <kanban default_group_by="state">
                 <field name="currency_id" />
@@ -86,9 +86,9 @@
         </field>
     </record>
 
-    <record id="fleet_vehicle_log_services_view_graph" model="ir.ui.view">
-        <field name="name">fleet.vehicle.log.services.graph</field>
-        <field name="model">fleet.vehicle.log.services</field>
+    <record id="view_graph_fleet_vehicle_log" model="ir.ui.view">
+        <field name="name">fleet.vehicle.log.graph</field>
+        <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
             <graph string="Services Costs Per Month" sample="1">
                 <field name="date" />
@@ -98,8 +98,9 @@
         </field>
     </record>
 
-    <record id="fleet_vehicle_log_services_view_pivot" model="ir.ui.view">
-        <field name="model">fleet.vehicle.log.services</field>
+    <record id="view_pivot_fleet_vehicle_log" model="ir.ui.view">
+        <field name="name">fleet.vehicle.log.pivot</field>
+        <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
             <pivot>
                 <field name="currency_id" invisible="1" />
@@ -111,9 +112,9 @@
         </field>
     </record>
 
-    <record id='fleet_vehicle_log_services_view_form' model='ir.ui.view'>
-        <field name="name">fleet.vehicle.log.services.form</field>
-        <field name="model">fleet.vehicle.log.services</field>
+    <record id='view_form_fleet_vehicle_log' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log.form</field>
+        <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
             <form string="Services Logs">
                 <field name="active" invisible="1" />
@@ -124,7 +125,8 @@
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
                         invisible="active" />
-                    <div class="oe_button_box" name="button_box">
+                    <div name="button_box" class="oe_button_box">
+                        <field name="account_move_line_id" invisible="1" />
                         <button name="action_open_account_move"
                             type="object" class="oe_stat_button"
                             icon="fa-pencil-square-o"
@@ -141,22 +143,36 @@
                             </div>
                         </button>
                     </div>
-                    <group col="2">
-                        <group>
+                    <group>
+                        <group string="Vendor">
                             <field name="vendor_id" widget="many2one_avatar" />
                             <field name="date" />
+                            <field name="log_type" />
                             <field name="product_id" />
-                            <field name="amount" widget="monetary"
-                                readonly="account_move_line_id" />
+                            <field name="service_ids" widget="many2many_tags" />
                         </group>
-                        <group>
+                        <group string="Vehicle">
                             <field name="vehicle_id" />
                             <field name="driver_id" widget="many2one_avatar" />
+                            <field name="amount"
+                                widget="monetary"
+                                class="w-25"
+                                help="Cost that is paid only once at the creation of the contract" />
                             <label for="odometer" />
                             <div class="o_row">
                                 <field name="odometer" class="w-25" />
                                 <field name="odometer_uom_id" class="ps-1 ps-sm-0" />
                             </div>
+                        </group>
+                    </group>
+                    <group>
+                        <group name="1" string="Date">
+                            <field name="date_start" />
+                            <field name="date_end" />
+                        </group>
+                        <group name="2" string="Date">
+                            <field name="date_start" />
+                            <field name="date_end" />
                         </group>
                     </group>
                     <separator string="Notes" />
@@ -168,8 +184,9 @@
         </field>
     </record>
 
-    <record id="fleet_vehicle_log_services_view_activity" model="ir.ui.view">
-        <field name="model">fleet.vehicle.log.services</field>
+    <record id="view_activity_fleet_vehicle_log" model="ir.ui.view">
+        <field name="name">fleet.vehicle.log.activity</field>
+        <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
             <activity string="Services">
                 <templates>
@@ -187,9 +204,9 @@
         </field>
     </record>
 
-    <record id='fleet_vehicle_log_services_action' model='ir.actions.act_window'>
-        <field name="name">Services</field>
-        <field name="res_model">fleet.vehicle.log.services</field>
+    <record id='action_fleet_vehicle_log' model='ir.actions.act_window'>
+        <field name="name">Logs</field>
+        <field name="res_model">fleet.vehicle.log</field>
         <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
         <field name="context">{'search_default_groupby_product_id': 1}</field>
         <field name="help" type="html">
