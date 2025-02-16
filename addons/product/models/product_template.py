@@ -1669,11 +1669,14 @@ class ProductTemplate(models.Model):
     def _get_product_document_domain(self):
         self.ensure_one()
         return expression.OR([
-            expression.AND([[('res_model', '=', 'product.template')], [('res_id', '=', self.id)]]),
+            expression.AND([
+                [('res_model', '=', 'product.template')],
+                [('res_id', '=', self.id)]
+            ]),
             expression.AND([
                 [('res_model', '=', 'product.product')],
                 [('res_id', 'in', self.product_variant_ids.ids)],
-            ])
+            ]),
         ])
 
     def _get_contextual_price(self, product=None):
