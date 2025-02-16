@@ -855,9 +855,16 @@ class ProductProduct(models.Model):
     ):
         # Always sort by discounted price but another field can
         # take the primacy through the `ordered_by` param.
-        sort_key = itemgetter('price_discounted', 'sequence', 'id')
+        sort_key = ('price_discounted', 'sequence', 'id')
         if ordered_by != 'price_discounted':
-            sort_key = itemgetter(ordered_by, 'price_discounted', 'sequence', 'id')
+            sort_key = (ordered_by, 'price_discounted', 'sequence', 'id')
+
+        def sort_function(record):
+            vals = {
+                'price_discounted': record.currency_id._convert(record.price_discounted, record.env.company.currency_id, record.env.company, date or fields.Date.context_today(self))
+            }
+            return [vals.get(key, record[key]) for key in sort_key]
+
         sellers = self._get_filtered_sellers(
             partner_id=partner_id,
             quantity=quantity,
@@ -869,7 +876,7 @@ class ProductProduct(models.Model):
         for seller in sellers:
             if not res or res.partner_id == seller.partner_id:
                 res |= seller
-        return res and res.sorted(sort_key)[:1]
+        return res and res.sorted(sort_function)[:1]
 
     def _get_no_variant_attributes_price_extra(self, combination):
         # It is possible that a no_variant attribute is still in a variant if
