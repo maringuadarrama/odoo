@@ -1,78 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <record id="view_order_product_pivot" model="ir.ui.view">
-         <field name="name">sale.report.pivot</field>
-         <field name="model">sale.report</field>
-         <field name="arch" type="xml">
-             <pivot string="Sales Analysis" sample="1">
-                 <field name="team_id" type="col"/>
-                 <field name="date" interval="month" type="row"/>
-                 <field name="product_uom_qty" type="measure"/>
-             </pivot>
-         </field>
-    </record>
-
-    <record id="view_order_product_graph" model="ir.ui.view">
-         <field name="name">sale.report.graph</field>
-         <field name="model">sale.report</field>
-         <field name="arch" type="xml">
-             <graph string="Sales Analysis" type="line" sample="1">
-                 <field name="date" interval="month"/>
-                 <field name="product_uom_qty" type="measure"/>
-             </graph>
-         </field>
-    </record>
-
-    <record id="sale_report_graph_pie" model="ir.ui.view">
-         <field name="name">sale.report.graph.pie</field>
-         <field name="model">sale.report</field>
-         <field name="mode">primary</field>
-         <field name="inherit_id" ref="view_order_product_graph"/>
-         <field name="arch" type="xml">
-            <graph position="attributes">
-                <attribute name="type">pie</attribute>
-            </graph>
-         </field>
-    </record>
-
-     <record id="sale_report_graph_bar" model="ir.ui.view">
-         <field name="name">sale.report.graph.bar</field>
-         <field name="model">sale.report</field>
-         <field name="mode">primary</field>
-         <field name="inherit_id" ref="view_order_product_graph"/>
-         <field name="arch" type="xml">
-            <graph position="attributes">
-                <attribute name="type">bar</attribute>
-                <attribute name="order">DESC</attribute>
-            </graph>
-         </field>
-    </record>
-
-    <record id="sale_report_view_tree" model="ir.ui.view">
-        <field name="name">sale.report.view.list</field>
-        <field name="model">sale.report</field>
-        <field name="arch" type="xml">
-            <list string="Sales Analysis" action="action_open_order" type="object">
-                <field name="date"/>
-                <field name="order_reference" optional="show"/>
-                <field name="product_id" string="Product" optional="show"/>
-                <field name="partner_id"/>
-                <field name="user_id" optional="show" widget="many2one_avatar_user"/>
-                <field name="team_id" optional="hide"/>
-                <field name="company_id" optional="show" groups="base.group_multi_company"/>
-                <field name="product_uom_qty" string="Quantity" sum="Sum of Quantity"/>
-                <field name="price_subtotal" optional="hide" sum="Sum of Untaxed Total"/>
-                <field name="price_unit" widget="monetary" avg="Average"/>
-                <field name="price_total" optional="show" sum="Sum of Total"/>
-                <field name="state" optional="hide"/>
-                <field name="pricelist_id" optional="hide"/>
-                <field name="line_invoice_status" optional="hide"/>
-                <field name="currency_id" column_invisible="True"/>
-            </list>
-        </field>
-    </record>
-
     <record id="view_order_product_search" model="ir.ui.view">
         <field name="name">sale.report.search</field>
         <field name="model">sale.report</field>
@@ -122,6 +49,78 @@
         </field>
     </record>
 
+    <record id="sale_report_view_tree" model="ir.ui.view">
+        <field name="name">sale.report.view.list</field>
+        <field name="model">sale.report</field>
+        <field name="arch" type="xml">
+            <list string="Sales Analysis" action="action_open_order" type="object">
+                <field name="date"/>
+                <field name="order_reference" optional="show"/>
+                <field name="product_id" string="Product" optional="show"/>
+                <field name="partner_id"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="team_id" optional="hide"/>
+                <field name="company_id" optional="show" groups="base.group_multi_company"/>
+                <field name="product_uom_qty" string="Quantity" sum="Sum of Quantity"/>
+                <field name="price_subtotal" sum="Sum of Untaxed Total" optional="hide"/>
+                <field name="price_unit" widget="monetary" avg="Average"/>
+                <field name="price_total" sum="Sum of Total" optional="show"/>
+                <field name="state" optional="hide"/>
+                <field name="pricelist_id" optional="hide"/>
+                <field name="line_invoice_status" optional="hide"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_order_product_pivot" model="ir.ui.view">
+         <field name="name">sale.report.pivot</field>
+         <field name="model">sale.report</field>
+         <field name="arch" type="xml">
+             <pivot string="Sales Analysis" sample="1">
+                 <field name="team_id" type="col"/>
+                 <field name="date" interval="month" type="row"/>
+                 <field name="product_uom_qty" type="measure"/>
+             </pivot>
+         </field>
+    </record>
+
+    <record id="view_order_product_graph" model="ir.ui.view">
+         <field name="name">sale.report.graph</field>
+         <field name="model">sale.report</field>
+         <field name="arch" type="xml">
+             <graph string="Sales Analysis" type="line" sample="1">
+                 <field name="date" interval="month"/>
+                 <field name="product_uom_qty" type="measure"/>
+             </graph>
+         </field>
+    </record>
+
+    <record id="sale_report_graph_pie" model="ir.ui.view">
+         <field name="name">sale.report.graph.pie</field>
+         <field name="model">sale.report</field>
+         <field name="mode">primary</field>
+         <field name="inherit_id" ref="view_order_product_graph"/>
+         <field name="arch" type="xml">
+            <graph position="attributes">
+                <attribute name="type">pie</attribute>
+            </graph>
+         </field>
+    </record>
+
+     <record id="sale_report_graph_bar" model="ir.ui.view">
+         <field name="name">sale.report.graph.bar</field>
+         <field name="model">sale.report</field>
+         <field name="mode">primary</field>
+         <field name="inherit_id" ref="view_order_product_graph"/>
+         <field name="arch" type="xml">
+            <graph position="attributes">
+                <attribute name="type">bar</attribute>
+                <attribute name="order">DESC</attribute>
+            </graph>
+         </field>
+    </record>
+
     <record id="action_order_report_all" model="ir.actions.act_window">
         <field name="name">Sales Analysis</field>
         <field name="res_model">sale.report</field>
@@ -129,7 +128,11 @@
         <field name="view_id"></field>  <!-- force empty -->
         <field name="search_view_id" ref="view_order_product_search"/>
         <field name="domain">[('state', '!=', 'cancel')]</field>
-        <field name="context">{'search_default_Sales':1,'group_by':[], 'search_default_filter_order_date': 1}</field>
+        <field name="context">{
+            'search_default_Sales':1,
+            'group_by':[],
+            'search_default_filter_order_date': 1
+        }</field>
         <field name="help">This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
     </record>
 
@@ -139,7 +142,11 @@
         <field name="view_mode">graph,pivot</field>
         <field name="view_id" ref="sale_report_graph_bar"/>
         <field name="search_view_id" ref="view_order_product_search"/>
-        <field name="context">{'search_default_User': 1, 'group_by': 'user_id', 'search_default_filter_order_date': 1}</field>
+        <field name="context">{
+            'search_default_User': 1,
+            'group_by': 'user_id',
+            'search_default_filter_order_date': 1
+        }</field>
         <field name="help">This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
     </record>
 
@@ -149,7 +156,12 @@
         <field name="view_mode">graph,pivot</field>
         <field name="view_id" ref="sale_report_graph_pie"/>
         <field name="search_view_id" ref="view_order_product_search"/>
-        <field name="context">{'search_default_Sales': 1, 'search_default_Product': 1, 'group_by': 'product_id', 'search_default_filter_order_date': 1}</field>
+        <field name="context">{
+            'search_default_Sales': 1,
+            'search_default_Product': 1,
+            'group_by': 'product_id',
+            'search_default_filter_order_date': 1
+        }</field>
         <field name="help">This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
     </record>
 
@@ -159,7 +171,11 @@
         <field name="view_mode">graph,pivot</field>
         <field name="view_id" ref="sale_report_graph_bar"/>
         <field name="search_view_id" ref="view_order_product_search"/>
-        <field name="context">{'search_default_Customer': 1, 'group_by': 'partner_id', 'search_default_filter_order_date': 1}</field>
+        <field name="context">{
+            'search_default_Customer': 1,
+            'group_by': 'partner_id',
+            'search_default_filter_order_date': 1
+        }</field>
         <field name="help">This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
     </record>
 
@@ -186,7 +202,8 @@
         <field name="context">{
             'search_default_Sales': 1,
             'search_default_filter_date': 1,
-            'search_default_team_id': [active_id]}</field>
+            'search_default_team_id': [active_id]
+        }</field>
         <field name="help">This report performs analysis on your sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
     </record>
 </odoo>

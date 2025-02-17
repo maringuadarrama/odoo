@@ -6,28 +6,56 @@ from odoo.exceptions import ValidationError
 
 class ProductCombo(models.Model):
     _name = 'product.combo'
-    _description = "Product Combo"
+    _description = 'Product Combo'
     _order = 'sequence, id'
 
-    name = fields.Char(string="Name", required=True)
+
+    name = fields.Char(string='Name', required=True)
     sequence = fields.Integer(default=10, copy=False)
-    company_id = fields.Many2one(string="Company", comodel_name='res.company', index=True)
+    company_id = fields.Many2one(
+        comodel_name='res.company',
+        string='Company',
+        index=True,
+    )
+    currency_id = fields.Many2one(
+        comodel_name='res.currency',
+        compute='_compute_currency_id',
+    )
+    base_price = fields.Float(
+        string='Combo Price',
+        digits='Product Price',
+        compute='_compute_base_price',
+        help='The minimum price among the products in this combo. This value will be used to'
+             ' prorate the price of this combo with respect to the other combos in a combo product.'
+             ' This heuristic ensures that whatever product the user chooses in a combo, it will'
+             ' always be the same price.',
+    )
     combo_item_ids = fields.One2many(
         comodel_name='product.combo.item',
         inverse_name='combo_id',
         copy=True,
     )
-    combo_item_count = fields.Integer(string="Product Count", compute='_compute_combo_item_count')
-    currency_id = fields.Many2one(comodel_name='res.currency', compute='_compute_currency_id')
-    base_price = fields.Float(
-        string="Combo Price",
-        help="The minimum price among the products in this combo. This value will be used to"
-             " prorate the price of this combo with respect to the other combos in a combo product."
-             " This heuristic ensures that whatever product the user chooses in a combo, it will"
-             " always be the same price.",
-        digits='Product Price',
-        compute='_compute_base_price',
+    combo_item_count = fields.Integer(
+        string='Product Count',
+        compute='_compute_combo_item_count',
     )
+
+
+    @api.constrains('company_id')
+    def _check_company_id(self):
+        templates = self.env['product.template'].sudo().search([('combo_ids', 'in', self.ids)])
+        templates._check_company(fnames=['combo_ids'])
+
+    @api.constrains('combo_item_ids')
+    def _check_combo_item_ids_not_empty(self):
+        if any(not combo.combo_item_ids for combo in self):
+            raise ValidationError(_('A combo choice must contain at least 1 product.'))
+
+    @api.constrains('combo_item_ids')
+    def _check_combo_item_ids_no_duplicates(self):
+        for combo in self:
+            if len(combo.combo_item_ids.mapped('product_id')) < len(combo.combo_item_ids):
+                raise ValidationError(_('A combo choice cannot contain duplicate products.'))
 
     @api.depends('combo_item_ids')
     def _compute_combo_item_count(self):
@@ -60,19 +88,3 @@ class ProductCombo(models.Model):
                     date=self.env.cr.now(),
                 )
             )) if combo.combo_item_ids else 0
-
-    @api.constrains('combo_item_ids')
-    def _check_combo_item_ids_not_empty(self):
-        if any(not combo.combo_item_ids for combo in self):
-            raise ValidationError(_("A combo choice must contain at least 1 product."))
-
-    @api.constrains('combo_item_ids')
-    def _check_combo_item_ids_no_duplicates(self):
-        for combo in self:
-            if len(combo.combo_item_ids.mapped('product_id')) < len(combo.combo_item_ids):
-                raise ValidationError(_("A combo choice can't contain duplicate products."))
-
-    @api.constrains('company_id')
-    def _check_company_id(self):
-        templates = self.env['product.template'].sudo().search([('combo_ids', 'in', self.ids)])
-        templates._check_company(fnames=['combo_ids'])

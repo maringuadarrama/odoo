@@ -26,14 +26,17 @@ Pricelists preferences by product and/or partners.
 Print product labels with barcode.
     """,
     'data': [
-        'data/product_data.xml',
         'security/product_security.xml',
         'security/ir.model.access.csv',
+        'data/product_category_data.xml',
+        'data/decimal_precision_data.xml',
 
         'wizard/product_label_layout_views.xml',
         'wizard/update_product_attribute_value_views.xml',
+        'views/product_packaging_views.xml',
+        'views/product_template_views.xml',
+        'views/product_product_views.xml',
         'views/product_tag_views.xml',
-        'views/product_views.xml',  # To keep after product_tag_views.xml because it depends on it.
 
         'views/res_config_settings_views.xml',
         'views/product_attribute_views.xml',
@@ -41,12 +44,10 @@ Print product labels with barcode.
         'views/product_category_views.xml',
         'views/product_combo_views.xml',
         'views/product_document_views.xml',
-        'views/product_packaging_views.xml',
         'views/product_pricelist_item_views.xml',
         'views/product_pricelist_views.xml',
         'views/product_supplierinfo_views.xml',
         'views/product_template_attribute_line_views.xml',
-        'views/product_template_views.xml',
         'views/res_country_group_views.xml',
         'views/res_partner_views.xml',
 

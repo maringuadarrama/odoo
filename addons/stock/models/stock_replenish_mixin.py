@@ -7,11 +7,18 @@ class ProductReplenishMixin(models.AbstractModel):
     _name = 'stock.replenish.mixin'
     _description = 'Product Replenish Mixin'
 
+
     route_id = fields.Many2one(
-        'stock.route', string="Preferred Route",
-        help="Apply specific route for the replenishment instead of product's default routes.",
-        check_company=True)
-    allowed_route_ids = fields.Many2many('stock.route', compute='_compute_allowed_route_ids')
+        comodel_name='stock.route',
+        string='Preferred Route',
+        check_company=True,
+        help='Apply specific route for the replenishment instead of product\'s default routes.',
+    )
+    allowed_route_ids = fields.Many2many(
+        comodel_name='stock.route',
+        compute='_compute_allowed_route_ids',
+    )
+
 
     # INHERITS in 'Drop Shipping', 'Dropship and Subcontracting Management' and 'Dropship and Subcontracting Management'
     @api.depends('product_id', 'product_tmpl_id')

@@ -5,24 +5,23 @@ from odoo.exceptions import UserError
 
 
 class ProductAttribute(models.Model):
-    _name = "product.attribute"
-    _description = "Product Attribute"
+    _name = 'product.attribute'
+    _description = 'Product Attribute'
     # if you change this _order, keep it in sync with the method
     # `_sort_key_attribute_value` in `product.template`
     _order = 'sequence, id'
 
-    _sql_constraints = [
-        (
-            'check_multi_checkbox_no_variant',
-            "CHECK(display_type != 'multi' OR create_variant = 'no_variant')",
-            "Multi-checkbox display type is not compatible with the creation of variants"
-        ),
-    ]
 
-    name = fields.Char(string="Attribute", required=True, translate=True)
+    name = fields.Char(string='Attribute', required=True, translate=True)
     active = fields.Boolean(
         default=True,
-        help="If unchecked, it will allow you to hide the attribute without removing it.",
+        help='If unchecked, it will allow you to hide the attribute without removing it.',
+    )
+    sequence = fields.Integer(
+        string='Sequence',
+        default=20,
+        index=True,
+        help='Determine the display order',
     )
     create_variant = fields.Selection(
         selection=[
@@ -30,13 +29,16 @@ class ProductAttribute(models.Model):
             ('dynamic', 'Dynamically'),
             ('no_variant', 'Never'),
         ],
+        string='Variant Creation',
+        required=True,
         default='always',
-        string="Variant Creation",
-        help="""- Instantly: All possible variants are created as soon as the attribute and its values are added to a product.
-        - Dynamically: Each variant is created only when its corresponding attributes and values are added to a sales order.
-        - Never: Variants are never created for the attribute.
-        Note: this cannot be changed once the attribute is used on a product.""",
-        required=True)
+        help='-Instantly: All possible variants are created as soon as the attribute and '
+             'its values are added to a product.\n'
+             '-Dynamically: Each variant is created only when its corresponding attributes '
+             'and values are added to a sales order.\n'
+             '-Never: Variants are never created for the attribute.\n'
+             'Note: this cannot be changed once the attribute is used on a product.',
+    )
     display_type = fields.Selection(
         selection=[
             ('radio', 'Radio'),
@@ -45,29 +47,81 @@ class ProductAttribute(models.Model):
             ('color', 'Color'),
             ('multi', 'Multi-checkbox'),
         ],
-        default='radio',
         required=True,
-        help="The display type used in the Product Configurator.")
-    sequence = fields.Integer(string="Sequence", help="Determine the display order", index=True, default=20)
-
+        default='radio',
+        help='The display type used in the Product Configurator.',
+    )
     value_ids = fields.One2many(
         comodel_name='product.attribute.value',
         inverse_name='attribute_id',
-        string="Values", copy=True)
+        string='Values', copy=True,
+    )
     template_value_ids = fields.One2many(
         comodel_name='product.template.attribute.value',
         inverse_name='attribute_id',
-        string="Template Values")
+        string='Template Values',
+    )
     attribute_line_ids = fields.One2many(
         comodel_name='product.template.attribute.line',
         inverse_name='attribute_id',
-        string="Lines")
+        string='Lines',
+    )
     product_tmpl_ids = fields.Many2many(
         comodel_name='product.template',
-        string="Related Products",
-        compute='_compute_products',
-        store=True)
+        string='Related Products',
+        compute='_compute_products', store=True,
+    )
     number_related_products = fields.Integer(compute='_compute_number_related_products')
+
+
+    _sql_constraints = [
+        (
+            'check_multi_checkbox_no_variant',
+            'CHECK(display_type != \'multi\' OR create_variant = \'no_variant\')',
+            'Multi-checkbox display type is not compatible with the creation of variants'
+        ),
+    ]
+
+    # === CRUD METHODS === #
+
+    def write(self, vals):
+        '''
+        Override to make sure attribute type can't be changed if it's used on
+        a product template.
+
+        This is important to prevent because changing the type would make
+        existing combinations invalid without recomputing them, and recomputing
+        them might take too long and we don't want to change products without
+        the user knowing about it.
+        '''
+        if 'create_variant' in vals:
+            for pa in self:
+                if vals['create_variant'] != pa.create_variant and pa.number_related_products:
+                    raise UserError(_(
+                        'You cannot change the Variants Creation Mode of the attribute %(attribute)s'
+                        ' because it is used on the following products:\n%(products)s',
+                        attribute=pa.display_name,
+                        products=', '.join(pa.product_tmpl_ids.mapped('display_name')),
+                    ))
+        invalidate = 'sequence' in vals and any(record.sequence != vals['sequence'] for record in self)
+        res = super().write(vals)
+        if invalidate:
+            # prefetched o2m have to be resequenced
+            # (eg. product.template: attribute_line_ids)
+            self.env.flush_all()
+            self.env.invalidate_all()
+        return res
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_used_on_product(self):
+        for pa in self:
+            if pa.number_related_products:
+                raise UserError(_(
+                    'You cannot delete the attribute %(attribute)s because it is used on the'
+                    ' following products:\n%(products)s',
+                    attribute=pa.display_name,
+                    products=', '.join(pa.product_tmpl_ids.mapped('display_name')),
+                ))
 
     # === COMPUTE METHODS === #
 
@@ -96,60 +150,22 @@ class ProductAttribute(models.Model):
         if self.display_type == 'multi' and self.number_related_products == 0:
             self.create_variant = 'no_variant'
 
-    # === CRUD METHODS === #
-
-    def write(self, vals):
-        """Override to make sure attribute type can't be changed if it's used on
-        a product template.
-
-        This is important to prevent because changing the type would make
-        existing combinations invalid without recomputing them, and recomputing
-        them might take too long and we don't want to change products without
-        the user knowing about it."""
-        if 'create_variant' in vals:
-            for pa in self:
-                if vals['create_variant'] != pa.create_variant and pa.number_related_products:
-                    raise UserError(_(
-                        "You cannot change the Variants Creation Mode of the attribute %(attribute)s"
-                        " because it is used on the following products:\n%(products)s",
-                        attribute=pa.display_name,
-                        products=", ".join(pa.product_tmpl_ids.mapped('display_name')),
-                    ))
-        invalidate = 'sequence' in vals and any(record.sequence != vals['sequence'] for record in self)
-        res = super().write(vals)
-        if invalidate:
-            # prefetched o2m have to be resequenced
-            # (eg. product.template: attribute_line_ids)
-            self.env.flush_all()
-            self.env.invalidate_all()
-        return res
-
-    @api.ondelete(at_uninstall=False)
-    def _unlink_except_used_on_product(self):
-        for pa in self:
-            if pa.number_related_products:
-                raise UserError(_(
-                    "You cannot delete the attribute %(attribute)s because it is used on the"
-                    " following products:\n%(products)s",
-                    attribute=pa.display_name,
-                    products=", ".join(pa.product_tmpl_ids.mapped('display_name')),
-                ))
-
     # === ACTION METHODS === #
 
     def action_archive(self):
         for attribute in self:
             if attribute.number_related_products:
                 raise UserError(_(
-                    "You cannot archive this attribute as there are still products linked to it",
+                    'You cannot archive this attribute as there are still products linked to it',
                 ))
+
         return super().action_archive()
 
     def action_open_product_template_attribute_lines(self):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _("Products"),
+            'name': _('Products'),
             'res_model': 'product.template.attribute.line',
             'view_mode': 'list,form',
             'domain': [('attribute_id', '=', self.id), ('product_tmpl_id.active', '=', 'True')],

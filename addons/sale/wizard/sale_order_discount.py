@@ -9,30 +9,33 @@ from odoo.tools import float_repr
 
 class SaleOrderDiscount(models.TransientModel):
     _name = 'sale.order.discount'
-    _description = "Discount Wizard"
+    _description = 'Discount Wizard'
+
 
     sale_order_id = fields.Many2one(
-        'sale.order', default=lambda self: self.env.context.get('active_id'), required=True)
+        comodel_name='sale.order',
+        required=True,
+        default=lambda self: self.env.context.get('active_id'),
+    )
     company_id = fields.Many2one(related='sale_order_id.company_id')
     currency_id = fields.Many2one(related='sale_order_id.currency_id')
-    discount_amount = fields.Monetary(string="Amount")
-    discount_percentage = fields.Float(string="Percentage")
+    discount_amount = fields.Monetary(string='Amount')
+    discount_percentage = fields.Float(string='Percentage')
     discount_type = fields.Selection(
         selection=[
-            ('sol_discount', "On All Order Lines"),
-            ('so_discount', "Global Discount"),
-            ('amount', "Fixed Amount"),
+            ('sol_discount', 'On All Order Lines'),
+            ('so_discount', 'Global Discount'),
+            ('amount', 'Fixed Amount'),
         ],
         default='sol_discount',
     )
     tax_ids = fields.Many2many(
-        string="Taxes",
-        help="Taxes to add on the discount line.",
         comodel_name='account.tax',
+        string='Taxes',
         domain="[('type_tax_use', '=', 'sale'), ('company_id', '=', company_id)]",
+        help='Taxes to add on the discount line.',
     )
 
-    # CONSTRAINT METHODS #
 
     @api.constrains('discount_type', 'discount_percentage')
     def _check_discount_amount(self):
@@ -41,7 +44,7 @@ class SaleOrderDiscount(models.TransientModel):
                 wizard.discount_type in ('sol_discount', 'so_discount')
                 and wizard.discount_percentage > 1.0
             ):
-                raise ValidationError(_("Invalid discount amount"))
+                raise ValidationError(_('Invalid discount amount'))
 
     def _prepare_discount_product_values(self):
         self.ensure_one()
@@ -56,7 +59,6 @@ class SaleOrderDiscount(models.TransientModel):
 
     def _prepare_discount_line_values(self, product, amount, taxes, description=None):
         self.ensure_one()
-
         vals = {
             'order_id': self.sale_order_id.id,
             'product_id': product.id,
@@ -67,11 +69,10 @@ class SaleOrderDiscount(models.TransientModel):
         if description:
             # If not given, name will fallback on the standard SOL logic (cf. _compute_name)
             vals['name'] = description
-
         return vals
 
     def _get_discount_product(self):
-        """Return product.product used for discount line"""
+        '''Return product.product used for discount line'''
         self.ensure_one()
         discount_product = self.company_id.sale_discount_product_id
         if not discount_product:
@@ -86,21 +87,23 @@ class SaleOrderDiscount(models.TransientModel):
                 )
             else:
                 raise ValidationError(_(
-                    "There does not seem to be any discount product configured for this company yet."
-                    " You can either use a per-line discount, or ask an administrator to grant the"
-                    " discount the first time."
+                    'There does not seem to be any discount product configured for this company yet.'
+                    ' You can either use a per-line discount, or ask an administrator to grant the'
+                    ' discount the first time.'
                 ))
+
             discount_product = self.company_id.sale_discount_product_id
         return discount_product
 
     def _create_discount_lines(self):
-        """Create SOline(s) according to wizard configuration"""
+        '''Create SOline(s) according to wizard configuration'''
         self.ensure_one()
         discount_product = self._get_discount_product()
 
         if self.discount_type == 'amount':
             if not self.sale_order_id.amount_total:
                 return
+
             discount_percentage = self.discount_amount / self.sale_order_id.amount_total
         else: # so_discount
             discount_percentage = self.discount_percentage
@@ -108,6 +111,7 @@ class SaleOrderDiscount(models.TransientModel):
         for line in self.sale_order_id.order_line:
             if not line.product_uom_qty or not line.price_unit:
                 continue
+
             discounted_price = line.price_unit * (1 - (line.discount or 0.0)/100)
             total_price_per_tax_groups[line.tax_id] += (discounted_price * line.product_uom_qty)
 
@@ -115,6 +119,7 @@ class SaleOrderDiscount(models.TransientModel):
         if not total_price_per_tax_groups:
             # No valid lines on which the discount can be applied
             return
+
         if len(total_price_per_tax_groups) == 1:
             # No taxes, or all lines have the exact same taxes
             taxes = next(iter(total_price_per_tax_groups.keys()))
@@ -125,7 +130,7 @@ class SaleOrderDiscount(models.TransientModel):
                     amount=subtotal * discount_percentage,
                     taxes=taxes,
                     description=_(
-                        "Discount %(percent)s%%",
+                        'Discount %(percent)s%%',
                         percent=float_repr(discount_percentage * 100, discount_dp),
                     ),
                 ),
@@ -137,14 +142,14 @@ class SaleOrderDiscount(models.TransientModel):
                     amount=subtotal * discount_percentage,
                     taxes=taxes,
                     description=_(
-                        "Discount %(percent)s%%"
-                        "- On products with the following taxes %(taxes)s",
+                        'Discount %(percent)s%%'
+                        '- On products with the following taxes %(taxes)s',
                         percent=float_repr(discount_percentage * 100, discount_dp),
-                        taxes=", ".join(taxes.mapped('name')),
+                        taxes=', '.join(taxes.mapped('name')),
                     ) if self.discount_type != 'amount' else _(
-                        "Discount"
-                        "- On products with the following taxes %(taxes)s",
-                        taxes=", ".join(taxes.mapped('name')),
+                        'Discount'
+                        '- On products with the following taxes %(taxes)s',
+                        taxes=', '.join(taxes.mapped('name')),
                     )
                 ) for taxes, subtotal in total_price_per_tax_groups.items()
             ]
