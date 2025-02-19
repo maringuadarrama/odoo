@@ -267,7 +267,7 @@ class FleetVehicle(models.Model):
     car_value = fields.Float(string="Catalog Value (VAT Incl.)", tracking=True)
     net_car_value = fields.Float(string="Purchase Value")
     residual_value = fields.Float()
-    log_ids = fields.One2many("fleet.vehicle.log", "vehicle_id", "Contracts")
+    log_ids = fields.One2many("fleet.vehicle.log", "vehicle_id", "Logs")
     assignment_count = fields.Integer("Drivers History Count", compute="_compute_count_all")
     service_count = fields.Integer("Services", compute="_compute_count_all")
     contract_count = fields.Integer("Contracts", compute="_compute_count_all")
