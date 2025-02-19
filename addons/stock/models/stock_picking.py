@@ -18,6 +18,7 @@ from odoo.tools.float_utils import float_compare, float_is_zero
 
 class StockPickingType(models.Model):
     _name = 'stock.picking.type'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = "Picking Type"
     _order = 'is_favorite desc, sequence, id'
     _rec_names_search = ['name', 'warehouse_id.name']
