@@ -8,22 +8,26 @@ from odoo.exceptions import UserError
 
 
 class ProductProduct(models.Model):
+    """Inherit ProductProduct"""
     _inherit = "product.product"
 
 
-    purchased_product_qty = fields.Float(
+    qty_purchased = fields.Float(
         string="Purchased",
         digits="Product Unit",
-        compute="_compute_purchased_product_qty",
+        compute="_compute_qty_purchased",
+    )
+    has_been_purchased = fields.Boolean(
+        compute="_compute_has_been_purchased",
+        search="_search_has_been_purchased",
     )
 
-    is_in_purchase_order = fields.Boolean(
-        compute="_compute_is_in_purchase_order",
-        search="_search_is_in_purchase_order",
-    )
 
+    # -------------------------------------------------------------------------
+    # COMPUTE METHODS
+    # -------------------------------------------------------------------------
 
-    def _compute_purchased_product_qty(self):
+    def _compute_qty_purchased(self):
         date_from = fields.Datetime.to_string(fields.Date.context_today(self) - relativedelta(years=1))
         domain = [
             ("order_id.state", "in", ["purchase", "done"]),
@@ -34,16 +38,16 @@ class ProductProduct(models.Model):
         purchased_data = {product.id: qty for product, qty in order_lines}
         for product in self:
             if not product.id:
-                product.purchased_product_qty = 0.0
+                product.qty_purchased = 0.0
                 continue
 
-            product.purchased_product_qty = float_round(purchased_data.get(product.id, 0), precision_rounding=product.uom_id.rounding)
+            product.qty_purchased = float_round(purchased_data.get(product.id, 0), precision_rounding=product.uom_id.rounding)
 
     @api.depends_context("order_id")
-    def _compute_is_in_purchase_order(self):
+    def _compute_has_been_purchased(self):
         order_id = self.env.context.get("order_id")
         if not order_id:
-            self.is_in_purchase_order = False
+            self.has_been_purchased = False
             return
 
         read_group_data = self.env["purchase.order.line"]._read_group(
@@ -53,9 +57,13 @@ class ProductProduct(models.Model):
         )
         data = {product.id: count for product, count in read_group_data}
         for product in self:
-            product.is_in_purchase_order = bool(data.get(product.id, 0))
+            product.has_been_purchased = bool(data.get(product.id, 0))
 
-    def _search_is_in_purchase_order(self, operator, value):
+    # -------------------------------------------------------------------------
+    # SEARCH METHODS
+    # -------------------------------------------------------------------------
+
+    def _search_has_been_purchased(self, operator, value):
         if operator not in ["=", "!="] or not isinstance(value, bool):
             raise UserError(_("Operation not supported"))
         product_ids = self.env["purchase.order.line"].search([
@@ -63,14 +71,28 @@ class ProductProduct(models.Model):
         ]).product_id.ids
         return [("id", "in", product_ids)]
 
+    # -------------------------------------------------------------------------
+    # ACTIONS
+    # -------------------------------------------------------------------------
+
     def action_view_po(self):
         action = self.env["ir.actions.actions"]._for_xml_id("purchase.action_purchase_history")
         action["domain"] = ["&", ("state", "in", ["purchase", "done"]), ("product_id", "in", self.ids)]
         action["display_name"] = _("Purchase History for %s", self.display_name)
         return action
 
+    # -------------------------------------------------------------------------
+    # ACTIONS
+    # -------------------------------------------------------------------------
+
     def _get_backend_root_menu_ids(self):
         return super()._get_backend_root_menu_ids() + [self.env.ref("purchase.menu_purchase_root").id]
+
+    # -------------------------------------------------------------------------
+    # HOOKS
+    # -------------------------------------------------------------------------
+    #TODO lets analyze if both update_uuom and check_uom_used can be merged in a single method or
+    # a better logic
 
     def _update_uom(self, to_uom_id):
         for uom, product, po_lines in self.env["purchase.order.line"]._read_group(
@@ -90,8 +112,12 @@ class ProductProduct(models.Model):
 
         return super()._update_uom(to_uom_id)
 
-    def _trigger_uom_warning(self):
-        res = super()._trigger_uom_warning()
+    # -------------------------------------------------------------------------
+    # VALIDATION
+    # -------------------------------------------------------------------------
+
+    def _check_uom_used(self):
+        res = super()._check_uom_used()
         if res:
             return res
         po_lines = self.env["purchase.order.line"].sudo().search_count(

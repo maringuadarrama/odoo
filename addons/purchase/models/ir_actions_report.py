@@ -5,6 +5,7 @@ from odoo.tools.pdf import OdooPdfFileReader, OdooPdfFileWriter
 
 
 class IrActionsReport(models.Model):
+    """Inherit IrActionsReports"""
     _inherit = "ir.actions.report"
 
 
@@ -46,6 +47,10 @@ class IrActionsReport(models.Model):
             writer.write(new_pdf_stream)
             collected_streams[purchase_order.id]["stream"] = new_pdf_stream
         return collected_streams
+
+    # -------------------------------------------------------------------------
+    # VALIDATIONS
+    # -------------------------------------------------------------------------
 
     def _is_purchase_order_report(self, report_ref):
         return self._get_report(report_ref).report_name in (

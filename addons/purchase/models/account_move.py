@@ -3,6 +3,7 @@
 import difflib
 import logging
 import time
+
 from markupsafe import Markup
 
 from odoo import api, fields, models, Command, _
@@ -13,16 +14,18 @@ TOLERANCE = 0.02  # tolerance applied to the total when searching for a matching
 
 
 class AccountMove(models.Model):
+    """Inherit AccountMove"""
     _inherit = "account.move"
 
-
-    purchase_vendor_bill_id = fields.Many2one(
+    # purchase_vendor_bill_id
+    purchase_bill_union_id = fields.Many2one(
         comodel_name="purchase.bill.union",
         string="Auto-complete",
         readonly=False,
         store=False,
         help="Auto-complete from a past bill / purchase order.",
     )
+    #TODO change name to purchase_order_id
     purchase_id = fields.Many2one(
         comodel_name="purchase.order",
         string="Purchase Order",
@@ -30,22 +33,26 @@ class AccountMove(models.Model):
         store=False,
         help="Auto-complete from a past purchase order.",
     )
-    purchase_order_count = fields.Integer(
+    count_purchase_order = fields.Integer(
         string="Purchase Order Count",
-        compute="_compute_origin_po_count",
+        compute="_compute_count_purchase_order",
     )
-    purchase_order_name = fields.Char(
-        compute="_compute_purchase_order_name",
-    )
-    # 0: PO not required or partially linked. 1: All lines linked
-    is_purchase_matched = fields.Boolean(
-        compute="_compute_is_purchase_matched",
+    hide_purchase_matching = fields.Boolean(
+        compute="_compute_hide_purchase_matching",
+        help="Technical field used to hide the purchase matching button when none "
+             "invoice line is yet matched with a purchase order line.\n"
+             "0: PO not required or partially linked.\n"
+             "1: All lines linked"
     )
 
+
+    # -------------------------------------------------------------------------
+    # CRUD METHODS
+    # -------------------------------------------------------------------------
 
     @api.model_create_multi
     def create(self, vals_list):
-        moves = super(AccountMove, self).create(vals_list)
+        moves = super().create(vals_list)
         for move in moves:
             if move.reversed_entry_id:
                 continue
@@ -60,9 +67,13 @@ class AccountMove(models.Model):
         return moves
 
     def write(self, vals):
-        old_purchases = [move.mapped("line_ids.purchase_line_id.order_id") for move in self]
-        res = super(AccountMove, self).write(vals)
-        for i, move in enumerate(self):
+        #TODO review this code we want to avoid the doble loop if possible
+        old_purchases = [
+            move.mapped("line_ids.purchase_line_id.order_id")
+            for move in self.filtered(lambda m: m.line_ids.purchase_line_id)
+        ]
+        res = super().write(vals)
+        for i, move in enumerate(self.filtered(lambda m: m.line_ids.purchase_line_id)):
             new_purchases = move.mapped("line_ids.purchase_line_id.order_id")
             if not new_purchases:
                 continue
@@ -74,34 +85,34 @@ class AccountMove(models.Model):
                 move.message_post(body=message)
         return res
 
+    # -------------------------------------------------------------------------
+    # COMPUTE METHODS
+    # -------------------------------------------------------------------------
+
     @api.depends("line_ids.purchase_line_id")
-    def _compute_is_purchase_matched(self):
+    def _compute_hide_purchase_matching(self):
         for move in self:
             if any(
                 il.display_type == "product"
                 and not bool(il.purchase_line_id) for il in move.invoice_line_ids
             ):
-                move.is_purchase_matched = False
+                move.hide_purchase_matching = False
                 continue
 
-            move.is_purchase_matched = True
+            move.hide_purchase_matching = True
 
     @api.depends("line_ids.purchase_line_id")
-    def _compute_origin_po_count(self):
+    def _compute_count_purchase_order(self):
         for move in self:
-            move.purchase_order_count = len(move.line_ids.purchase_line_id.order_id)
+            move.count_purchase_order = len(move.line_ids.purchase_line_id.order_id)
 
-    @api.depends("purchase_order_count")
-    def _compute_purchase_order_name(self):
-        for move in self:
-            if move.purchase_order_count == 1:
-                move.purchase_order_name = move.invoice_line_ids.purchase_order_id.display_name
-            else:
-                move.purchase_order_name = False
+    # -------------------------------------------------------------------------
+    # ONCHANGE METHODS
+    # -------------------------------------------------------------------------
 
     @api.onchange("company_id", "partner_id")
     def _onchange_partner_id(self):
-        res = super(AccountMove, self)._onchange_partner_id()
+        res = super()._onchange_partner_id()
         currency_id = (
             self.partner_id.property_purchase_currency_id
             or self.env["res.currency"].browse(self.env.context.get("default_currency_id"))
@@ -124,24 +135,22 @@ class AccountMove(models.Model):
             self.currency_id = currency_id
         return res
 
-    @api.onchange("purchase_vendor_bill_id", "purchase_id")
+    @api.onchange("purchase_bill_union_id", "purchase_id")
     def _onchange_purchase_auto_complete(self):
-        r"""
-        Load from either an old purchase order, either an old vendor bill.
+        """Load from either an old purchase order, either an old vendor bill.
 
-        When setting a "purchase.bill.union" in "purchase_vendor_bill_id":
+        When setting a "purchase.bill.union" in "purchase_bill_union_id":
         * If it's a vendor bill, "invoice_vendor_bill_id" is set and the loading is done by "_onchange_invoice_vendor_bill".
         * If it's a purchase order, "purchase_id" is set and this method will load lines.
 
         /!\ All this not-stored fields must be empty at the end of this function.
         """
-        if self.purchase_vendor_bill_id.vendor_bill_id:
-            self.invoice_vendor_bill_id = self.purchase_vendor_bill_id.vendor_bill_id
+        if self.purchase_bill_union_id.vendor_bill_id:
+            self.invoice_vendor_bill_id = self.purchase_bill_union_id.vendor_bill_id
             self._onchange_invoice_vendor_bill()
-        elif self.purchase_vendor_bill_id.purchase_order_id:
-            self.purchase_id = self.purchase_vendor_bill_id.purchase_order_id
-        self.purchase_vendor_bill_id = False
-
+        elif self.purchase_bill_union_id.purchase_order_id:
+            self.purchase_id = self.purchase_bill_union_id.purchase_order_id
+        self.purchase_bill_union_id = False
         if not self.purchase_id:
             return
 
@@ -186,7 +195,11 @@ class AccountMove(models.Model):
 
         self.purchase_id = False
 
-    def action_purchase_matching(self):
+    # -------------------------------------------------------------------------
+    # ACTIONS
+    # -------------------------------------------------------------------------
+
+    def action_view_purchase_matching(self):
         self.ensure_one()
         return {
             "name": _("Purchase Matching"),
@@ -220,6 +233,11 @@ class AccountMove(models.Model):
             return [ref for ref in self.ref.split(", ") if ref and ref not in vendor_refs] + vendor_refs
 
         return vendor_refs
+
+
+    # -------------------------------------------------------------------------
+    # HELPER
+    # -------------------------------------------------------------------------
 
     def _add_purchase_order_lines(self, purchase_order_lines):
         """

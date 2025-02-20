@@ -16,7 +16,6 @@ class AccountMoveLine(models.Model):
         string='Sales Order Lines', readonly=True, copy=False)
 
     def _copy_data_extend_business_fields(self, values):
-        # OVERRIDE to copy the 'sale_line_ids' field as well.
         super(AccountMoveLine, self)._copy_data_extend_business_fields(values)
         values['sale_line_ids'] = [(6, None, self.sale_line_ids.ids)]
 

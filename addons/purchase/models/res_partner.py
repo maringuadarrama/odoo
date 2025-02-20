@@ -8,8 +8,8 @@ class ResPartner(models.Model):
     _inherit = "res.partner"
 
 
-    def _compute_purchase_order_count(self):
-        self.purchase_order_count = 0
+    def _compute_count_purchase_order(self):
+        self.count_purchase_order = 0
         if not self.env.user._has_group("purchase.group_purchase_user"):
             return
 
@@ -26,7 +26,7 @@ class ResPartner(models.Model):
         for partner, count in purchase_order_groups:
             while partner:
                 if partner.id in self_ids:
-                    partner.purchase_order_count += count
+                    partner.count_purchase_order += count
                 partner = partner.parent_id
 
     def _compute_supplier_invoice_count(self):
@@ -84,9 +84,9 @@ class ResPartner(models.Model):
         company_dependent=True,
         help="Number of days to send reminder email before the promised receipt date",
     )
-    purchase_order_count = fields.Integer(
+    count_purchase_order = fields.Integer(
         string="Purchase Order Count",
-        compute="_compute_purchase_order_count",
+        compute="_compute_count_purchase_order",
         groups="purchase.group_purchase_user",
     )
     supplier_invoice_count = fields.Integer(

@@ -6,13 +6,14 @@ from odoo.tools.float_utils import float_round
 
 
 class ProductTemplate(models.Model):
+    """Inherit ProductTemplate"""
     _inherit = "product.template"
 
 
-    purchased_product_qty = fields.Float(
+    qty_purchased = fields.Float(
         string="Purchased",
         digits="Product Unit",
-        compute="_compute_purchased_product_qty",
+        compute="_compute_qty_purchased",
     )
     purchase_method = fields.Selection(
         [
@@ -44,10 +45,10 @@ class ProductTemplate(models.Model):
             else:
                 product.purchase_method = default_purchase_method
 
-    def _compute_purchased_product_qty(self):
+    def _compute_qty_purchased(self):
         for template in self:
-            template.purchased_product_qty = float_round(
-                sum([p.purchased_product_qty for p in template.product_variant_ids]),
+            template.qty_purchased = float_round(
+                sum([p.qty_purchased for p in template.product_variant_ids]),
                 precision_rounding=template.uom_id.rounding
             )
 

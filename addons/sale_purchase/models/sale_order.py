@@ -7,15 +7,15 @@ from odoo import api, fields, models, _
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    purchase_order_count = fields.Integer(
+    count_purchase_order = fields.Integer(
         "Number of Purchase Order Generated",
-        compute='_compute_purchase_order_count',
+        compute='_compute_count_purchase_order',
         groups='purchase.group_purchase_user')
 
     @api.depends('order_line.purchase_line_ids.order_id')
-    def _compute_purchase_order_count(self):
+    def _compute_count_purchase_order(self):
         for order in self:
-            order.purchase_order_count = len(order._get_purchase_orders())
+            order.count_purchase_order = len(order._get_purchase_orders())
 
     def _action_confirm(self):
         result = super(SaleOrder, self)._action_confirm()

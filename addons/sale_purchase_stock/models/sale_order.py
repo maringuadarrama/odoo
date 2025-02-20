@@ -8,8 +8,8 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     @api.depends('procurement_group_id.stock_move_ids.created_purchase_line_ids.order_id', 'procurement_group_id.stock_move_ids.move_orig_ids.purchase_line_id.order_id')
-    def _compute_purchase_order_count(self):
-        super()._compute_purchase_order_count()
+    def _compute_count_purchase_order(self):
+        super()._compute_count_purchase_order()
 
     def _get_purchase_orders(self):
         linked_po = self.procurement_group_id.stock_move_ids.created_purchase_line_ids.order_id \
