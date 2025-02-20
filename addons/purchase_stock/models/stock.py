@@ -246,7 +246,7 @@ class StockLot(models.Model):
     _inherit = 'stock.lot'
 
     purchase_order_ids = fields.Many2many('purchase.order', string="Purchase Orders", compute='_compute_purchase_order_ids', readonly=True, store=False)
-    purchase_order_count = fields.Integer('Purchase order count', compute='_compute_purchase_order_ids')
+    count_purchase_order = fields.Integer('Purchase order count', compute='_compute_purchase_order_ids')
 
     @api.depends('name')
     def _compute_purchase_order_ids(self):
@@ -257,7 +257,7 @@ class StockLot(models.Model):
                 purchase_orders[move_line.lot_id.id] |= move.purchase_line_id.order_id
         for lot in self:
             lot.purchase_order_ids = purchase_orders[lot.id]
-            lot.purchase_order_count = len(lot.purchase_order_ids)
+            lot.count_purchase_order = len(lot.purchase_order_ids)
 
     def action_view_po(self):
         self.ensure_one()

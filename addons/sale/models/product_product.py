@@ -113,8 +113,8 @@ class ProductProduct(models.Model):
             so_lines.product_uom_id = to_uom_id
         return super()._update_uom(to_uom_id)
 
-    def _trigger_uom_warning(self):        
-        res = super()._trigger_uom_warning()
+    def _check_uom_used(self):        
+        res = super()._check_uom_used()
         if res:
             return res
         so_lines = self.env['sale.order.line'].sudo().search_count(

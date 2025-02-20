@@ -4,8 +4,13 @@ from odoo import models
 
 
 class AccountTax(models.Model):
+    """Inherit AccountTax"""
     _inherit = "account.tax"
 
+
+    # -------------------------------------------------------------------------
+    # HOOKS
+    # -------------------------------------------------------------------------
 
     def _hook_compute_is_used(self, taxes_to_compute):
         used_taxes = super()._hook_compute_is_used(taxes_to_compute)

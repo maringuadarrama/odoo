@@ -6,9 +6,7 @@ from odoo import fields, models
 
 
 class AccountMoveLine(models.Model):
-    """
-    Override AccountMoveLine to add the link to a purchase order line
-    """
+    """Inherit AccountMoveLine to add the link to a purchase order line"""
     _inherit = "account.move.line"
 
 
@@ -27,9 +25,18 @@ class AccountMoveLine(models.Model):
     )
 
 
+    # -------------------------------------------------------------------------
+    # HOOKS
+    # -------------------------------------------------------------------------
+
     def _copy_data_extend_business_fields(self, values):
         super(AccountMoveLine, self)._copy_data_extend_business_fields(values)
         values["purchase_line_id"] = self.purchase_line_id.id
+
+
+    # -------------------------------------------------------------------------
+    # HELPER
+    # -------------------------------------------------------------------------
 
     def _prepare_line_values_for_purchase(self):
         return [

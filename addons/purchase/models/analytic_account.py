@@ -4,21 +4,30 @@ from odoo import api, fields, models, _
 
 
 class AccountAnalyticAccount(models.Model):
+    """Inherit AccountAnalyticAccount"""
     _inherit = "account.analytic.account"
 
 
-    purchase_order_count = fields.Integer(
+    count_purchase_order = fields.Integer(
         string="Purchase Order Count",
-        compute="_compute_purchase_order_count",
+        compute="_compute_count_purchase_order",
     )
 
 
+    # -------------------------------------------------------------------------
+    # COMPUTE METHODS
+    # -------------------------------------------------------------------------
+
     @api.depends("line_ids")
-    def _compute_purchase_order_count(self):
+    def _compute_count_purchase_order(self):
         for account in self:
-            account.purchase_order_count = self.env["purchase.order"].search_count([
+            account.count_purchase_order = self.env["purchase.order"].search_count([
                 ("order_line.invoice_lines.analytic_line_ids.account_id", "in", account.ids)
             ])
+
+    # -------------------------------------------------------------------------
+    # ACTIIONS
+    # -------------------------------------------------------------------------
 
     def action_view_purchase_orders(self):
         self.ensure_one()

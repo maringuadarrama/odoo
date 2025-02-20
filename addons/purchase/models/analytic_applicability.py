@@ -4,6 +4,7 @@ from odoo import fields, models
 
 
 class AccountAnalyticApplicability(models.Model):
+    """Inherit AccountAnalyticApplicability"""
     _inherit = "account.analytic.applicability"
     _description = "Analytic Plan's Applicabilities"
 

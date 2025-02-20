@@ -9,12 +9,17 @@ from odoo.exceptions import AccessError, MissingError
 from odoo.http import request, Response
 from odoo.tools import image_process
 from odoo.tools.translate import _
+
 from odoo.addons.portal.controllers import portal
 from odoo.addons.portal.controllers.portal import pager as portal_pager
 
 
 class CustomerPortal(portal.CustomerPortal):
+    """Inherit CustomerPortal"""
 
+    # ------------------------------------------------------------
+    # HELPER METHODS
+    # ------------------------------------------------------------
 
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
@@ -35,6 +40,27 @@ class CustomerPortal(portal.CustomerPortal):
             "name": {"label": _("Name"), "order": "name asc, id asc"},
             "amount_total": {"label": _("Total"), "order": "amount_total desc, id desc"},
         }
+
+    # _purchase_order_get_page_view_values
+    def _get_purchase_order_page_view_values(self, order, access_token, **kwargs):
+
+        def resize_to_48(source):
+            if not source:
+                source = request.env["ir.binary"]._placeholder()
+            else:
+                source = base64.b64decode(source)
+            return base64.b64encode(image_process(source, size=(48, 48)))
+
+        values = {
+            "order": order,
+            "resize_to_48": resize_to_48,
+            "report_type": "html",
+        }
+        if order.state in ("sent"):
+            history = "my_rfqs_history"
+        else:
+            history = "my_purchases_history"
+        return self._get_page_view_values(order, access_token, values, history, False, **kwargs)
 
     def _render_portal(
         self, template, page, date_begin, date_end, sortby, filterby, domain, searchbar_filters, default_filter, url, history, page_name, key
@@ -77,7 +103,6 @@ class CustomerPortal(portal.CustomerPortal):
             offset=pager["offset"]
         )
         request.session[history] = orders.ids[:100]
-
         values.update({
             "date": date_begin,
             key: orders,
@@ -91,25 +116,9 @@ class CustomerPortal(portal.CustomerPortal):
         })
         return request.render(template, values)
 
-    def _purchase_order_get_page_view_values(self, order, access_token, **kwargs):
-
-        def resize_to_48(source):
-            if not source:
-                source = request.env["ir.binary"]._placeholder()
-            else:
-                source = base64.b64decode(source)
-            return base64.b64encode(image_process(source, size=(48, 48)))
-
-        values = {
-            "order": order,
-            "resize_to_48": resize_to_48,
-            "report_type": "html",
-        }
-        if order.state in ("sent"):
-            history = "my_rfqs_history"
-        else:
-            history = "my_purchases_history"
-        return self._get_page_view_values(order, access_token, values, history, False, **kwargs)
+    # ------------------------------------------------------------
+    # ENDPOINTS
+    # ------------------------------------------------------------
 
     @http.route(
         ["/my/rfq", "/my/rfq/page/<int:page>"], type="http", auth="user", website=True
@@ -118,19 +127,19 @@ class CustomerPortal(portal.CustomerPortal):
         self, page=1, date_begin=None, date_end=None, sortby=None, filterby=None, **kw
     ):
         return self._render_portal(
-            "purchase.portal_my_purchase_rfqs",
-            page,
-            date_begin,
-            date_end,
-            sortby,
-            filterby,
-            [("state", "=", "sent")],
-            {},
-            None,
-            "/my/rfq",
-            "my_rfqs_history",
-            "rfq",
-            "rfqs"
+            template="purchase.portal_my_purchase_rfqs",
+            page=page,
+            date_begin=date_begin,
+            date_end=date_end,
+            sortby=sortby,
+            filterby=filterby,
+            domain=[("state", "=", "sent")],
+            searchbar_filters={},
+            default_filter=None,
+            url="/my/rfq",
+            history="my_rfqs_history",
+            page_name="rfq",
+            key="rfqs"
         )
 
     @http.route(
@@ -140,14 +149,14 @@ class CustomerPortal(portal.CustomerPortal):
         self, page=1, date_begin=None, date_end=None, sortby=None, filterby=None, **kw
     ):
         return self._render_portal(
-            "purchase.portal_my_purchase_orders",
-            page,
-            date_begin,
-            date_end,
-            sortby,
-            filterby,
-            [],
-            {
+            template="purchase.portal_my_purchase_orders",
+            page=page,
+            date_begin=date_begin,
+            date_end=date_end,
+            sortby=sortby,
+            filterby=filterby,
+            domain=[],
+            searchbar_filters={
                 "all": {
                     "label": _("All"), "domain": [("state", "in", ["purchase", "done", "cancel"])]
                 },
@@ -161,14 +170,16 @@ class CustomerPortal(portal.CustomerPortal):
                     "label": _("Locked"), "domain": [("state", "=", "done")]
                 },
             },
-            "all",
-            "/my/purchase",
-            "my_purchases_history",
-            "purchase",
-            "orders"
+            default_filter="all",
+            url="/my/purchase",
+            history="my_purchases_history",
+            page_name="purchase",
+            key="orders"
         )
 
-    @http.route(["/my/purchase/<int:order_id>"], type="http", auth="public", website=True)
+    @http.route(
+        ["/my/purchase/<int:order_id>"], type="http", auth="public", website=True
+    )
     def portal_my_purchase_order(self, order_id=None, access_token=None, **kw):
         try:
             order_sudo = self._document_check_access(
@@ -191,7 +202,7 @@ class CustomerPortal(portal.CustomerPortal):
         if kw.get("acknowledge"):
             order_sudo.action_acknowledge()
 
-        values = self._purchase_order_get_page_view_values(order_sudo, access_token, **kw)
+        values = self._get_purchase_order_page_view_values(order_sudo, access_token, **kw)
         update_date = kw.get("update")
 
         if order_sudo.company_id:
@@ -204,10 +215,11 @@ class CustomerPortal(portal.CustomerPortal):
 
     @http.route(["/my/purchase/<int:order_id>/update"], type="jsonrpc", auth="public", website=True)
     def portal_my_purchase_order_update_dates(self, order_id=None, access_token=None, **kw):
-        """User update scheduled date on purchase order line.
-        """
+        """User update scheduled date on purchase order line."""
         try:
-            order_sudo = self._document_check_access("purchase.order", order_id, access_token=access_token)
+            order_sudo = self._document_check_access(
+                "purchase.order", order_id, access_token=access_token
+            )
         except (AccessError, MissingError):
             return request.redirect("/my")
 
@@ -235,9 +247,7 @@ class CustomerPortal(portal.CustomerPortal):
 
     @http.route(["/my/purchase/<int:order_id>/download_edi"], auth="public", website=True)
     def portal_my_purchase_order_download_edi(self, order_id=None, access_token=None, **kw):
-        """
-        An endpoint to download EDI file representation.
-        """
+        """An endpoint to download EDI file representation."""
         try:
             order_sudo = self._document_check_access(
                 "purchase.order", order_id, access_token=access_token
@@ -249,6 +259,7 @@ class CustomerPortal(portal.CustomerPortal):
         # This handles only one builder for now, more can be added in the future
         if len(builders) != 1:
             return request.redirect("/my")
+
         builder = builders[0]
         xml_content = builder._export_order(order_sudo)
         download_name = builder._export_purchase_order_filename(order_sudo)

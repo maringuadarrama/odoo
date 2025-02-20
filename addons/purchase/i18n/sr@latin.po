@@ -1320,7 +1320,7 @@ msgid "Is Follower"
 msgstr "Je Pratilac"
 
 #. module: purchase
-#: model:ir.model.fields,field_description:purchase.field_product_product__is_in_purchase_order
+#: model:ir.model.fields,field_description:purchase.field_product_product__has_been_purchased
 msgid "Is In Purchase Order"
 msgstr ""
 
@@ -2090,8 +2090,8 @@ msgid "Purchase: Vendor Reminder"
 msgstr ""
 
 #. module: purchase
-#: model:ir.model.fields,field_description:purchase.field_product_product__purchased_product_qty
-#: model:ir.model.fields,field_description:purchase.field_product_template__purchased_product_qty
+#: model:ir.model.fields,field_description:purchase.field_product_product__qty_purchased
+#: model:ir.model.fields,field_description:purchase.field_product_template__qty_purchased
 msgid "Purchased"
 msgstr ""
 
