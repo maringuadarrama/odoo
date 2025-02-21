@@ -230,7 +230,7 @@ class CustomerPortal(portal.CustomerPortal):
             except ValueError:
                 return request.redirect(order_sudo.get_portal_url())
 
-            line = order_sudo.order_line.filtered(lambda l: l.id == line_id)
+            line = order_sudo.order_line_ids.filtered(lambda l: l.id == line_id)
             if not line:
                 return request.redirect(order_sudo.get_portal_url())
 

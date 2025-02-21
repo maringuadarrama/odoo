@@ -380,7 +380,7 @@
                         type="object"
                         context="{'create_bill':True}"
                         data-hotkey="w"
-                        invisible="state not in ('purchase', 'done') or invoice_status not in ('no', 'invoiced') or not order_line" />
+                        invisible="state not in ('purchase', 'done') or invoice_status not in ('no', 'invoiced') or not order_line_ids" />
                     <button name="action_acknowledge" string="Acknowledge"
                         type="object"
                         invisible="acknowledged or state != 'purchase'" />
@@ -500,7 +500,7 @@
                     <notebook>
                         <page name="products" string="Products">
                             <field name="tax_country_id" invisible="1" />
-                            <field name="order_line"
+                            <field name="order_line_ids"
                                 widget="product_label_section_and_note_field_o2m"
                                 mode="list,kanban"
                                 context="{'default_state': 'draft'}"

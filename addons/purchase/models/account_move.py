@@ -85,6 +85,7 @@ class AccountMove(models.Model):
                 move.message_post(body=message)
         return res
 
+
     # -------------------------------------------------------------------------
     # COMPUTE METHODS
     # -------------------------------------------------------------------------
@@ -105,6 +106,7 @@ class AccountMove(models.Model):
     def _compute_count_purchase_order(self):
         for move in self:
             move.count_purchase_order = len(move.line_ids.purchase_line_id.order_id)
+
 
     # -------------------------------------------------------------------------
     # ONCHANGE METHODS
@@ -171,7 +173,7 @@ class AccountMove(models.Model):
         self.currency_id = new_currency_id
 
         # Copy purchase lines.
-        po_lines = self.purchase_id.order_line - self.invoice_line_ids.mapped("purchase_line_id")
+        po_lines = self.purchase_id.order_line_ids - self.invoice_line_ids.mapped("purchase_line_id")
         self._add_purchase_order_lines(po_lines)
 
         # Compute invoice_origin.
@@ -194,6 +196,7 @@ class AccountMove(models.Model):
             self.company_id = self.purchase_id.company_id
 
         self.purchase_id = False
+
 
     # -------------------------------------------------------------------------
     # ACTIONS
@@ -416,7 +419,7 @@ class AccountMove(models.Model):
             if matching_purchase_orders:
                 # We found matching purchase orders and are extracting all purchase order lines together with their
                 # amounts still to be invoiced.
-                po_lines = [line for line in matching_purchase_orders.order_line if line.product_qty]
+                po_lines = [line for line in matching_purchase_orders.order_line_ids if line.product_qty]
                 po_lines_with_amount = [
                     {
                         "line": line,
@@ -433,7 +436,7 @@ class AccountMove(models.Model):
                     < sum(line["amount_to_invoice"] for line in po_lines_with_amount)
                     < amount_total + TOLERANCE
                 ):
-                    return "total_match", matching_purchase_orders.order_line, None
+                    return "total_match", matching_purchase_orders.order_line_ids, None
 
                 elif from_ocr:
                     # The invoice comes from an OCR scan.
@@ -447,7 +450,7 @@ class AccountMove(models.Model):
                         # We did not find a match for the invoice total.
                         # We return all purchase order lines based only on the purchase order reference(s) in the
                         # vendor bill.
-                        return "po_match", matching_purchase_orders.order_line, None
+                        return "po_match", matching_purchase_orders.order_line_ids, None
 
                 else:
                     # We have an invoice from an EDI document, so we try to match individual invoice lines with
@@ -475,10 +478,10 @@ class AccountMove(models.Model):
             if len(matching_purchase_orders) == 1:
                 # We found exactly one match on vendor and total amount (within tolerance).
                 # We return all purchase order lines of the purchase order whose total amount matched our vendor bill.
-                return "total_match", matching_purchase_orders.order_line, None
+                return "total_match", matching_purchase_orders.order_line_ids, None
 
         # We couldn't find anything, so we return no lines.
-        return ("no_match", matching_purchase_orders.order_line, None)
+        return ("no_match", matching_purchase_orders.order_line_ids, None)
 
     def _set_purchase_orders(self, purchase_orders, force_write=True):
         """

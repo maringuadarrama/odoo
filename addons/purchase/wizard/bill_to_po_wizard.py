@@ -27,13 +27,13 @@ class BillToPoWizard(models.TransientModel):
                 **val,
                 "order_id": self.purchase_order_id.id,
             } for val in line_vals])
-            self.purchase_order_id.order_line += new_po_lines
+            self.purchase_order_id.order_line_ids += new_po_lines
         else:
             self.purchase_order_id = self.env["purchase.order"].create({
                 "partner_id": lines_to_add.partner_id.id,
-                "order_line": [Command.create(val) for val in line_vals],
+                "order_line_ids": [Command.create(val) for val in line_vals],
             })
-            new_po_lines = self.purchase_order_id.order_line
+            new_po_lines = self.purchase_order_id.order_line_ids
 
         self.purchase_order_id.button_confirm()
         for aml, pol in zip(lines_to_add, new_po_lines):

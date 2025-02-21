@@ -39,10 +39,10 @@ class PurchaseOrder(models.Model):
             Orange: To process today\n\
             Green: On time")
 
-    @api.depends('order_line.move_ids.picking_id')
+    @api.depends('order_line_ids.move_ids.picking_id')
     def _compute_picking_ids(self):
         for order in self:
-            order.picking_ids = order.order_line.move_ids.picking_id
+            order.picking_ids = order.order_line_ids.move_ids.picking_id
 
     @api.depends('picking_ids')
     def _compute_incoming_picking_count(self):
@@ -90,15 +90,25 @@ class PurchaseOrder(models.Model):
     # --------------------------------------------------
 
     def write(self, vals):
-        if vals.get('order_line') and self.state == 'purchase':
+        if vals.get('order_line_ids') and self.state == 'purchase':
             for order in self:
-                pre_order_line_qty = {order_line: order_line.product_qty for order_line in order.mapped('order_line')}
+                pre_order_line_qty = {
+                    order_line: order_line.product_qty
+                    for order_line in order.mapped('order_line_ids')
+                }
         res = super(PurchaseOrder, self).write(vals)
         if vals.get('order_line') and self.state == 'purchase':
             for order in self:
                 to_log = {}
-                for order_line in order.order_line:
-                    if pre_order_line_qty.get(order_line, False) and float_compare(pre_order_line_qty[order_line], order_line.product_qty, precision_rounding=order_line.product_uom_id.rounding) > 0:
+                for order_line in order.order_line_ids:
+                    if (
+                        pre_order_line_qty.get(order_line, False)
+                        and float_compare(
+                            pre_order_line_qty[order_line],
+                            order_line.product_qty,
+                            precision_rounding=order_line.product_uom_id.rounding
+                        ) > 0
+                    ):
                         to_log[order_line] = (order_line.product_qty, pre_order_line_qty[order_line])
                 if to_log:
                     order._log_decrease_ordered_quantity(to_log)
@@ -128,14 +138,23 @@ class PurchaseOrder(models.Model):
         order_lines_ids = OrderedSet()
         pickings_to_cancel_ids = OrderedSet()
 
-        purchase_orders_with_receipt = self.filtered(lambda po: any(move.state == 'done' for move in po.order_line.move_ids))
+        purchase_orders_with_receipt = self.filtered(
+            lambda o: any(
+                move.state == 'done'
+                for move in o.order_line_ids.move_ids
+            )
+        )
         if purchase_orders_with_receipt:
-            raise UserError(_("Unable to cancel purchase order(s): %s since they have receipts that are already done.", format_list(self.env, purchase_orders_with_receipt.mapped('display_name'))))
+            raise UserError(_(
+                "Unable to cancel purchase order(s): %s since they have receipts that are already done.",
+                format_list(self.env, purchase_orders_with_receipt.mapped('display_name'))
+            ))
+
         for order in self:
             # If the product is MTO, change the procure_method of the closest move to purchase to MTS.
             # The purpose is to link the po that the user will manually generate to the existing moves's chain.
             if order.state in ('draft', 'sent', 'to approve', 'purchase'):
-                order_lines_ids.update(order.order_line.ids)
+                order_lines_ids.update(order.order_line_ids.ids)
 
             pickings_to_cancel_ids.update(order.picking_ids.filtered(lambda r: r.state != 'cancel').ids)
 
@@ -310,7 +329,7 @@ class PurchaseOrder(models.Model):
     def _create_picking(self):
         StockPicking = self.env['stock.picking']
         for order in self.filtered(lambda po: po.state in ('purchase', 'done')):
-            if any(product.type == 'consu' for product in order.order_line.product_id):
+            if any(product.type == 'consu' for product in order.order_line_ids.product_id):
                 order = order.with_company(order.company_id)
                 pickings = order.picking_ids.filtered(lambda x: x.state not in ('done', 'cancel'))
                 if not pickings:
@@ -319,7 +338,7 @@ class PurchaseOrder(models.Model):
                     pickings = picking
                 else:
                     picking = pickings[0]
-                moves = order.order_line._create_stock_moves(picking)
+                moves = order.order_line_ids._create_stock_moves(picking)
                 moves = moves.filtered(lambda x: x.state not in ('done', 'cancel'))._action_confirm()
                 seq = 0
                 for move in sorted(moves, key=lambda move: move.date):
