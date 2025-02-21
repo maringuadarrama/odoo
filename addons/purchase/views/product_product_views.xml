@@ -11,7 +11,7 @@
             </xpath>
             <xpath expr="//filter[@name='goods']" position="after">
                 <filter name="products_in_order" string="In the Order"
-                    domain="[('has_been_purchased', '=', True)]" />
+                    domain="[('is_in_purchase_order', '=', True)]" />
             </xpath>
         </field>
     </record>

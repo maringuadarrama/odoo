@@ -17,9 +17,9 @@ class ProductProduct(models.Model):
         digits="Product Unit",
         compute="_compute_qty_purchased",
     )
-    has_been_purchased = fields.Boolean(
-        compute="_compute_has_been_purchased",
-        search="_search_has_been_purchased",
+    is_in_purchase_order = fields.Boolean(
+        compute="_compute_is_in_purchase_order",
+        search="_search_is_in_purchase_order",
     )
 
 
@@ -28,26 +28,35 @@ class ProductProduct(models.Model):
     # -------------------------------------------------------------------------
 
     def _compute_qty_purchased(self):
-        date_from = fields.Datetime.to_string(fields.Date.context_today(self) - relativedelta(years=1))
+        date_from = fields.Datetime.to_string(
+            fields.Date.context_today(self) - relativedelta(years=1)
+        )
         domain = [
             ("order_id.state", "in", ["purchase", "done"]),
             ("product_id", "in", self.ids),
             ("order_id.date_approve", ">=", date_from)
         ]
-        order_lines = self.env["purchase.order.line"]._read_group(domain, ["product_id"], ["product_uom_qty:sum"])
+        order_lines = self.env["purchase.order.line"]._read_group(
+            domain,
+            ["product_id"],
+            ["product_uom_qty:sum"]
+        )
         purchased_data = {product.id: qty for product, qty in order_lines}
         for product in self:
             if not product.id:
                 product.qty_purchased = 0.0
                 continue
 
-            product.qty_purchased = float_round(purchased_data.get(product.id, 0), precision_rounding=product.uom_id.rounding)
+            product.qty_purchased = float_round(
+                purchased_data.get(product.id, 0),
+                precision_rounding=product.uom_id.rounding
+            )
 
     @api.depends_context("order_id")
-    def _compute_has_been_purchased(self):
+    def _compute_is_in_purchase_order(self):
         order_id = self.env.context.get("order_id")
         if not order_id:
-            self.has_been_purchased = False
+            self.is_in_purchase_order = False
             return
 
         read_group_data = self.env["purchase.order.line"]._read_group(
@@ -57,15 +66,16 @@ class ProductProduct(models.Model):
         )
         data = {product.id: count for product, count in read_group_data}
         for product in self:
-            product.has_been_purchased = bool(data.get(product.id, 0))
+            product.is_in_purchase_order = bool(data.get(product.id, 0))
 
     # -------------------------------------------------------------------------
     # SEARCH METHODS
     # -------------------------------------------------------------------------
 
-    def _search_has_been_purchased(self, operator, value):
+    def _search_is_in_purchase_order(self, operator, value):
         if operator not in ["=", "!="] or not isinstance(value, bool):
             raise UserError(_("Operation not supported"))
+
         product_ids = self.env["purchase.order.line"].search([
             ("order_id", "in", [self.env.context.get("order_id", "")]),
         ]).product_id.ids
