@@ -78,7 +78,7 @@
                     help="Purchased in the last 365 days">
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_value d-flex gap-1">
-                            <field name="purchased_product_qty" widget="statinfo"
+                            <field name="qty_purchased" widget="statinfo"
                                 nolabel="1" class="oe_inline" />
                             <field name="uom_name" class="oe_inline" />
                         </span>
