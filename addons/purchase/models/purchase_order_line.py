@@ -133,18 +133,19 @@ class PurchaseOrderLine(models.Model):
         compute="_compute_price_unit_discounted",
     )
 
-    tax_ids = fields.Many2many("account.tax", string="Taxes", context={"active_test": False})
-    price_subtotal = fields.Monetary(compute="_compute_amount", string="Subtotal", aggregator=None, store=True)
-    price_tax = fields.Float(compute="_compute_amount", string="Tax", store=True)
-    price_total = fields.Monetary(compute="_compute_amount", string="Total", store=True)
+    tax_ids = fields.Many2many(comodel_name="account.tax", string="Taxes", context={"active_test": False})
+    price_subtotal = fields.Monetary(string="Subtotal", compute="_compute_amount", store=True, aggregator=None)
+    price_tax = fields.Float(string="Tax", compute="_compute_amount", store=True)
+    price_total = fields.Monetary(string="Total", compute="_compute_amount", store=True)
 
     qty_received_method = fields.Selection(
         [("manual", "Manual")],
         string="Received Qty Method",
         compute="_compute_qty_received_method", store=True,
-        help="According to product configuration, the received quantity can be automatically computed by mechanism:\n"
-             "  - Manual: the quantity is set manually on the line\n"
-             "  - Stock Moves: the quantity comes from confirmed pickings\n",
+        help="According to product configuration, the received quantity can "
+             "be automatically computed by mechanism:\n"
+             "-Manual: the quantity is set manually on the line\n"
+             "-Stock Moves: the quantity comes from confirmed pickings\n",
     )
     qty_received_manual = fields.Float(
         string="Manual Received Qty",
@@ -210,6 +211,10 @@ class PurchaseOrderLine(models.Model):
     )
 
 
+    # -------------------------------------------------------------------------
+    # CRUD METHODS
+    # -------------------------------------------------------------------------
+
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
@@ -269,6 +274,11 @@ class PurchaseOrderLine(models.Model):
                     state_description.get(line.state)
                 ))
 
+
+    # -------------------------------------------------------------------------
+    # COMPUTE METHODS
+    # -------------------------------------------------------------------------
+
     @api.depends("company_id", "partner_id", "product_uom_id", "product_qty")
     def _compute_price_unit_and_date_planned_and_name(self):
         for line in self:
@@ -298,14 +308,20 @@ class PurchaseOrderLine(models.Model):
                 unavailable_seller = line.product_id.seller_ids.filtered(
                     lambda s: s.partner_id == line.order_id.partner_id
                 )
-                if not unavailable_seller and line.price_unit and line.product_uom_id == line._origin.product_uom_id:
+                if (
+                    not unavailable_seller
+                    and line.price_unit
+                    and line.product_uom_id == line._origin.product_uom_id
+                ):
                     # Avoid to modify the price unit if there is no price list for this partner and
                     # the line has already one to avoid to override unit price set manually.
                     continue
 
                 po_line_uom = line.product_uom_id or line.product_id.uom_id
                 price_unit = line.env["account.tax"]._fix_tax_included_price_company(
-                    line.product_id.uom_id._compute_price(line.product_id.standard_price, po_line_uom),
+                    line.product_id.uom_id._compute_price(
+                        line.product_id.standard_price, po_line_uom
+                    ),
                     line.product_id.supplier_taxes_id,
                     line.tax_ids,
                     line.company_id,
@@ -343,20 +359,38 @@ class PurchaseOrderLine(models.Model):
                         self.env["decimal.precision"].precision_get("Product Price")
                     )
                 )
-                line.price_unit = seller.product_uom_id._compute_price(price_unit, line.product_uom_id)
+                line.price_unit = seller.product_uom_id._compute_price(
+                    price_unit, line.product_uom_id
+                )
                 line.discount = seller.discount or 0.0
 
             # record product names to avoid resetting custom descriptions
             default_names = []
             vendors = line.product_id._prepare_sellers(params=params)
-            product_ctx = {"seller_id": None, "partner_id": None, "lang": get_lang(line.env, line.partner_id.lang).code}
-            default_names.append(line._get_product_purchase_description(line.product_id.with_context(product_ctx)))
+            product_ctx = {
+                "seller_id": None,
+                "partner_id": None,
+                "lang": get_lang(line.env, line.partner_id.lang).code
+            }
+            default_names.append(line._get_product_purchase_description(
+                line.product_id.with_context(product_ctx))
+            )
             for vendor in vendors:
-                product_ctx = {"seller_id": vendor.id, "lang": get_lang(line.env, line.partner_id.lang).code}
-                default_names.append(line._get_product_purchase_description(line.product_id.with_context(product_ctx)))
+                product_ctx = {
+                    "seller_id": vendor.id,
+                    "lang": get_lang(line.env, line.partner_id.lang).code
+                }
+                default_names.append(line._get_product_purchase_description(
+                    line.product_id.with_context(product_ctx))
+                )
             if not line.name or line.name in default_names:
-                product_ctx = {"seller_id": seller.id, "lang": get_lang(line.env, line.partner_id.lang).code}
-                line.name = line._get_product_purchase_description(line.product_id.with_context(product_ctx))
+                product_ctx = {
+                    "seller_id": seller.id,
+                    "lang": get_lang(line.env, line.partner_id.lang).code
+                }
+                line.name = line._get_product_purchase_description(
+                    line.product_id.with_context(product_ctx)
+                )
 
     @api.depends("product_id", "order_id.partner_id")
     def _compute_analytic_distribution(self):
@@ -371,12 +405,22 @@ class PurchaseOrderLine(models.Model):
                 })
                 line.analytic_distribution = distribution or line.analytic_distribution
 
-    @api.depends("product_id", "product_id.uom_id", "product_id.uom_ids", "product_id.seller_ids", "product_id.seller_ids.product_uom_id")
+    @api.depends(
+        "product_id",
+        "product_id.uom_id",
+        "product_id.uom_ids",
+        "product_id.seller_ids",
+        "product_id.seller_ids.product_uom_id"
+    )
     def _compute_allowed_uom_ids(self):
         for line in self:
-            line.allowed_uom_ids = line.product_id.uom_id | line.product_id.uom_ids | line.product_id.seller_ids.product_uom_id
+            line.allowed_uom_ids = (
+                line.product_id.uom_id
+                | line.product_id.uom_ids
+                | line.product_id.seller_ids.product_uom_id
+            )
 
-    @api.depends("product_uom_id", "product_qty", "product_id.uom_id")
+    @api.depends("product_id.uom_id", "product_uom_id", "product_qty")
     def _compute_product_uom_qty(self):
         for line in self:
             if line.product_id and line.product_id.uom_id != line.product_uom_id:
@@ -389,7 +433,10 @@ class PurchaseOrderLine(models.Model):
     def _compute_tax_id(self):
         for line in self:
             line = line.with_company(line.company_id)
-            fpos = line.order_id.fiscal_position_id or line.order_id.fiscal_position_id._get_fiscal_position(line.order_id.partner_id)
+            fpos = (
+                line.order_id.fiscal_position_id
+                or line.order_id.fiscal_position_id._get_fiscal_position(line.order_id.partner_id)
+            )
             # filter taxes by company
             taxes = line.product_id.supplier_taxes_id._filter_taxes_by_company(line.company_id)
             line.tax_ids = fpos.map_tax(taxes)
@@ -424,7 +471,13 @@ class PurchaseOrderLine(models.Model):
             else:
                 line.qty_received = 0.0
 
-    @api.depends("invoice_line_ids.move_id.state", "invoice_line_ids.quantity", "qty_received", "product_uom_qty", "order_id.state")
+    @api.depends(
+        "order_id.state",
+        "product_uom_qty",
+        "qty_received",
+        "invoice_line_ids.move_id.state",
+        "invoice_line_ids.quantity",
+    )
     def _compute_qty_invoiced(self):
         for line in self:
             # compute qty_invoiced
@@ -450,13 +503,16 @@ class PurchaseOrderLine(models.Model):
             else:
                 line.qty_to_invoice = 0
 
+
+    # -------------------------------------------------------------------------
+    # ONCHANGE METHODS
+    # -------------------------------------------------------------------------
+
     @api.onchange("qty_received")
     def _inverse_qty_received(self):
-        """ 
-        When writing on qty_received, if the value should be modify manually (`qty_received_method` = "manual" only),
+        """When writing on qty_received, if the value should be modify manually (`qty_received_method` = "manual" only),
         then we put the value in `qty_received_manual`. Otherwise, `qty_received_manual` should be False since the
-        received qty is automatically compute by other mecanisms.
-        """
+        received qty is automatically compute by other mecanisms."""
         for line in self:
             if line.qty_received_method == "manual":
                 line.qty_received_manual = line.qty_received
@@ -506,6 +562,11 @@ class PurchaseOrderLine(models.Model):
             return {"warning": warning}
         return {}
 
+
+    # -------------------------------------------------------------------------
+    # ACTIONS
+    # -------------------------------------------------------------------------
+
     def action_open_order(self):
         self.ensure_one()
         return {
@@ -517,12 +578,16 @@ class PurchaseOrderLine(models.Model):
 
     def action_add_from_catalog(self):
         order = self.env["purchase.order"].browse(self.env.context.get("order_id"))
-        return order.with_context(child_field="order_line").action_add_from_catalog()
+        return order.with_context(child_field="order_line_ids").action_add_from_catalog()
+
+
+    # -------------------------------------------------------------------------
+    # HELPERS
+    # -------------------------------------------------------------------------
 
     @api.model
     def _get_date_planned(self, seller, po=False):
-        """
-        Return the datetime value to use as Schedule Date (``date_planned``) for
+        """Return the datetime value to use as Schedule Date (``date_planned``) for
         PO Lines that correspond to the given product.seller_ids,
         when ordered at `date_order_str`.
 
@@ -531,8 +596,7 @@ class PurchaseOrderLine(models.Model):
         :param Model po: purchase.order, necessary only if the PO line is
                         not yet attached to a PO.
         :rtype: datetime
-        :return: desired Schedule Date for the PO line
-        """
+        :return: desired Schedule Date for the PO line"""
         date_order = po.date_order if po else self.order_id.date_order
         if date_order:
             return date_order + relativedelta(days=seller.delay if seller else 0)
@@ -567,8 +631,7 @@ class PurchaseOrderLine(models.Model):
         return price_unit
 
     def _get_product_catalog_lines_data(self, **kwargs):
-        """
-        Return information about purchase order lines in `self`.
+        """Return information about purchase order lines in `self`.
 
         If `self` is empty, this method returns only the default value(s) needed for the product
         catalog. In this case, the quantity that equals 0.
@@ -593,8 +656,7 @@ class PurchaseOrderLine(models.Model):
                 "purchase_uom": dict,
                 "packaging": dict,
                 "warning": String,
-            }
-        """
+            }"""
         if len(self) == 1:
             catalog_info = self.order_id._get_product_price_and_data(self.product_id)
             uom = {
@@ -639,12 +701,10 @@ class PurchaseOrderLine(models.Model):
         }
 
     def _prepare_base_line_for_taxes_computation(self):
-        """
-        Convert the current record to a dictionary in order to use the generic taxes computation method
+        """Convert the current record to a dictionary in order to use the generic taxes computation method
         defined on account.tax.
 
-        :return: A python dictionary.
-        """
+        :return: A python dictionary."""
         self.ensure_one()
         return self.env["account.tax"]._prepare_base_line_for_taxes_computation(
             self,
@@ -678,9 +738,7 @@ class PurchaseOrderLine(models.Model):
 
     @api.model
     def _prepare_add_missing_fields(self, values):
-        """
-        Deduce missing required fields from the onchange
-        """
+        """Deduce missing required fields from the onchange"""
         res = {}
         onchange_fields = ["name", "price_unit", "product_qty", "product_uom_id", "tax_ids", "date_planned"]
         if values.get("order_id") and values.get("product_id") and any(f not in values for f in onchange_fields):
@@ -752,9 +810,7 @@ class PurchaseOrderLine(models.Model):
         }
 
     def _suggest_quantity(self):
-        """
-        Suggest a minimal quantity based on the seller
-        """
+        """Suggest a minimal quantity based on the seller"""
         if not self.product_id:
             return
         seller_min_qty = self.product_id.seller_ids\
@@ -767,10 +823,8 @@ class PurchaseOrderLine(models.Model):
             self.product_qty = 1.0
 
     def _convert_to_middle_of_day(self, date):
-        """
-        Return a datetime which is the noon of the input date(time) according
-        to order user's time zone, convert to UTC time.
-        """
+        """Return a datetime which is the noon of the input date(time) according
+        to order user's time zone, convert to UTC time."""
         return self.order_id.get_order_timezone().localize(datetime.combine(date, time(12))).astimezone(UTC).replace(tzinfo=None)
 
     def _update_date_planned(self, updated_date):
@@ -793,6 +847,7 @@ class PurchaseOrderLine(models.Model):
         for line in self:
             if line.display_type:
                 continue
+
             line._validate_distribution(
                 product=line.product_id.id,
                 business_domain="purchase_order",

@@ -302,7 +302,7 @@
 
                           <t t-set="current_subtotal" t-value="0"/>
 
-                          <t t-foreach="order.order_line" t-as="line">
+                          <t t-foreach="order.order_line_ids" t-as="line">
 
                               <t t-set="current_subtotal" t-value="current_subtotal + line.price_subtotal"/>
 
@@ -363,7 +363,7 @@
                                 </t>
                             </tr>
 
-                            <t t-if="current_section and (line_last or order.order_line[line_index+1].display_type == 'line_section') and order.state in ['purchase', 'done']">
+                            <t t-if="current_section and (line_last or order.order_line_ids[line_index+1].display_type == 'line_section') and order.state in ['purchase', 'done']">
                                 <tr class="is-subtotal text-end">
                                     <td colspan="99">
                                         <strong class="mr16">Subtotal</strong>

@@ -10,11 +10,17 @@ from odoo import api, fields, models
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-    purchase_line_ids = fields.One2many('purchase.order.line', 'partner_id', string="Purchase Lines")
+    purchase_line_ids = fields.One2many(
+        comodel_name='purchase.order.line',
+        inverse_name='partner_id',
+        string="Purchase Lines",
+    )
     on_time_rate = fields.Float(
-        "On-Time Delivery Rate", compute='_compute_on_time_rate',
+        string="On-Time Delivery Rate",
+        compute='_compute_on_time_rate',
         help="Over the past x days; the number of products received on time divided by the number of ordered products."\
             "x is either the System Parameter purchase_stock.on_time_delivery_days or the default 365")
+
 
     @api.depends('purchase_line_ids')
     def _compute_on_time_rate(self):

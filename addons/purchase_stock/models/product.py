@@ -100,7 +100,7 @@ class ProductSupplierinfo(models.Model):
         self.last_purchase_date = False
         purchases = self.env['purchase.order'].search([
             ('state', 'in', ('purchase', 'done')),
-            ('order_line.product_id', 'in',
+            ('order_line_ids.product_id', 'in',
              self.product_tmpl_id.product_variant_ids.ids),
             ('partner_id', 'in', self.partner_id.ids),
         ], order='date_order desc')
@@ -109,7 +109,7 @@ class ProductSupplierinfo(models.Model):
             for purchase in purchases:
                 if purchase.partner_id != supplier.partner_id:
                     continue
-                if not (products & purchase.order_line.product_id):
+                if not (products & purchase.order_line_ids.product_id):
                     continue
                 supplier.last_purchase_date = purchase.date_order
                 break

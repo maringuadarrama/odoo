@@ -82,7 +82,7 @@ class ProductProduct(models.Model):
         return action
 
     # -------------------------------------------------------------------------
-    # ACTIONS
+    # TOOLS
     # -------------------------------------------------------------------------
 
     def _get_backend_root_menu_ids(self):
@@ -91,7 +91,7 @@ class ProductProduct(models.Model):
     # -------------------------------------------------------------------------
     # HOOKS
     # -------------------------------------------------------------------------
-    #TODO lets analyze if both update_uuom and check_uom_used can be merged in a single method or
+    #TODO lets analyze if both update_uom and check_uom_used can be merged in a single method or
     # a better logic
 
     def _update_uom(self, to_uom_id):
@@ -113,7 +113,7 @@ class ProductProduct(models.Model):
         return super()._update_uom(to_uom_id)
 
     # -------------------------------------------------------------------------
-    # VALIDATION
+    # VALIDATIONS
     # -------------------------------------------------------------------------
 
     def _check_uom_used(self):

@@ -22,17 +22,17 @@ class AccountAnalyticAccount(models.Model):
     def _compute_count_purchase_order(self):
         for account in self:
             account.count_purchase_order = self.env["purchase.order"].search_count([
-                ("order_line.invoice_line_ids.analytic_line_ids.account_id", "in", account.ids)
+                ("order_line_ids.invoice_line_ids.analytic_line_ids.account_id", "in", account.ids)
             ])
 
     # -------------------------------------------------------------------------
-    # ACTIIONS
+    # ACTIONS
     # -------------------------------------------------------------------------
 
     def action_view_purchase_orders(self):
         self.ensure_one()
         purchase_orders = self.env["purchase.order"].search([
-            ("order_line.invoice_line_ids.analytic_line_ids.account_id", "=", self.id)
+            ("order_line_ids.invoice_line_ids.analytic_line_ids.account_id", "=", self.id)
         ])
         result = {
             "name": _("Purchase Orders"),

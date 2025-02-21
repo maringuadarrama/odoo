@@ -10,11 +10,6 @@ class ProductTemplate(models.Model):
     _inherit = "product.template"
 
 
-    qty_purchased = fields.Float(
-        string="Purchased",
-        digits="Product Unit",
-        compute="_compute_qty_purchased",
-    )
     purchase_method = fields.Selection(
         [
             ("purchase", "On ordered quantities"),
@@ -34,7 +29,16 @@ class ProductTemplate(models.Model):
         help=WARNING_HELP,
     )
     purchase_line_warn_msg = fields.Text(string="Message for Purchase Order Line")
+    qty_purchased = fields.Float(
+        string="Purchased",
+        digits="Product Unit",
+        compute="_compute_qty_purchased",
+    )
 
+
+    # -------------------------------------------------------------------------
+    # COMPUTE METHODS
+    # -------------------------------------------------------------------------
 
     @api.depends("type")
     def _compute_purchase_method(self):
@@ -52,6 +56,11 @@ class ProductTemplate(models.Model):
                 precision_rounding=template.uom_id.rounding
             )
 
+
+    # -------------------------------------------------------------------------
+    # ACTIONS
+    # -------------------------------------------------------------------------
+
     def action_view_po(self):
         action = self.env["ir.actions.actions"]._for_xml_id("purchase.action_purchase_history")
         action["domain"] = [
@@ -61,6 +70,11 @@ class ProductTemplate(models.Model):
         ]
         action["display_name"] = _("Purchase History for %s", self.display_name)
         return action
+
+
+    # -------------------------------------------------------------------------
+    # HELPERS
+    # -------------------------------------------------------------------------
 
     def _get_backend_root_menu_ids(self):
         return super()._get_backend_root_menu_ids() + [self.env.ref("purchase.menu_purchase_root").id]

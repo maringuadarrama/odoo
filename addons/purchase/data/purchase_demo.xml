@@ -20,7 +20,7 @@
         <field name="partner_id" ref="base.res_partner_1"/>
         <field name="user_id" ref="base.user_admin"/>
         <field name="state">draft</field>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_delivery_01'),
                 'name': obj().env.ref('product.product_delivery_01').partner_ref,
@@ -49,7 +49,7 @@
         <field name="partner_id" ref="base.res_partner_3"/>
         <field name="user_id" ref="base.user_admin"/>
         <field name="state">draft</field>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_delivery_02'),
                 'name': obj().env.ref('product.product_delivery_02').partner_ref,
@@ -71,7 +71,7 @@
         <field name="partner_id" ref="base.res_partner_12"/>
         <field name="user_id" ref="base.user_admin"/>
         <field name="state">draft</field>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_product_2'),
                 'name': obj().env.ref('product.product_product_2').partner_ref,
@@ -86,7 +86,7 @@
         <field name="partner_id" ref="base.res_partner_4"/>
         <field name="user_id" ref="base.user_admin"/>
         <field name="state">draft</field>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_delivery_02'),
                 'name': obj().env.ref('product.product_delivery_02').partner_ref,
@@ -120,7 +120,7 @@
         <field name="partner_id" ref="base.res_partner_2"/>
         <field name="user_id" ref="base.user_admin"/>
         <field name="state">draft</field>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_product_22'),
                 'name': obj().env.ref('product.product_product_22').partner_ref,
@@ -142,7 +142,7 @@
         <field name="partner_id" ref="base.res_partner_1"/>
         <field name="user_id" ref="base.user_admin"/>
         <field name="state">draft</field>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_delivery_02'),
                 'name': obj().env.ref('product.product_delivery_02').partner_ref,
@@ -171,7 +171,7 @@
         <field name="partner_id" ref="base.res_partner_4"/>
         <field name="user_id" ref="base.user_admin"/>
         <field name="state">draft</field>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_product_12'),
                 'name': obj().env.ref('product.product_product_12').partner_ref,
@@ -196,7 +196,7 @@
         <field name="create_date" eval="DateTime.today() - relativedelta(days=20)"/>
         <field name="date_order" eval="DateTime.today() - relativedelta(days=5)"/>
         <field name="date_approve" eval="DateTime.today() - relativedelta(days=9)"/>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_product_16'),
                 'name': 'Drawer Black',
@@ -221,7 +221,7 @@
         <field name="create_date" eval="DateTime.today() - relativedelta(days=20)"/>
         <field name="date_order" eval="DateTime.today() - relativedelta(days=15)"/>
         <field name="date_approve" eval="DateTime.today() - relativedelta(days=5)"/>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_product_8'),
                 'name': 'Large Desk',
@@ -246,7 +246,7 @@
         <field name="create_date" eval="DateTime.today() - relativedelta(days=20)"/>
         <field name="date_order" eval="DateTime.today() - relativedelta(days=15)"/>
         <field name="date_approve" eval="DateTime.today() - relativedelta(days=18)"/>
-        <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+        <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
             (0, 0, {
                 'product_id': ref('product.product_product_12'),
                 'name': 'Office Chair Black',

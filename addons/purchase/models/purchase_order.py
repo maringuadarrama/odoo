@@ -75,22 +75,25 @@ class PurchaseOrder(models.Model):
     fiscal_position_id = fields.Many2one(
         comodel_name="account.fiscal.position",
         string="Fiscal Position",
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain=[('company_id', 'in', (False, company_id))],
     )
     tax_country_id = fields.Many2one(
         comodel_name="res.country",
         compute="_compute_tax_country_id",
-        # Avoid access error on fiscal position, when reading a purchase order with company != user.company_ids
+        # Avoid access error on fiscal position when reading a 
+        # purchase order with company != user.company_ids
         compute_sudo=True,
-        help="Technical field to filter the available taxes depending on the fiscal country and fiscal position."
+        help="Technical field to filter the available taxes depending on "
+             "the fiscal country and fiscal position."
     )
     payment_term_id = fields.Many2one(
-        "account.payment.term",
-        "Payment Terms",
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+        comodel_name="account.payment.term",
+        string="Payment Terms",
+        domain=[('company_id', 'in', (False, company_id))]
+    )
     incoterm_id = fields.Many2one(
-        "account.incoterms",
-        "Incoterm",
+        comodel_name="account.incoterms",
+        string="Incoterm",
         help="International Commercial Terms are a series of predefined "
              "commercial terms used in international transactions.",
     )
@@ -190,7 +193,7 @@ class PurchaseOrder(models.Model):
         copy=True,
     )
     product_id = fields.Many2one(
-        related="order_line.product_id", string="Product",
+        related="order_line_ids.product_id", string="Product",
     )
     amount_untaxed = fields.Monetary(
         string="Untaxed Amount",
@@ -273,14 +276,14 @@ class PurchaseOrder(models.Model):
     # CONSTRAINT METHODS
     # ------------------------------------------------------------
 
-    @api.constrains("company_id", "order_line")
-    def _check_order_line_company_id(self):
+    @api.constrains("company_id", "order_line_ids")
+    def _check_order_line_ids_company_id(self):
         for order in self:
-            invalid_companies = order.order_line.product_id.company_id.filtered(
+            invalid_companies = order.order_line_ids.product_id.company_id.filtered(
                 lambda c: order.company_id not in c._accessible_branches()
             )
             if invalid_companies:
-                bad_products = order.order_line.product_id.filtered(
+                bad_products = order.order_line_ids.product_id.filtered(
                     lambda p: p.company_id and p.company_id in invalid_companies
                 )
                 raise ValidationError(_(
@@ -321,7 +324,7 @@ class PurchaseOrder(models.Model):
         ctx.pop("default_product_id", None)
         self = self.with_context(ctx)
         new_pos = super().copy(default=default)
-        for line in new_pos.order_line:
+        for line in new_pos.order_line_ids:
             if line.product_id:
                 seller = line.product_id._select_seller(
                     partner_id=line.partner_id,
@@ -383,11 +386,11 @@ class PurchaseOrder(models.Model):
                 else order.date_order
             )
 
-    @api.depends("company_id", "order_line.price_subtotal")
+    @api.depends("company_id", "order_line_ids.price_subtotal")
     def _amount_all(self):
         AccountTax = self.env["account.tax"]
         for order in self:
-            order_lines = order.order_line.filtered(lambda x: not x.display_type)
+            order_lines = order.order_line_ids.filtered(lambda x: not x.display_type)
             base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
             AccountTax._add_tax_details_in_base_lines(base_lines, order.company_id)
             AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
@@ -402,7 +405,7 @@ class PurchaseOrder(models.Model):
             order.amount_total_cc = tax_totals["total_amount"]
 
     @api.depends_context("lang")
-    @api.depends("company_id", "currency_id", "order_line.price_subtotal")
+    @api.depends("company_id", "currency_id", "order_line_ids.price_subtotal")
     def _compute_tax_totals(self):
         AccountTax = self.env["account.tax"]
         for order in self:
@@ -410,7 +413,7 @@ class PurchaseOrder(models.Model):
                 order.tax_totals = False
                 continue
 
-            order_lines = order.order_line.filtered(lambda x: not x.display_type)
+            order_lines = order.order_line_ids.filtered(lambda x: not x.display_type)
             base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
             AccountTax._add_tax_details_in_base_lines(base_lines, order.company_id)
             AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
@@ -425,13 +428,13 @@ class PurchaseOrder(models.Model):
         for order in self:
             order.amount_total_cc = order.amount_total / order.currency_rate
 
-    @api.depends("order_line.date_planned")
+    @api.depends("order_line_ids.date_planned")
     def _compute_date_planned(self):
         """
         date_planned = the earliest date_planned across all order lines.
         """
         for order in self:
-            dates_list = order.order_line.filtered(
+            dates_list = order.order_line_ids.filtered(
                 lambda x: not x.display_type and x.date_planned
             ).mapped("date_planned")
             if dates_list:
@@ -439,14 +442,14 @@ class PurchaseOrder(models.Model):
             else:
                 order.date_planned = False
 
-    @api.depends("order_line.invoice_line_ids.move_id")
+    @api.depends("order_line_ids.invoice_line_ids.move_id")
     def _compute_invoice(self):
         for order in self:
-            invoices = order.mapped("order_line.invoice_line_ids.move_id")
+            invoices = order.mapped("order_line_ids.invoice_line_ids.move_id")
             order.invoice_ids = invoices
             order.invoice_count = len(invoices)
 
-    @api.depends("state", "order_line.qty_to_invoice")
+    @api.depends("state", "order_line_ids.qty_to_invoice")
     def _get_invoiced(self):
         precision = self.env["decimal.precision"].precision_get("Product Unit")
         for order in self:
@@ -456,13 +459,13 @@ class PurchaseOrder(models.Model):
 
             if any(
                 not float_is_zero(line.qty_to_invoice, precision_digits=precision)
-                for line in order.order_line.filtered(lambda l: not l.display_type)
+                for line in order.order_line_ids.filtered(lambda l: not l.display_type)
             ):
                 order.invoice_status = "to invoice"
             elif (
                 all(
                     float_is_zero(line.qty_to_invoice, precision_digits=precision)
-                    for line in order.order_line.filtered(lambda l: not l.display_type)
+                    for line in order.order_line_ids.filtered(lambda l: not l.display_type)
                 )
                 and order.invoice_ids
             ):
@@ -483,10 +486,10 @@ class PurchaseOrder(models.Model):
                 )
             order.display_name = name
 
-    @api.depends("order_line", "order_line.product_id")
+    @api.depends("order_line_ids", "order_line_ids.product_id")
     def _compute_show_comparison(self):
         line_groupby_product = self.env["purchase.order.line"]._read_group(
-            [("product_id", "in", self.order_line.product_id.ids), ("state", "=", "purchase")],
+            [("product_id", "in", self.order_line_ids.product_id.ids), ("state", "=", "purchase")],
             ["product_id"],
             ["order_id:array_agg"]
         )
@@ -494,7 +497,7 @@ class PurchaseOrder(models.Model):
         for order in self:
             order.show_comparison = any(
                 set(order.ids) != order_by_product[p]
-                for p in order.order_line.product_id
+                for p in order.order_line_ids.product_id
                 if p in order_by_product
             )
 
@@ -514,7 +517,7 @@ class PurchaseOrder(models.Model):
         """
         result = super().onchange(values, field_names, fields_spec)
         if any(self._must_delete_date_planned(field) for field in field_names) and "value" in result:
-            for line in result["value"].get("order_line", []):
+            for line in result["value"].get("order_line_ids", []):
                 if line[0] == Command.UPDATE and "date_planned" in line[2]:
                     del line[2]["date_planned"]
         return result
@@ -522,7 +525,7 @@ class PurchaseOrder(models.Model):
     @api.onchange("date_planned")
     def onchange_date_planned(self):
         if self.date_planned:
-            self.order_line.filtered(
+            self.order_line_ids.filtered(
                 lambda line: not line.display_type
             ).date_planned = self.date_planned
 
@@ -549,7 +552,7 @@ class PurchaseOrder(models.Model):
         """
         Trigger the recompute of the taxes if the fiscal position is changed on the PO.
         """
-        self.order_line._compute_tax_id()
+        self.order_line_ids._compute_tax_id()
 
     @api.onchange("partner_id")
     def onchange_partner_id_warning(self):
@@ -645,7 +648,7 @@ class PurchaseOrder(models.Model):
     def action_purchase_comparison(self):
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("purchase.action_purchase_history")
-        action["domain"] = [("product_id", "in", self.order_line.product_id.ids)]
+        action["domain"] = [("product_id", "in", self.order_line_ids.product_id.ids)]
         action["display_name"] = _("Purchase Comparison for %s", self.display_name)
         return action
 
@@ -681,7 +684,7 @@ class PurchaseOrder(models.Model):
             # Invoice values.
             invoice_vals = order._prepare_invoice()
             # Invoice line values (keep only necessary sections).
-            for line in order.order_line:
+            for line in order.order_line_ids:
                 if line.display_type == "line_section":
                     pending_section = line
                     continue
@@ -775,8 +778,8 @@ class PurchaseOrder(models.Model):
             if oldest_rfq:
                 # Merge RFQs into the oldest purchase order
                 rfqs -= oldest_rfq
-                for rfq_line in rfqs.order_line:
-                    existing_line = oldest_rfq.order_line.filtered(
+                for rfq_line in rfqs.order_line_ids:
+                    existing_line = oldest_rfq.order_line_ids.filtered(
                         lambda l:
                             l.product_id == rfq_line.product_id and
                             l.product_uom_id == rfq_line.product_uom_id and
@@ -886,7 +889,7 @@ class PurchaseOrder(models.Model):
         for order in self:
             if order.state not in ["draft", "sent"]:
                 continue
-            order.order_line._validate_analytic_distribution()
+            order.order_line_ids._validate_analytic_distribution()
             order._add_supplier_to_product()
             # Deal with double validation process
             if order._approval_allowed():
@@ -1093,7 +1096,7 @@ class PurchaseOrder(models.Model):
             "order_id": self.id,
             "display_type": "line_section",
             "is_downpayment": True,
-            "sequence": (self.order_line[-1:].sequence or 9) + 1,
+            "sequence": (self.order_line_ids[-1:].sequence or 9) + 1,
             "name": _("Down Payments"),
         }
         del context
@@ -1139,7 +1142,7 @@ class PurchaseOrder(models.Model):
             ("state", "in", ["purchase", "done"]),
             ("acknowledged", "=", False),
             ("receipt_reminder_email", "=", True)
-        ]).filtered(lambda p: p.mapped("order_line.product_id.product_tmpl_id.type") != ["service"])
+        ]).filtered(lambda p: p.mapped("order_line_ids.product_id.product_tmpl_id.type") != ["service"])
 
     def _get_action_add_from_catalog_extra_context(self):
         return {
@@ -1147,7 +1150,7 @@ class PurchaseOrder(models.Model):
             "display_uom": self.env.user.has_group("uom.group_uom"),
             "precision": self.env["decimal.precision"].precision_get("Product Unit"),
             "product_catalog_currency_id": self.currency_id.id,
-            "product_catalog_digits": self.order_line._fields["price_unit"].get_digits(self.env),
+            "product_catalog_digits": self.order_line_ids._fields["price_unit"].get_digits(self.env),
             "search_default_seller_ids": self.partner_id.name,
         }
 
@@ -1162,7 +1165,7 @@ class PurchaseOrder(models.Model):
 
     def _get_product_catalog_record_lines(self, product_ids, child_field=False):
         grouped_lines = defaultdict(lambda: self.env["purchase.order.line"])
-        for line in self.order_line:
+        for line in self.order_line_ids:
             if line.display_type or line.product_id.id not in product_ids:
                 continue
             grouped_lines[line.product_id] |= line
@@ -1347,10 +1350,10 @@ class PurchaseOrder(models.Model):
         self.ensure_one()
 
         # create section
-        if not any(line.display_type and line.is_downpayment for line in self.order_line):
-            section_line = self.order_line.create(self._prepare_down_payment_section_values())
+        if not any(line.display_type and line.is_downpayment for line in self.order_line_ids):
+            section_line = self.order_line_ids.create(self._prepare_down_payment_section_values())
         else:
-            section_line = self.order_line.filtered(lambda line: line.display_type and line.is_downpayment)
+            section_line = self.order_line_ids.filtered(lambda line: line.display_type and line.is_downpayment)
         vals = [
             {
                 **line_val,
@@ -1359,17 +1362,17 @@ class PurchaseOrder(models.Model):
             for i, line_val in enumerate(line_vals, start=1)
         ]
         downpayment_lines = self.env["purchase.order.line"].create(vals)
-        self.order_line = [
+        self.order_line_ids = [
             Command.link(line_id)
             for line_id in downpayment_lines.ids
-        ]  # a simple concatenation would cause all order_line to recompute, we do not want it to happen
+        ]  # a simple concatenation would cause all order_line_ids to recompute, we do not want it to happen
         return downpayment_lines
 
     def _add_supplier_to_product(self):
         # Add the partner in the supplier list of the product if the supplier is not registered for
         # this product. We limit to 10 the number of suppliers for a product to avoid the mess that
         # could be caused for some generic products ("Miscellaneous").
-        for line in self.order_line:
+        for line in self.order_line_ids:
             # Do not add a contact as a supplier
             partner = self.partner_id if not self.partner_id.parent_id else self.partner_id.parent_id
             already_seller = (partner | self.partner_id) & line.product_id.seller_ids.mapped("partner_id")
@@ -1432,7 +1435,7 @@ class PurchaseOrder(models.Model):
         :rtype: float
         """
         self.ensure_one()
-        pol = self.order_line.filtered(lambda line: line.product_id.id == product_id)
+        pol = self.order_line_ids.filtered(lambda line: line.product_id.id == product_id)
         if pol:
             if quantity != 0:
                 pol.product_qty = quantity
@@ -1447,7 +1450,7 @@ class PurchaseOrder(models.Model):
                 "order_id": self.id,
                 "product_id": product_id,
                 "product_qty": quantity,
-                "sequence": ((self.order_line and self.order_line[-1].sequence + 1) or 10),  # put it at the end of the order
+                "sequence": ((self.order_line_ids and self.order_line_ids[-1].sequence + 1) or 10),  # put it at the end of the order
             })
             seller = pol.product_id._select_seller(
                 partner_id=pol.partner_id,
@@ -1485,7 +1488,7 @@ class PurchaseOrder(models.Model):
 
     def _must_delete_date_planned(self, field_name):
         # To be overridden
-        return field_name == "order_line"
+        return field_name == "order_line_ids"
 
     def _search_is_late(self, operator, value):
         if operator not in ["=", "!="]:
