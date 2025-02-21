@@ -273,7 +273,7 @@ class StockMove(models.Model):
     def _get_all_related_aml(self):
         # The back and for between account_move and account_move_line is necessary to catch the
         # additional lines from a cogs correction
-        return super()._get_all_related_aml() | self.purchase_line_id.invoice_lines.move_id.line_ids.filtered(
+        return super()._get_all_related_aml() | self.purchase_line_id.invoice_line_ids.move_id.line_ids.filtered(
             lambda aml: aml.product_id == self.purchase_line_id.product_id)
 
     def _get_all_related_sm(self, product):
