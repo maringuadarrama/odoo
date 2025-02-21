@@ -183,6 +183,12 @@ class PurchaseOrder(models.Model):
         string="Order Lines",
         copy=True,
     )
+    order_line_ids = fields.One2many(
+        comodel_name="purchase.order.line",
+        inverse_name="order_id",
+        string="Order Lines",
+        copy=True,
+    )
     product_id = fields.Many2one(
         related="order_line.product_id", string="Product",
     )
