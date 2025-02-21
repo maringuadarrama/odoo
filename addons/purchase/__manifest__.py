@@ -23,7 +23,7 @@
         'views/product_product_views.xml',
         'views/res_partner_views.xml',
         'views/purchase_views.xml',
-        'report/purchase_bill_views.xml',
+        'report/purchase_bill_union_views.xml',
         'report/purchase_bill_line_match_views.xml',
         'report/purchase_report_views.xml',
         'report/purchase_reports.xml',
