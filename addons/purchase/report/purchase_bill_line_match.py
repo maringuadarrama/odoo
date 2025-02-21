@@ -91,9 +91,8 @@ class PurchaseBillLineMatch(models.Model):
 
     @api.model
     def _action_create_bill_from_po_lines(self, partner, po_lines):
-        """
-        Create a new vendor bill with the selected PO lines and returns an action to open it
-        """
+        """Create a new vendor bill with the selected PO lines
+        and returns an action to open it"""
         bill = self.env["account.move"].create({
             "move_type": "in_invoice",
             "partner_id": partner.id,
@@ -103,13 +102,17 @@ class PurchaseBillLineMatch(models.Model):
 
     def action_match_lines(self):
         if not self.pol_id:  # we need POL(s) to either match or create bill
-            raise UserError(_("You must select at least one Purchase Order line to match or create bill."))
+            raise UserError(_(
+                "You must select at least one Purchase Order line to match or create bill."
+            ))
 
         if not self.aml_id:  # select POL(s) without AML -> create a draft bill with the POL(s)
             return self._action_create_bill_from_po_lines(self.partner_id, self.pol_id)
 
         if len(self.aml_id.move_id) > 1:  # for purchase matching, disallow matching multiple bills at the same time
-            raise UserError(_("You can't select lines from multiple Vendor Bill to do the matching."))
+            raise UserError(_(
+                "You can't select lines from multiple Vendor Bill to do the matching."
+            ))
 
         pol_by_product = self.pol_id.grouped("product_id")
         aml_by_product = self.aml_id.grouped("product_id")
@@ -158,7 +161,8 @@ class PurchaseBillLineMatch(models.Model):
 
     @api.model
     def _select_po_line(self):
-        return SQL("""
+        return SQL(
+            """
             SELECT
                 pol.id,
                 pol.id as pol_id,
@@ -185,11 +189,13 @@ class PurchaseBillLineMatch(models.Model):
                     AND pol.is_downpayment
                     AND pol.qty_invoiced > 0
                 )
-        """)
+            """
+        )
 
     @api.model
     def _select_am_line(self):
-        return SQL("""
+        return SQL(
+            """
             SELECT
                 -aml.id,
                 NULL as pol_id,
@@ -213,4 +219,5 @@ class PurchaseBillLineMatch(models.Model):
                 AND am.move_type in ('in_invoice', 'in_refund')
                 AND aml.parent_state in ('draft', 'posted')
                 AND aml.purchase_line_id IS NULL
-        """)
+            """
+        )

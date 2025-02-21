@@ -27,7 +27,7 @@ class PurchaseReport(models.Model):
             ("done", "Done"),
             ("cancel", "Cancelled")
         ],
-        "Status",
+        string="Status",
         readonly=True,
     )
     partner_id = fields.Many2one("res.partner", "Vendor", readonly=True)
@@ -35,9 +35,12 @@ class PurchaseReport(models.Model):
     product_id = fields.Many2one("product.product", "Product", readonly=True)
     product_uom_id = fields.Many2one("uom.uom", "Reference Unit of Measure", readonly=True)
     date_approve = fields.Datetime("Confirmation Date", readonly=True)
-    delay = fields.Float("Days to Confirm", digits=(16, 2), readonly=True, aggregator="avg", help="Amount of time between purchase approval and order by date.")
+    delay = fields.Float("Days to Confirm", digits=(16, 2), readonly=True, aggregator="avg",
+        help="Amount of time between purchase approval and order by date.",
+    )
     delay_pass = fields.Float("Days to Receive", digits=(16, 2), readonly=True, aggregator="avg",
-        help="Amount of time between date planned and order by date for each purchase order line.")
+        help="Amount of time between date planned and order by date for each purchase order line.",
+    )
     price_total = fields.Monetary("Total", readonly=True)
     price_average = fields.Monetary("Average Cost", readonly=True, aggregator="avg")
     nbr_lines = fields.Integer("# of Lines", readonly=True)
@@ -58,9 +61,8 @@ class PurchaseReport(models.Model):
 
     @property
     def _table_query(self) -> SQL:
-        """
-        Report needs to be dynamic to take into account multi-company selected + multi-currency rates
-        """
+        """Report needs to be dynamic to take into account 
+        multi-company selected + multi-currency rates"""
         return SQL("%s %s %s %s", self._select(), self._from(), self._where(), self._group_by())
 
     def _select(self) -> SQL:
@@ -159,9 +161,8 @@ class PurchaseReport(models.Model):
         )
 
     def _read_group_select(self, aggregate_spec: str, query: Query) -> SQL:
-        """
-        This override allows us to correctly calculate the average price of products.
-        """
+        """This override allows us to correctly calculate 
+        the average price of products."""
         if aggregate_spec != "price_average:avg":
             return super()._read_group_select(aggregate_spec, query)
         return SQL(
