@@ -8,8 +8,8 @@
                 <sheet>
                     <group>
                         <field name="purchase_order_id"
-                            domain="[('partner_id', '=', partner_id), ('state', 'in', ['purchase'])]"
                             placeholder="or create new"
+                            domain="[('partner_id', '=', partner_id), ('state', 'in', ['purchase'])]"
                             context="{'show_total_amount': True}" />
                     </group>
                     <footer>

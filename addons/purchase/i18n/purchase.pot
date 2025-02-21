@@ -1476,7 +1476,7 @@ msgid "Is Follower"
 msgstr ""
 
 #. module: purchase
-#: model:ir.model.fields,field_description:purchase.field_product_product__has_been_purchased
+#: model:ir.model.fields,field_description:purchase.field_product_product__is_in_purchase_order
 msgid "Is In Purchase Order"
 msgstr ""
 
