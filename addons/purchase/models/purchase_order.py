@@ -433,10 +433,10 @@ class PurchaseOrder(models.Model):
             else:
                 order.date_planned = False
 
-    @api.depends("order_line.invoice_lines.move_id")
+    @api.depends("order_line.invoice_line_ids.move_id")
     def _compute_invoice(self):
         for order in self:
-            invoices = order.mapped("order_line.invoice_lines.move_id")
+            invoices = order.mapped("order_line.invoice_line_ids.move_id")
             order.invoice_ids = invoices
             order.invoice_count = len(invoices)
 

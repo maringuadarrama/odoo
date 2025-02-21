@@ -159,7 +159,7 @@ class PurchaseOrderLine(models.Model):
         inverse="_inverse_qty_received",
     )
 
-    invoice_lines = fields.One2many(
+    invoice_line_ids = fields.One2many(
         comodel_name="account.move.line",
         inverse_name="purchase_line_id",
         string="Bill Lines",
@@ -274,7 +274,7 @@ class PurchaseOrderLine(models.Model):
         for line in self:
             if (
                 not line.product_id
-                or line.invoice_lines
+                or line.invoice_line_ids
                 or not line.company_id
                 or self.env.context.get("skip_uom_conversion")
             ):
@@ -424,7 +424,7 @@ class PurchaseOrderLine(models.Model):
             else:
                 line.qty_received = 0.0
 
-    @api.depends("invoice_lines.move_id.state", "invoice_lines.quantity", "qty_received", "product_uom_qty", "order_id.state")
+    @api.depends("invoice_line_ids.move_id.state", "invoice_line_ids.quantity", "qty_received", "product_uom_qty", "order_id.state")
     def _compute_qty_invoiced(self):
         for line in self:
             # compute qty_invoiced
@@ -542,11 +542,11 @@ class PurchaseOrderLine(models.Model):
     def _get_invoice_lines(self):
         self.ensure_one()
         if self._context.get("accrual_entry_date"):
-            return self.invoice_lines.filtered(
+            return self.invoice_line_ids.filtered(
                 lambda l: l.move_id.invoice_date and l.move_id.invoice_date <= self._context["accrual_entry_date"]
             )
         else:
-            return self.invoice_lines
+            return self.invoice_line_ids
 
     def _get_gross_price_unit(self):
         self.ensure_one()
