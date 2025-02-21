@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import Command, api, models
@@ -7,7 +6,11 @@ from odoo import Command, api, models
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
-    @api.depends('order_line.move_dest_ids.group_id.sale_id', 'order_line.move_ids.move_dest_ids.group_id.sale_id')
+
+    @api.depends(
+        'order_line_ids.move_dest_ids.group_id.sale_id',
+        'order_line_ids.move_ids.move_dest_ids.group_id.sale_id'
+    )
     def _compute_sale_order_count(self):
         super()._compute_sale_order_count()
 

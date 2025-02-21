@@ -180,12 +180,6 @@ class PurchaseOrder(models.Model):
              "delivery order sent by your vendor."
     )
     notes = fields.Html(string="Terms and Conditions")
-    order_line = fields.One2many(
-        comodel_name="purchase.order.line",
-        inverse_name="order_id",
-        string="Order Lines",
-        copy=True,
-    )
     order_line_ids = fields.One2many(
         comodel_name="purchase.order.line",
         inverse_name="order_id",
