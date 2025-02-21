@@ -9,13 +9,28 @@ from odoo.tools import float_repr
 
 
 class SaleOrderDiscount(models.TransientModel):
+    """Wizard to apply discounts on sale orders
+    
+    Provides three kind of discounts:
+    * Discount on each sale order lines
+    * Discount on the global order amount
+    * Fixed discount amount
+    """
+
     _name = 'sale.order.discount'
     _description = "Discount Wizard"
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    # sale.order fields
     sale_order_id = fields.Many2one(
         'sale.order', default=lambda self: self.env.context.get('active_id'), required=True)
     company_id = fields.Many2one(related='sale_order_id.company_id')
     currency_id = fields.Many2one(related='sale_order_id.currency_id')
+    
+    # Discount logic
     discount_amount = fields.Monetary(string="Amount")
     discount_percentage = fields.Float(string="Percentage")
     discount_type = fields.Selection(
@@ -33,7 +48,9 @@ class SaleOrderDiscount(models.TransientModel):
         domain="[('type_tax_use', '=', 'sale'), ('company_id', '=', company_id)]",
     )
 
-    # CONSTRAINT METHODS #
+    # ------------------------------------------------------------
+    # VALIDATION METHODS
+    # ------------------------------------------------------------
 
     @api.constrains('discount_type', 'discount_percentage')
     def _check_discount_amount(self):
@@ -43,6 +60,10 @@ class SaleOrderDiscount(models.TransientModel):
                 and wizard.discount_percentage > 1.0
             ):
                 raise ValidationError(_("Invalid discount amount"))
+
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
 
     def _prepare_discount_product_values(self):
         self.ensure_one()
@@ -97,6 +118,10 @@ class SaleOrderDiscount(models.TransientModel):
                 ))
             discount_product = company.sale_discount_product_id
         return discount_product
+
+    # ------------------------------------------------------------
+    # BUSINESS LOGIC
+    # ------------------------------------------------------------
 
     def _create_discount_lines(self):
         """Create SOline(s) according to wizard configuration"""
@@ -154,6 +179,10 @@ class SaleOrderDiscount(models.TransientModel):
                 ) for taxes, subtotal in total_price_per_tax_groups.items()
             ]
         return self.env['sale.order.line'].create(vals_list)
+
+    # ------------------------------------------------------------
+    # ACTION METHODS
+    # ------------------------------------------------------------
 
     def action_apply_discount(self):
         self.ensure_one()

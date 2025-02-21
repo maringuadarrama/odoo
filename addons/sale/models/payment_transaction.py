@@ -9,11 +9,61 @@ from odoo.tools import str2bool
 
 
 class PaymentTransaction(models.Model):
+    """Extends the 'payment.transaction' model to integrate sales order functionalities.
+
+    This module links payment transactions to sales orders, enabling automatic confirmation of orders,
+    invoice generation, and communication handling based on payment status. It also supports downpayment
+    invoices and provides tools for managing transaction references and sending payment-related emails.
+    """
     _inherit = 'payment.transaction'
 
-    sale_order_ids = fields.Many2many('sale.order', 'sale_order_transaction_rel', 'transaction_id', 'sale_order_id',
-                                      string='Sales Orders', copy=False, readonly=True)
-    sale_order_ids_nbr = fields.Integer(compute='_compute_sale_order_ids_nbr', string='# of Sales Orders')
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    # Integer
+    sale_order_ids_nbr = fields.Integer(
+        compute='_compute_sale_order_ids_nbr',
+        string='# of Sales Orders')
+
+    # Many2many
+    sale_order_ids = fields.Many2many(
+        comodel_name='sale.order',
+        relation='sale_order_transaction_rel',
+        column1='transaction_id',
+        column2='sale_order_id',
+        string='Sales Orders',
+        copy=False,
+        readonly=True
+    )
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
+    @api.depends('sale_order_ids')
+    def _compute_sale_order_ids_nbr(self):
+        for trans in self:
+            trans.sale_order_ids_nbr = len(trans.sale_order_ids)
+
+    # ------------------------------------------------------------
+    # HOOKS
+    # ------------------------------------------------------------
+
+    def _send_invoice(self):
+        for tx in self:
+            tx = tx.with_company(tx.company_id).with_context(
+                company_id=tx.company_id.id,
+            )
+            invoice_to_send = tx.invoice_ids.filtered(
+                lambda i: not i.is_move_sent and i.state == 'posted' and i._is_ready_to_be_sent()
+            )
+            invoice_to_send.is_move_sent = True # Mark invoice as sent
+            self.env['account.move.send'].with_user(SUPERUSER_ID)._generate_and_send_invoices(
+                invoice_to_send,
+                allow_raising=False,
+                allow_fallback_pdf=True,
+            )
 
     def _compute_sale_order_reference(self, order):
         self.ensure_one()
@@ -32,10 +82,145 @@ class PaymentTransaction(models.Model):
 
         return order_reference
 
-    @api.depends('sale_order_ids')
-    def _compute_sale_order_ids_nbr(self):
-        for trans in self:
-            trans.sale_order_ids_nbr = len(trans.sale_order_ids)
+    # ------------------------------------------------------------
+    # TOOLS
+    # ------------------------------------------------------------
+
+    @api.model
+    def _compute_reference_prefix(self, provider_code, separator, **values):
+        """ Override of payment to compute the reference prefix based on Sales-specific values.
+
+        If the `values` parameter has an entry with 'sale_order_ids' as key and a list of (4, id, O)
+        or (6, 0, ids) X2M command as value, the prefix is computed based on the sales order name(s)
+        Otherwise, the computation is delegated to the super method.
+
+        :param str provider_code: The code of the provider handling the transaction
+        :param str separator: The custom separator used to separate data references
+        :param dict values: The transaction values used to compute the reference prefix. It should
+                            have the structure {'sale_order_ids': [(X2M command), ...], ...}.
+        :return: The computed reference prefix if order ids are found, the one of `super` otherwise
+        :rtype: str
+        """
+        command_list = values.get('sale_order_ids')
+        if command_list:
+            # Extract sales order id(s) from the X2M commands
+            order_ids = self._fields['sale_order_ids'].convert_to_cache(command_list, self)
+            orders = self.env['sale.order'].browse(order_ids).exists()
+            if len(orders) == len(order_ids):  # All ids are valid
+                return separator.join(orders.mapped('name'))
+        return super()._compute_reference_prefix(provider_code, separator, **values)
+
+    # ------------------------------------------------------------
+    # CRON
+    # ------------------------------------------------------------
+
+    def _cron_send_invoice(self):
+        """
+            Cron to send invoice that where not ready to be send directly after posting
+        """
+        if not self.env['ir.config_parameter'].sudo().get_param('sale.automatic_invoice'):
+            return
+
+        # No need to retrieve old transactions
+        retry_limit_date = datetime.now() - relativedelta.relativedelta(days=2)
+        # Retrieve all transactions matching the criteria for post-processing
+        self.search([
+            ('state', '=', 'done'),
+            ('is_post_processed', '=', True),
+            ('invoice_ids', 'in', self.env['account.move']._search([
+                ('is_move_sent', '=', False),
+                ('state', '=', 'posted'),
+            ])),
+            ('sale_order_ids.state', '=', 'sale'),
+            ('last_state_change', '>=', retry_limit_date),
+        ])._send_invoice()
+
+    # ------------------------------------------------------------
+    # ACTION METHODS
+    # ------------------------------------------------------------
+
+    @api.readonly
+    def action_view_sales_orders(self):
+        action = {
+            'name': _('Sales Order(s)'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'target': 'current',
+        }
+        sale_order_ids = self.sale_order_ids.ids
+        if len(sale_order_ids) == 1:
+            action['res_id'] = sale_order_ids[0]
+            action['view_mode'] = 'form'
+        else:
+            action['view_mode'] = 'list,form'
+            action['domain'] = [('id', 'in', sale_order_ids)]
+        return action
+
+
+    # ------------------------------------------------------------
+    # BUSINESS LOGIC METHODS
+    # ------------------------------------------------------------
+
+    def _log_message_on_linked_documents(self, message):
+        """ Override of payment to log a message on the sales orders linked to the transaction.
+
+        Note: self.ensure_one()
+
+        :param str message: The message to be logged
+        :return: None
+        """
+        super()._log_message_on_linked_documents(message)
+        author = self.env.user.partner_id if self.env.uid == SUPERUSER_ID else self.partner_id
+        for order in self.sale_order_ids or self.source_transaction_id.sale_order_ids:
+            order.message_post(body=message, author_id=author.id)
+
+    def _invoice_sale_orders(self):
+        for tx in self.filtered(lambda tx: tx.sale_order_ids):
+            tx = tx.with_company(tx.company_id)
+
+            confirmed_orders = tx.sale_order_ids.filtered(lambda so: so.state == 'sale')
+            if confirmed_orders:
+                # Filter orders between those fully paid and those partially paid.
+                fully_paid_orders = confirmed_orders.filtered(lambda so: so._is_paid())
+
+                # Create a down payment invoice for partially paid orders
+                downpayment_invoices = (
+                    confirmed_orders - fully_paid_orders
+                )._generate_downpayment_invoices()
+
+                # For fully paid orders create a final invoice.
+                fully_paid_orders._force_lines_to_invoice_policy_order()
+                final_invoices = fully_paid_orders.with_context(
+                    raise_if_nothing_to_invoice=False
+                )._create_invoices(final=True)
+                invoices = downpayment_invoices + final_invoices
+
+                # Setup access token in advance to avoid serialization failure between
+                # edi postprocessing of invoice and displaying the sale order on the portal
+                for invoice in invoices:
+                    invoice._portal_ensure_token()
+                tx.invoice_ids = [Command.set(invoices.ids)]
+
+    def _check_amount_and_confirm_order(self):
+        """ Confirm the sales order based on the amount of a transaction.
+
+        Confirm the sales orders only if the transaction amount (or the sum of the partial
+        transaction amounts) is equal to or greater than the required amount for order confirmation
+
+        Grouped payments (paying multiple sales orders in one transaction) are not supported.
+
+        :return: The confirmed sales orders.
+        :rtype: a `sale.order` recordset
+        """
+        confirmed_orders = self.env['sale.order']
+        for tx in self:
+            # We only support the flow where exactly one quotation is linked to a transaction.
+            if len(tx.sale_order_ids) == 1:
+                quotation = tx.sale_order_ids.filtered(lambda so: so.state in ('draft', 'sent'))
+                if quotation and quotation._is_confirmation_amount_reached():
+                    quotation.with_context(send_email=True).action_confirm()
+                    confirmed_orders |= quotation
+        return confirmed_orders
 
     def _post_process(self):
         """ Override of `payment` to add Sales-specific logic to the post-processing.
@@ -99,141 +284,3 @@ class PaymentTransaction(models.Model):
             super(PaymentTransaction, done_tx)._post_process()  # Post the invoices.
             if auto_invoice:
                 self._send_invoice()
-
-    def _check_amount_and_confirm_order(self):
-        """ Confirm the sales order based on the amount of a transaction.
-
-        Confirm the sales orders only if the transaction amount (or the sum of the partial
-        transaction amounts) is equal to or greater than the required amount for order confirmation
-
-        Grouped payments (paying multiple sales orders in one transaction) are not supported.
-
-        :return: The confirmed sales orders.
-        :rtype: a `sale.order` recordset
-        """
-        confirmed_orders = self.env['sale.order']
-        for tx in self:
-            # We only support the flow where exactly one quotation is linked to a transaction.
-            if len(tx.sale_order_ids) == 1:
-                quotation = tx.sale_order_ids.filtered(lambda so: so.state in ('draft', 'sent'))
-                if quotation and quotation._is_confirmation_amount_reached():
-                    quotation.with_context(send_email=True).action_confirm()
-                    confirmed_orders |= quotation
-        return confirmed_orders
-
-    def _log_message_on_linked_documents(self, message):
-        """ Override of payment to log a message on the sales orders linked to the transaction.
-
-        Note: self.ensure_one()
-
-        :param str message: The message to be logged
-        :return: None
-        """
-        super()._log_message_on_linked_documents(message)
-        author = self.env.user.partner_id if self.env.uid == SUPERUSER_ID else self.partner_id
-        for order in self.sale_order_ids or self.source_transaction_id.sale_order_ids:
-            order.message_post(body=message, author_id=author.id)
-
-    def _send_invoice(self):
-        for tx in self:
-            tx = tx.with_company(tx.company_id).with_context(
-                company_id=tx.company_id.id,
-            )
-            invoice_to_send = tx.invoice_ids.filtered(
-                lambda i: not i.is_move_sent and i.state == 'posted' and i._is_ready_to_be_sent()
-            )
-            invoice_to_send.is_move_sent = True # Mark invoice as sent
-            self.env['account.move.send'].with_user(SUPERUSER_ID)._generate_and_send_invoices(
-                invoice_to_send,
-                allow_raising=False,
-                allow_fallback_pdf=True,
-            )
-
-    def _cron_send_invoice(self):
-        """
-            Cron to send invoice that where not ready to be send directly after posting
-        """
-        if not self.env['ir.config_parameter'].sudo().get_param('sale.automatic_invoice'):
-            return
-
-        # No need to retrieve old transactions
-        retry_limit_date = datetime.now() - relativedelta.relativedelta(days=2)
-        # Retrieve all transactions matching the criteria for post-processing
-        self.search([
-            ('state', '=', 'done'),
-            ('is_post_processed', '=', True),
-            ('invoice_ids', 'in', self.env['account.move']._search([
-                ('is_move_sent', '=', False),
-                ('state', '=', 'posted'),
-            ])),
-            ('sale_order_ids.state', '=', 'sale'),
-            ('last_state_change', '>=', retry_limit_date),
-        ])._send_invoice()
-
-    def _invoice_sale_orders(self):
-        for tx in self.filtered(lambda tx: tx.sale_order_ids):
-            tx = tx.with_company(tx.company_id)
-
-            confirmed_orders = tx.sale_order_ids.filtered(lambda so: so.state == 'sale')
-            if confirmed_orders:
-                # Filter orders between those fully paid and those partially paid.
-                fully_paid_orders = confirmed_orders.filtered(lambda so: so._is_paid())
-
-                # Create a down payment invoice for partially paid orders
-                downpayment_invoices = (
-                    confirmed_orders - fully_paid_orders
-                )._generate_downpayment_invoices()
-
-                # For fully paid orders create a final invoice.
-                fully_paid_orders._force_lines_to_invoice_policy_order()
-                final_invoices = fully_paid_orders.with_context(
-                    raise_if_nothing_to_invoice=False
-                )._create_invoices(final=True)
-                invoices = downpayment_invoices + final_invoices
-
-                # Setup access token in advance to avoid serialization failure between
-                # edi postprocessing of invoice and displaying the sale order on the portal
-                for invoice in invoices:
-                    invoice._portal_ensure_token()
-                tx.invoice_ids = [Command.set(invoices.ids)]
-
-    @api.model
-    def _compute_reference_prefix(self, provider_code, separator, **values):
-        """ Override of payment to compute the reference prefix based on Sales-specific values.
-
-        If the `values` parameter has an entry with 'sale_order_ids' as key and a list of (4, id, O)
-        or (6, 0, ids) X2M command as value, the prefix is computed based on the sales order name(s)
-        Otherwise, the computation is delegated to the super method.
-
-        :param str provider_code: The code of the provider handling the transaction
-        :param str separator: The custom separator used to separate data references
-        :param dict values: The transaction values used to compute the reference prefix. It should
-                            have the structure {'sale_order_ids': [(X2M command), ...], ...}.
-        :return: The computed reference prefix if order ids are found, the one of `super` otherwise
-        :rtype: str
-        """
-        command_list = values.get('sale_order_ids')
-        if command_list:
-            # Extract sales order id(s) from the X2M commands
-            order_ids = self._fields['sale_order_ids'].convert_to_cache(command_list, self)
-            orders = self.env['sale.order'].browse(order_ids).exists()
-            if len(orders) == len(order_ids):  # All ids are valid
-                return separator.join(orders.mapped('name'))
-        return super()._compute_reference_prefix(provider_code, separator, **values)
-
-    @api.readonly
-    def action_view_sales_orders(self):
-        action = {
-            'name': _('Sales Order(s)'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order',
-            'target': 'current',
-        }
-        sale_order_ids = self.sale_order_ids.ids
-        if len(sale_order_ids) == 1:
-            action['res_id'] = sale_order_ids[0]
-            action['view_mode'] = 'form'
-        else:
-            action['view_mode'] = 'list,form'
-            action['domain'] = [('id', 'in', sale_order_ids)]
-        return action

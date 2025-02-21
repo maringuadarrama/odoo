@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <record id="mail_activity_plan_action_sale_order" model="ir.actions.act_window">
         <field name="name">Sale Order Plans</field>
         <field name="res_model">mail.activity.plan</field>
@@ -17,4 +18,5 @@
             </p>
         </field>
     </record>
+
 </odoo>

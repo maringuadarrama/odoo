@@ -6,6 +6,11 @@ from odoo import fields, models
 class ProductDocument(models.Model):
     _inherit = 'product.document'
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    # Selection
     attached_on_sale = fields.Selection(
         selection=[
             ('hidden', "Hidden"),

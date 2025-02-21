@@ -6,15 +6,21 @@ from odoo.addons.sale.models.sale_order import SALE_ORDER_STATE
 
 
 class SaleReport(models.Model):
+    """Provides detailed sales analysis and reporting.
+
+    Handles sales data, including order details, product information, and customer data,
+    to generate comprehensive sales reports. It supports filtering and grouping by various fields such
+    as sales team, product category, and customer country.
+    """
     _name = 'sale.report'
     _description = "Sales Analysis Report"
     _auto = False
     _rec_name = 'date'
     _order = 'date desc'
 
-    @api.model
-    def _get_done_states(self):
-        return ['sale']
+    # ------------------------------------------------------------
+    # FIELDS 
+    # ------------------------------------------------------------
 
     # sale.order fields
     name = fields.Char(string="Order Reference", readonly=True)
@@ -32,10 +38,14 @@ class SaleReport(models.Model):
             ('to invoice', "To Invoice"),
             ('no', "Nothing to Invoice"),
         ], string="Order Invoice Status", readonly=True)
-
     campaign_id = fields.Many2one(comodel_name='utm.campaign', string="Campaign", readonly=True)
     medium_id = fields.Many2one(comodel_name='utm.medium', string="Medium", readonly=True)
     source_id = fields.Many2one(comodel_name='utm.source', string="Source", readonly=True)
+    order_reference = fields.Reference(
+        string='Order',
+        selection=[('sale.order', 'Sales Order')],
+        aggregator="count_distinct",
+    )
 
     # res.partner fields
     commercial_partner_id = fields.Many2one(
@@ -48,12 +58,6 @@ class SaleReport(models.Model):
     state_id = fields.Many2one(comodel_name='res.country.state', string="Customer State", readonly=True)
 
     # sale.order.line fields
-    order_reference = fields.Reference(
-        string='Order',
-        selection=[('sale.order', 'Sales Order')],
-        aggregator="count_distinct",
-    )
-
     categ_id = fields.Many2one(
         comodel_name='product.category', string="Product Category", readonly=True)
     product_id = fields.Many2one(
@@ -88,9 +92,39 @@ class SaleReport(models.Model):
     nbr = fields.Integer(string="# of Lines", readonly=True)
     currency_id = fields.Many2one(comodel_name='res.currency', compute='_compute_currency_id')
 
+    # ------------------------------------------------------------
+    # HELPERS 
+    # ------------------------------------------------------------
+
+    @api.model
+    def _get_done_states(self):
+        return ['sale']
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS 
+    # ------------------------------------------------------------
+
     @api.depends_context('allowed_company_ids')
     def _compute_currency_id(self):
         self.currency_id = self.env.company.currency_id
+
+    # ------------------------------------------------------------
+    # ACTION METHODS 
+    # ------------------------------------------------------------
+    
+    @api.readonly
+    def action_open_order(self):
+        self.ensure_one()
+        return {
+            'res_model': self.order_reference._name,
+            'type': 'ir.actions.act_window',
+            'views': [[False, 'form']],
+            'res_id': self.order_reference.id,
+        }
+
+    # ------------------------------------------------------------
+    # BUSINESS LOGIC 
+    # ------------------------------------------------------------
 
     def _with_sale(self):
         return ""
@@ -243,13 +277,3 @@ class SaleReport(models.Model):
     @property
     def _table_query(self):
         return self._query()
-
-    @api.readonly
-    def action_open_order(self):
-        self.ensure_one()
-        return {
-            'res_model': self.order_reference._name,
-            'type': 'ir.actions.act_window',
-            'views': [[False, 'form']],
-            'res_id': self.order_reference.id,
-        }

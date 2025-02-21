@@ -26,7 +26,7 @@
         <div id="portal_alert_category" position="inside">
             <t t-call="portal.portal_docs_entry">
                 <t t-set="bg_color" t-value="'alert alert-primary align-items-center'"/>
-                <t t-set="placeholder_count" t-value="'quotation_count'"/>
+                <t t-set="placeholder_count" t-value="'count_quotation'"/>
                 <t t-set="title">Quotations to review</t>
                 <t t-set="url" t-value="'/my/quotes'"/>
                 <t t-set="show_count" t-value="True"/>

@@ -99,7 +99,7 @@ class TestSaleRefund(TestSaleCommon):
         # Check invoice's type and number
         self.assertEqual(invoice_refund.move_type, 'out_refund', 'The last created invoiced should be a refund')
         self.assertEqual(invoice_refund.state, 'draft', 'Last Customer invoices should be in draft')
-        self.assertEqual(self.sale_order.invoice_count, 2, "The SO should have 2 related invoices: the original, the new refund")
+        self.assertEqual(self.sale_order.count_invoice, 2, "The SO should have 2 related invoices: the original, the new refund")
         self.assertEqual(len(self.sale_order.invoice_ids.filtered(lambda inv: inv.move_type == 'out_refund')), 1, "The SO should be linked to only one refund")
         self.assertEqual(len(self.sale_order.invoice_ids.filtered(lambda inv: inv.move_type == 'out_invoice')), 1, "The SO should be linked to only one customer invoices")
 
@@ -191,7 +191,7 @@ class TestSaleRefund(TestSaleCommon):
         # Check invoice's type and number
         self.assertEqual(invoice_refund.move_type, 'out_invoice', 'The last created invoiced should be a customer invoice')
         self.assertEqual(invoice_refund.state, 'draft', 'Last Customer invoices should be in draft')
-        self.assertEqual(self.sale_order.invoice_count, 3, "The SO should have 3 related invoices: the original, the refund, and the new one")
+        self.assertEqual(self.sale_order.count_invoice, 3, "The SO should have 3 related invoices: the original, the refund, and the new one")
         self.assertEqual(len(self.sale_order.invoice_ids.filtered(lambda inv: inv.move_type == 'out_refund')), 1, "The SO should be linked to only one refund")
         self.assertEqual(len(self.sale_order.invoice_ids.filtered(lambda inv: inv.move_type == 'out_invoice')), 2, "The SO should be linked to two customer invoices")
 

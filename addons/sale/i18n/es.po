@@ -29,7 +29,7 @@ msgid " Data Fetched"
 msgstr " Datos obtenidos"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_crm_team__sale_order_count
+#: model:ir.model.fields,field_description:sale.field_crm_team__count_sale_order
 msgid "# Sale Orders"
 msgstr "# Órdenes de venta"
 
@@ -1955,7 +1955,7 @@ msgid "Invoice Confirmed"
 msgstr "Factura Confirmada"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_sale_order__invoice_count
+#: model:ir.model.fields,field_description:sale.field_sale_order__count_invoice
 msgid "Invoice Count"
 msgstr "Recuento de facturas"
 
@@ -2470,7 +2470,7 @@ msgid "Number of quotations to invoice"
 msgstr "Número de presupuestos a facturar"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_crm_team__sales_to_invoice_count
+#: model:ir.model.fields,field_description:sale.field_crm_team__count_sales_to_invoice
 msgid "Number of sales to invoice"
 msgstr "Cantidad de ventas a facturar"
 
@@ -2999,7 +2999,7 @@ msgid "Quotation / Order"
 msgstr "Presupuesto / Pedido"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_utm_campaign__quotation_count
+#: model:ir.model.fields,field_description:sale.field_utm_campaign__count_quotation
 msgid "Quotation Count"
 msgstr "Nº de presupuestos"
 
@@ -3210,11 +3210,11 @@ msgid "Sale Order"
 msgstr "Pedido de venta"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_account_bank_statement_line__sale_order_count
-#: model:ir.model.fields,field_description:sale.field_account_move__sale_order_count
-#: model:ir.model.fields,field_description:sale.field_account_payment__sale_order_count
-#: model:ir.model.fields,field_description:sale.field_res_partner__sale_order_count
-#: model:ir.model.fields,field_description:sale.field_res_users__sale_order_count
+#: model:ir.model.fields,field_description:sale.field_account_bank_statement_line__count_sale_order
+#: model:ir.model.fields,field_description:sale.field_account_move__count_sale_order
+#: model:ir.model.fields,field_description:sale.field_account_payment__count_sale_order
+#: model:ir.model.fields,field_description:sale.field_res_partner__count_sale_order
+#: model:ir.model.fields,field_description:sale.field_res_users__count_sale_order
 msgid "Sale Order Count"
 msgstr "Nº de pedidos de venta"
 
@@ -3229,7 +3229,7 @@ msgid "Sale Orders"
 msgstr "Pedidos de venta"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__sale_orders_count
+#: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__count_sale_orders
 msgid "Sale Orders Count"
 msgstr ""
 
@@ -3814,8 +3814,8 @@ msgstr "Impuestos usados para anticipos"
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/crm_team.py:0
-msgid "Team %(team_name)s has %(sale_order_count)s active sale orders. Consider canceling them or archiving the team instead."
-msgstr "El equipo %(team_name)s tiene %(sale_order_count)s órdenes de venta activas. Considere cancelarlas o archivar el equipo."
+msgid "Team %(team_name)s has %(count_sale_order)s active sale orders. Consider canceling them or archiving the team instead."
+msgstr "El equipo %(team_name)s tiene %(count_sale_order)s órdenes de venta activas. Considere cancelarlas o archivar el equipo."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template

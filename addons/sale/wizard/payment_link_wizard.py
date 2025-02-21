@@ -5,11 +5,45 @@ from odoo.tools import format_amount
 
 
 class PaymentLinkWizard(models.TransientModel):
+    """ Extends the 'payment.link.wizard'
+
+    Relate sale order to payments, including functionality for sales orders to be
+    confirmed on down payments
+    """
+
     _inherit = 'payment.link.wizard'
     _description = 'Generate Sales Payment Link'
 
-    amount_paid = fields.Monetary(string="Already Paid", readonly=True)
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    # Char
     confirmation_message = fields.Char(compute='_compute_confirmation_message')
+
+    # Monetary
+    amount_paid = fields.Monetary(string="Already Paid", readonly=True)
+
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
+
+    def _prepare_query_params(self, *args):
+        """ Override of `payment` to add `sale_order_id` to the query params. """
+        res = super()._prepare_query_params(*args)
+        if self.res_model != 'sale.order':
+            return res
+
+        # The other order-related values are read directly from the sales order in the controller.
+        return {
+            'amount': self.amount,
+            'access_token': self._prepare_access_token(),
+            'sale_order_id': self.res_id,
+        }
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
 
     @api.depends('amount')
     def _compute_confirmation_message(self):
@@ -25,16 +59,3 @@ class PaymentLinkWizard(models.TransientModel):
                         "Customer needs to pay at least %(amount)s to confirm the order.",
                         amount=format_amount(wizard.env, remaining_amount, wizard.currency_id),
                     )
-
-    def _prepare_query_params(self, *args):
-        """ Override of `payment` to add `sale_order_id` to the query params. """
-        res = super()._prepare_query_params(*args)
-        if self.res_model != 'sale.order':
-            return res
-
-        # The other order-related values are read directly from the sales order in the controller.
-        return {
-            'amount': self.amount,
-            'access_token': self._prepare_access_token(),
-            'sale_order_id': self.res_id,
-        }
