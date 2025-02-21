@@ -14,8 +14,14 @@ class BillToPoWizard(models.TransientModel):
 
 
     def action_add_to_po(self):
-        aml_ids = [abs(record_id) for record_id in self.env.context.get("active_ids") if record_id < 0]
-        lines_to_add = self.env["account.move.line"].browse(aml_ids).filtered(lambda l: l.product_id)
+        aml_ids = [
+            abs(record_id)
+            for record_id in self.env.context.get("active_ids")
+            if record_id < 0
+        ]
+        lines_to_add = self.env["account.move.line"].browse(aml_ids).filtered(
+            lambda l: l.product_id
+        )
         if not lines_to_add:
             raise UserError(_(
                 "There are no products to add to the Purchase Order. Are these Down Payments?"
@@ -34,7 +40,6 @@ class BillToPoWizard(models.TransientModel):
                 "order_line_ids": [Command.create(val) for val in line_vals],
             })
             new_po_lines = self.purchase_order_id.order_line_ids
-
         self.purchase_order_id.button_confirm()
         for aml, pol in zip(lines_to_add, new_po_lines):
             if aml.product_id == pol.product_id:
@@ -67,11 +72,9 @@ class BillToPoWizard(models.TransientModel):
             for aml in lines_to_convert
         ]
         del context
-
         downpayment_lines = self.purchase_order_id._create_downpayments(line_vals)
         for aml, dpl in zip(lines_to_convert, downpayment_lines):
             aml.purchase_line_id = dpl.id
-
         return {
             "type": "ir.actions.act_window",
             "res_model": "purchase.order",

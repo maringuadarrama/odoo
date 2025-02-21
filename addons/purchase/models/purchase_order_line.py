@@ -133,10 +133,24 @@ class PurchaseOrderLine(models.Model):
         compute="_compute_price_unit_discounted",
     )
 
-    tax_ids = fields.Many2many(comodel_name="account.tax", string="Taxes", context={"active_test": False})
-    price_subtotal = fields.Monetary(string="Subtotal", compute="_compute_amount", store=True, aggregator=None)
-    price_tax = fields.Float(string="Tax", compute="_compute_amount", store=True)
-    price_total = fields.Monetary(string="Total", compute="_compute_amount", store=True)
+    tax_ids = fields.Many2many(
+        comodel_name="account.tax",
+        string="Taxes",
+        context={"active_test": False},
+    )
+    price_subtotal = fields.Monetary(
+        string="Subtotal",
+        compute="_compute_amount", store=True,
+        aggregator=None,
+    )
+    price_tax = fields.Float(
+        string="Tax",
+        compute="_compute_amount", store=True,
+    )
+    price_total = fields.Monetary(
+        string="Total",
+        compute="_compute_amount", store=True,
+    )
 
     qty_received_method = fields.Selection(
         [("manual", "Manual")],
@@ -220,7 +234,8 @@ class PurchaseOrderLine(models.Model):
         for values in vals_list:
             if values.get("display_type", self.default_get(["display_type"])["display_type"]):
                 values.update(
-                    product_id=False, price_unit=0, product_uom_qty=0, product_uom_id=False, date_planned=False
+                    product_id=False, price_unit=0, product_uom_qty=0,
+                    product_uom_id=False, date_planned=False
                 )
             else:
                 values.update(self._prepare_add_missing_fields(values))
@@ -231,35 +246,35 @@ class PurchaseOrderLine(models.Model):
                 line.order_id.message_post(body=msg)
         return lines
 
-    def write(self, values):
-        if "display_type" in values and self.filtered(
-            lambda line: line.display_type != values.get("display_type")
+    def write(self, vals):
+        if "display_type" in vals and self.filtered(
+            lambda line: line.display_type != vals.get("display_type")
         ):
             raise UserError(_(
                 "You cannot change the type of a purchase order line. Instead you should delete "
                 "the current line and create a new line of the proper type."
             ))
 
-        if "product_qty" in values:
+        if "product_qty" in vals:
             precision = self.env["decimal.precision"].precision_get("Product Unit")
             for line in self:
                 if (
                     line.order_id.state == "purchase"
                     and float_compare(
-                        line.product_qty, values["product_qty"], precision_digits=precision
+                        line.product_qty, vals["product_qty"], precision_digits=precision
                     ) != 0
                 ):
                     line.order_id.message_post_with_source(
                         "purchase.track_po_line_template",
-                        render_values={"line": line, "product_qty": values["product_qty"]},
+                        render_values={"line": line, "product_qty": vals["product_qty"]},
                         subtype_xmlid="mail.mt_note",
                     )
 
-        if "qty_received" in values:
+        if "qty_received" in vals:
             for line in self:
-                line._track_qty_received(values["qty_received"])
+                line._track_qty_received(vals["qty_received"])
 
-        return super(PurchaseOrderLine, self).write(values)
+        return super(PurchaseOrderLine, self).write(vals)
 
     @api.ondelete(at_uninstall=False)
     def _unlink_except_purchase_or_done(self):
@@ -300,7 +315,9 @@ class PurchaseOrderLine(models.Model):
             )
 
             if seller or not line.date_planned:
-                line.date_planned = line._get_date_planned(seller).strftime(DEFAULT_SERVER_DATETIME_FORMAT)
+                line.date_planned = line._get_date_planned(
+                    seller
+                ).strftime(DEFAULT_SERVER_DATETIME_FORMAT)
 
             # If not seller, use the standard price. It needs a proper currency conversion.
             if not seller:
@@ -483,7 +500,10 @@ class PurchaseOrderLine(models.Model):
             # compute qty_invoiced
             qty = 0.0
             for inv_line in line._get_invoice_lines():
-                if inv_line.move_id.state not in ["cancel"] or inv_line.move_id.payment_state == "invoicing_legacy":
+                if (
+                    inv_line.move_id.state not in ["cancel"]
+                    or inv_line.move_id.payment_state == "invoicing_legacy"
+                ):
                     if inv_line.move_id.move_type == "in_invoice":
                         qty += inv_line.product_uom_id._compute_quantity(
                             inv_line.quantity, line.product_uom_id
@@ -510,8 +530,9 @@ class PurchaseOrderLine(models.Model):
 
     @api.onchange("qty_received")
     def _inverse_qty_received(self):
-        """When writing on qty_received, if the value should be modify manually (`qty_received_method` = "manual" only),
-        then we put the value in `qty_received_manual`. Otherwise, `qty_received_manual` should be False since the
+        """When writing on qty_received, if the value should be modify manually
+        (`qty_received_method` = "manual" only), then we put the value in `qty_received_manual`.
+        Otherwise, `qty_received_manual` should be False since the
         received qty is automatically compute by other mecanisms."""
         for line in self:
             if line.qty_received_method == "manual":
@@ -607,7 +628,9 @@ class PurchaseOrderLine(models.Model):
         self.ensure_one()
         if self._context.get("accrual_entry_date"):
             return self.invoice_line_ids.filtered(
-                lambda l: l.move_id.invoice_date and l.move_id.invoice_date <= self._context["accrual_entry_date"]
+                lambda l:
+                    l.move_id.invoice_date
+                    and l.move_id.invoice_date <= self._context["accrual_entry_date"]
             )
         else:
             return self.invoice_line_ids
@@ -675,6 +698,7 @@ class PurchaseOrderLine(models.Model):
                 "id": self.product_uom_id.id,
             }
             return catalog_info
+
         elif self:
             self.product_id.ensure_one()
             order_line = self[0]
@@ -685,6 +709,7 @@ class PurchaseOrderLine(models.Model):
             )))
             catalog_info["readOnly"] = True
             return catalog_info
+
         return {"quantity": 0}
 
     def _get_product_purchase_description(self, product_lang):
@@ -701,8 +726,8 @@ class PurchaseOrderLine(models.Model):
         }
 
     def _prepare_base_line_for_taxes_computation(self):
-        """Convert the current record to a dictionary in order to use the generic taxes computation method
-        defined on account.tax.
+        """Convert the current record to a dictionary in order to use 
+        the generic taxes computation method defined on account.tax.
 
         :return: A python dictionary."""
         self.ensure_one()
@@ -722,12 +747,16 @@ class PurchaseOrderLine(models.Model):
 
         res = {
             "display_type": self.display_type or "product",
-            "name": self.env["account.move.line"]._get_journal_items_full_name(self.name, self.product_id.display_name),
+            "name": self.env["account.move.line"]._get_journal_items_full_name(
+                self.name, self.product_id.display_name
+            ),
             "product_id": self.product_id.id,
             "product_uom_id": self.product_uom_id.id,
             "quantity": self.qty_to_invoice,
             "discount": self.discount,
-            "price_unit": self.currency_id._convert(self.price_unit, aml_currency, self.company_id, date, round=False),
+            "price_unit": self.currency_id._convert(
+                self.price_unit, aml_currency, self.company_id, date, round=False
+            ),
             "tax_ids": [(6, 0, self.tax_ids.ids)],
             "purchase_line_id": self.id,
             "is_downpayment": self.is_downpayment,
@@ -741,7 +770,11 @@ class PurchaseOrderLine(models.Model):
         """Deduce missing required fields from the onchange"""
         res = {}
         onchange_fields = ["name", "price_unit", "product_qty", "product_uom_id", "tax_ids", "date_planned"]
-        if values.get("order_id") and values.get("product_id") and any(f not in values for f in onchange_fields):
+        if (
+            values.get("order_id")
+            and values.get("product_id")
+            and any(f not in values for f in onchange_fields)
+        ):
             line = self.new(values)
             line.onchange_product_id()
             for field in onchange_fields:
@@ -750,7 +783,9 @@ class PurchaseOrderLine(models.Model):
         return res
 
     @api.model
-    def _prepare_purchase_order_line(self, product_id, product_qty, product_uom, company_id, supplier, po):
+    def _prepare_purchase_order_line(
+        self, product_id, product_qty, product_uom, company_id, supplier, po
+    ):
         partner = supplier.partner_id
         uom_po_qty = product_uom._compute_quantity(
             product_qty, product_id.uom_id, rounding_method="HALF-UP"
@@ -813,9 +848,13 @@ class PurchaseOrderLine(models.Model):
         """Suggest a minimal quantity based on the seller"""
         if not self.product_id:
             return
-        seller_min_qty = self.product_id.seller_ids\
-            .filtered(lambda r: r.partner_id == self.order_id.partner_id and (not r.product_id or r.product_id == self.product_id))\
-            .sorted(key=lambda r: r.min_qty)
+        seller_min_qty = self.product_id.seller_ids.filtered(
+            lambda r:
+                r.partner_id == self.order_id.partner_id
+                and (
+                    not r.product_id or r.product_id == self.product_id
+                )
+        ).sorted(key=lambda r: r.min_qty)
         if seller_min_qty:
             self.product_qty = seller_min_qty[0].min_qty or 1.0
             self.product_uom_id = seller_min_qty[0].product_uom_id
@@ -825,14 +864,17 @@ class PurchaseOrderLine(models.Model):
     def _convert_to_middle_of_day(self, date):
         """Return a datetime which is the noon of the input date(time) according
         to order user's time zone, convert to UTC time."""
-        return self.order_id.get_order_timezone().localize(datetime.combine(date, time(12))).astimezone(UTC).replace(tzinfo=None)
+        return self.order_id.get_order_timezone().localize(
+            datetime.combine(date, time(12))
+        ).astimezone(UTC).replace(tzinfo=None)
 
     def _update_date_planned(self, updated_date):
         self.date_planned = updated_date
 
     def _track_qty_received(self, new_qty):
         self.ensure_one()
-        # don't track anything when coming from the accrued expense entry wizard, as it is only computing fields at a past date to get relevant amounts
+        # don't track anything when coming from the accrued expense entry wizard,
+        # as it is only computing fields at a past date to get relevant amounts
         # and doesn't actually change anything to the current record
         if  self.env.context.get("accrual_entry_date"):
             return

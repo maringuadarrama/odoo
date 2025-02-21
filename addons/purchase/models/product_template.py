@@ -42,7 +42,9 @@ class ProductTemplate(models.Model):
 
     @api.depends("type")
     def _compute_purchase_method(self):
-        default_purchase_method = self.env["product.template"].default_get(["purchase_method"]).get("purchase_method", "receive")
+        default_purchase_method = self.env["product.template"].default_get(
+            ["purchase_method"]
+        ).get("purchase_method", "receive")
         for product in self:
             if product.type == "service":
                 product.purchase_method = "purchase"
@@ -77,11 +79,14 @@ class ProductTemplate(models.Model):
     # -------------------------------------------------------------------------
 
     def _get_backend_root_menu_ids(self):
-        return super()._get_backend_root_menu_ids() + [self.env.ref("purchase.menu_purchase_root").id]
+        return (
+            super()._get_backend_root_menu_ids() 
+            + [self.env.ref("purchase.menu_purchase_root").id]
+        )
 
     @api.model
     def get_import_templates(self):
-        res = super(ProductTemplate, self).get_import_templates()
+        res = super().get_import_templates()
         if self.env.context.get("purchase_product_template"):
             return [{
                 "label": _("Import Template for Products"),
