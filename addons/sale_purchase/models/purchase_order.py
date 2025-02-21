@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models, _
@@ -7,12 +6,15 @@ from odoo import api, fields, models, _
 class PurchaseOrder(models.Model):
     _inherit = "purchase.order"
 
-    sale_order_count = fields.Integer(
-        "Number of Source Sale",
-        compute='_compute_sale_order_count',
-        groups='sales_team.group_sale_salesman')
 
-    @api.depends('order_line.sale_order_id')
+    sale_order_count = fields.Integer(
+        string="Number of Source Sale",
+        compute='_compute_sale_order_count',
+        groups='sales_team.group_sale_salesman'
+    )
+
+
+    @api.depends('order_line_ids.sale_order_id')
     def _compute_sale_order_count(self):
         for purchase in self:
             purchase.sale_order_count = len(purchase._get_sale_orders())
