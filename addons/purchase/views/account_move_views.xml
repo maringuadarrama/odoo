@@ -5,10 +5,9 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form" />
         <field name="arch" type="xml">
-            <!-- Auto-complete could be done from either a bill either a purchase order -->
             <field name="invoice_vendor_bill_id" position="after">
                 <t groups="purchase.group_purchase_user">
-                    <field name="purchase_id"readonly="state != 'draft'" invisible="1"  />
+                    <field name="purchase_id" readonly="state != 'draft'" invisible="1"  />
                     <label for="purchase_bill_union_id" string="Auto-Complete"
                         class="oe_edit_only"
                         invisible="state != 'draft' or move_type != 'in_invoice'" />
@@ -58,10 +57,10 @@
                     type="object" class="oe_stat_button"
                     groups="purchase.group_purchase_user"
                     icon="fa-pencil-square-o"
-                    invisible="purchase_order_count == 0 or move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt')">
-                    <field name="purchase_order_count" string="Purchases"
+                    invisible="count_purchase_order == 0 or move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt')">
+                    <field name="count_purchase_order" string="Purchases"
                         widget="statinfo"
-                        invisible="purchase_order_count == 1" />
+                        invisible="count_purchase_order == 1" />
                 </button>
             </xpath>
         </field>
