@@ -15,9 +15,9 @@
                     <footer>
                         <button name="action_add_to_po" string="Add Products"
                             type="object"
-                            invisible="not context.get('has_products')"/>
+                            invisible="not context.get('has_products')" />
                         <button name="action_add_downpayment" string="Add Down Payment"
-                            type="object"/>
+                            type="object" />
                     </footer>
                 </sheet>
             </form>
