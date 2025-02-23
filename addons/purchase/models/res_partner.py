@@ -5,55 +5,8 @@ from odoo.addons.base.models.res_partner import WARNING_MESSAGE, WARNING_HELP
 
 
 class ResPartner(models.Model):
+    """Inherit ResPartner"""
     _inherit = "res.partner"
-
-
-    def _compute_count_purchase_order(self):
-        self.count_purchase_order = 0
-        if not self.env.user._has_group("purchase.group_purchase_user"):
-            return
-
-        # retrieve all children partners and prefetch "parent_id" on them
-        all_partners = self.with_context(active_test=False).search_fetch(
-            [("id", "child_of", self.ids)],
-            ["parent_id"],
-        )
-        purchase_order_groups = self.env["purchase.order"]._read_group(
-            domain=[("partner_id", "in", all_partners.ids)],
-            groupby=["partner_id"], aggregates=["__count"],
-        )
-        self_ids = set(self._ids)
-        for partner, count in purchase_order_groups:
-            while partner:
-                if partner.id in self_ids:
-                    partner.count_purchase_order += count
-                partner = partner.parent_id
-
-    def _compute_supplier_invoice_count(self):
-        # retrieve all children partners and prefetch "parent_id" on them
-        all_partners = self.with_context(active_test=False).search_fetch(
-            [("id", "child_of", self.ids)],
-            ["parent_id"],
-        )
-        supplier_invoice_groups = self.env["account.move"]._read_group(
-            domain=[
-                ("partner_id", "in", all_partners.ids),
-                *self.env["account.move"]._check_company_domain(self.env.company),
-                ("move_type", "in", ("in_invoice", "in_refund"))
-            ],
-            groupby=["partner_id"], aggregates=["__count"]
-        )
-        self_ids = set(self._ids)
-        self.supplier_invoice_count = 0
-        for partner, count in supplier_invoice_groups:
-            while partner:
-                if partner.id in self_ids:
-                    partner.supplier_invoice_count += count
-                partner = partner.parent_id
-
-    @api.model
-    def _commercial_fields(self):
-        return super()._commercial_fields()
 
 
     buyer_id = fields.Many2one(
@@ -89,7 +42,63 @@ class ResPartner(models.Model):
         compute="_compute_count_purchase_order",
         groups="purchase.group_purchase_user",
     )
-    supplier_invoice_count = fields.Integer(
+    count_supplier_invoice = fields.Integer(
         string="# Vendor Bills",
-        compute="_compute_supplier_invoice_count",
+        compute="_compute_count_supplier_invoice",
     )
+
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
+    def _compute_count_purchase_order(self):
+        self.count_purchase_order = 0
+        if not self.env.user._has_group("purchase.group_purchase_user"):
+            return
+
+        # retrieve all children partners and prefetch "parent_id" on them
+        all_partners = self.with_context(active_test=False).search_fetch(
+            [("id", "child_of", self.ids)],
+            ["parent_id"],
+        )
+        purchase_order_groups = self.env["purchase.order"]._read_group(
+            domain=[("partner_id", "in", all_partners.ids)],
+            groupby=["partner_id"], aggregates=["__count"],
+        )
+        self_ids = set(self._ids)
+        for partner, count in purchase_order_groups:
+            while partner:
+                if partner.id in self_ids:
+                    partner.count_purchase_order += count
+                partner = partner.parent_id
+
+    def _compute_count_supplier_invoice(self):
+        # retrieve all children partners and prefetch "parent_id" on them
+        all_partners = self.with_context(active_test=False).search_fetch(
+            [("id", "child_of", self.ids)],
+            ["parent_id"],
+        )
+        supplier_invoice_groups = self.env["account.move"]._read_group(
+            domain=[
+                ("partner_id", "in", all_partners.ids),
+                *self.env["account.move"]._check_company_domain(self.env.company),
+                ("move_type", "in", ("in_invoice", "in_refund"))
+            ],
+            groupby=["partner_id"], aggregates=["__count"]
+        )
+        self_ids = set(self._ids)
+        self.count_supplier_invoice = 0
+        for partner, count in supplier_invoice_groups:
+            while partner:
+                if partner.id in self_ids:
+                    partner.count_supplier_invoice += count
+                partner = partner.parent_id
+
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
+
+    @api.model
+    def _commercial_fields(self):
+        return super()._commercial_fields()

@@ -140,7 +140,7 @@
                     type="action" class="oe_stat_button"
                     icon="fa-pencil-square-o" help="Vendor Bills"
                     groups="account.group_account_invoice">
-                    <field name="supplier_invoice_count" string="Vendor Bills" widget="statinfo" />
+                    <field name="count_supplier_invoice" string="Vendor Bills" widget="statinfo" />
                 </button>
             </div>
         </field>
