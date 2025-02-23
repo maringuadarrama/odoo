@@ -35,8 +35,7 @@
                 <a t-if="record.count_purchase_order?.value"
                     name="%(purchase.act_res_partner_2_purchase_order)d"
                     role="button"
-                    type="action"
-                    class="btn btn-sm btn-link smaller"
+                    type="action" class="btn btn-sm btn-link smaller"
                     groups="purchase.group_purchase_user">
                     <i class="fa fa-credit-card me-1" aria-label="Purchases" role="img"
                         title="Purchases" />
@@ -71,8 +70,8 @@
                     groups='base.group_multi_currency' />
             </group>
             <field name="property_supplier_payment_term_id" position="before">
-                <field name="buyer_id" domain="[('share', '=', False)]"
-                    widget="many2one_avatar_user" />
+                <field name="buyer_id" widget="many2one_avatar_user"
+                    domain="[('share', '=', False)]" />
             </field>
         </field>
     </record>
@@ -96,9 +95,11 @@
                     <group groups="purchase.group_warning_purchase" col="2">
                         <separator string="Warning on the Purchase Order" colspan="2" />
                         <field name="purchase_warn" nolabel="1" colspan="2" required="1" />
-                        <field name="purchase_warn_msg" colspan="2" placeholder="Type a message..."
-                            required="purchase_warn and purchase_warn != 'no-message'"
+                        <field name="purchase_warn_msg"
+                            placeholder="Type a message..."
+                            colspan="2"
                             nolabel="1"
+                            required="purchase_warn and purchase_warn != 'no-message'"
                             invisible="purchase_warn in (False, 'no-message')" />
                     </group>
                 </group>
@@ -138,7 +139,8 @@
             <div name="button_box" position="inside">
                 <button name="%(purchase.act_res_partner_2_supplier_invoices)d"
                     type="action" class="oe_stat_button"
-                    icon="fa-pencil-square-o" help="Vendor Bills"
+                    icon="fa-pencil-square-o"
+                    help="Vendor Bills"
                     groups="account.group_account_invoice">
                     <field name="count_supplier_invoice" string="Vendor Bills" widget="statinfo" />
                 </button>
