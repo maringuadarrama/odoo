@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
@@ -15,9 +14,12 @@ from odoo.tools import groupby
 class StockRule(models.Model):
     _inherit = 'stock.rule'
 
-    action = fields.Selection(selection_add=[
-        ('buy', 'Buy')
-    ], ondelete={'buy': 'cascade'})
+
+    action = fields.Selection(
+        selection_add=[('buy', 'Buy')],
+        ondelete={'buy': 'cascade'}
+    )
+
 
     def _get_message_dict(self):
         message_dict = super(StockRule, self)._get_message_dict()
