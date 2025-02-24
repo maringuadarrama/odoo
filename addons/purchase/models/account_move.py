@@ -139,10 +139,11 @@ class AccountMove(models.Model):
 
     @api.onchange("purchase_bill_union_id", "purchase_id")
     def _onchange_purchase_auto_complete(self):
-        """Load from either an old purchase order, either an old vendor bill.
+        r"""Load from either an old purchase order, either an old vendor bill.
 
         When setting a "purchase.bill.union" in "purchase_bill_union_id":
-        * If it's a vendor bill, "invoice_vendor_bill_id" is set and the loading is done by "_onchange_invoice_vendor_bill".
+        * If it's a vendor bill, "invoice_vendor_bill_id" is set and the loading is done
+        by "_onchange_invoice_vendor_bill".
         * If it's a purchase order, "purchase_id" is set and this method will load lines.
 
         /!\ All this not-stored fields must be empty at the end of this function.
@@ -231,9 +232,17 @@ class AccountMove(models.Model):
 
     def _get_invoice_reference(self):
         self.ensure_one()
-        vendor_refs = [ref for ref in set(self.invoice_line_ids.mapped("purchase_line_id.order_id.partner_ref")) if ref]
+        vendor_refs = [
+            ref
+            for ref in set(self.invoice_line_ids.mapped("purchase_line_id.order_id.partner_ref"))
+            if ref
+        ]
         if self.ref:
-            return [ref for ref in self.ref.split(", ") if ref and ref not in vendor_refs] + vendor_refs
+            return [
+                ref
+                for ref in self.ref.split(", ")
+                if ref and ref not in vendor_refs
+            ] + vendor_refs
 
         return vendor_refs
 
@@ -243,9 +252,7 @@ class AccountMove(models.Model):
     # -------------------------------------------------------------------------
 
     def _add_purchase_order_lines(self, purchase_order_lines):
-        """
-        Creates new invoice lines from purchase order lines
-        """
+        """Creates new invoice lines from purchase order lines"""
         self.ensure_one()
         new_line_ids = self.env["account.move.line"]
         for po_line in purchase_order_lines:
@@ -254,8 +261,7 @@ class AccountMove(models.Model):
         self.invoice_line_ids += new_line_ids
 
     def _find_matching_subset_po_lines(self, po_lines_with_amount, goal_total, timeout):
-        """
-        Finds the purchase order lines adding up to the goal amount.
+        """Finds the purchase order lines adding up to the goal amount.
 
         The problem of finding the subset of `po_lines_with_amount` which sums up to `goal_total` reduces to
         the 0-1 Knapsack problem. The dynamic programming approach to solve this problem is most of the time slower
@@ -267,8 +273,7 @@ class AccountMove(models.Model):
             * amount_to_invoice: the remaining amount to be invoiced of the line
         :param goal_total: the total amount to match with a subset of purchase order lines
         :param timeout: the max time the line matching algorithm can take before timing out
-        :return: list of `purchase.order.line` whose remaining sum matches `goal_total`
-        """
+        :return: list of `purchase.order.line` whose remaining sum matches `goal_total`"""
         def find_matching_subset_po_lines(lines, goal):
             if time.time() - start_time > timeout:
                 raise TimeoutError
@@ -297,7 +302,11 @@ class AccountMove(models.Model):
         start_time = time.time()
         try:
             subsets = find_matching_subset_po_lines(
-                sorted(po_lines_with_amount, key=lambda line: line["amount_to_invoice"], reverse=True),
+                sorted(
+                    po_lines_with_amount,
+                    key=lambda line: line["amount_to_invoice"],
+                    reverse=True
+                ),
                 goal_total
             )
             return subsets[0] if subsets else []
@@ -307,8 +316,7 @@ class AccountMove(models.Model):
             return []
 
     def _find_matching_po_and_inv_lines(self, po_lines, inv_lines, timeout):
-        """
-        Finds purchase order lines that match some of the invoice lines.
+        """Finds purchase order lines that match some of the invoice lines.
 
         We try to find a purchase order line for every invoice line matching on the unit price and having at least
         the same quantity to invoice.
@@ -318,8 +326,7 @@ class AccountMove(models.Model):
         :param timeout: how long this function can run before we consider it too long
         :return: a tuple (list, list) containing:
             * matched "purchase.order.line"
-            * tuple of purchase order line ids and their matched "account.move.line"
-        """
+            * tuple of purchase order line ids and their matched "account.move.line" """
         # Sort the invoice lines by unit price and quantity to speed up matching
         invoice_lines = sorted(inv_lines, key=lambda line: (line.price_unit, line.quantity), reverse=True)
         # Sort the purchase order lines by unit price and remaining quantity to speed up matching
@@ -375,8 +382,7 @@ class AccountMove(models.Model):
             return ([], [])
 
     def _match_purchase_orders(self, po_references, partner_id, amount_total, from_ocr, timeout):
-        """
-        Tries to match open purchase order lines with this invoice given the information we have.
+        """Tries to match open purchase order lines with this invoice given the information we have.
 
         :param po_references: a list of potential purchase order references/names
         :param partner_id: the vendor id inferred from the vendor bill
@@ -393,8 +399,7 @@ class AccountMove(models.Model):
                     lines based on unit prices (EDI only)
                 * `no_match`: no result found
             * recordset of `purchase.order.line` containing purchase order lines matched with an invoice line
-            * list of tuple containing every `purchase.order.line` id and its related `account.move.line`
-        """
+            * list of tuple containing every `purchase.order.line` id and its related `account.move.line`"""
 
         common_domain = [
             ("company_id", "=", self.company_id.id),
@@ -484,12 +489,10 @@ class AccountMove(models.Model):
         return ("no_match", matching_purchase_orders.order_line_ids, None)
 
     def _set_purchase_orders(self, purchase_orders, force_write=True):
-        """
-        Link the given purchase orders to this vendor bill and add their lines as invoice lines.
+        """Link the given purchase orders to this vendor bill and add their lines as invoice lines.
 
         :param purchase_orders: a list of purchase orders to be linked to this vendor bill
-        :param force_write: whether to delete all existing invoice lines before adding the vendor bill lines
-        """
+        :param force_write: whether to delete all existing invoice lines before adding the vendor bill lines"""
         with self.env.cr.savepoint():
             with self._get_edi_creation() as invoice:
                 if force_write and invoice.line_ids:
@@ -505,16 +508,14 @@ class AccountMove(models.Model):
     def _find_and_set_purchase_orders(
         self, po_references, partner_id, amount_total, from_ocr=False, timeout=10
     ):
-        """
-        Finds related purchase orders that (partially) match the vendor bill and links the matching lines on this
+        """Finds related purchase orders that (partially) match the vendor bill and links the matching lines on this
         vendor bill.
 
         :param po_references: a list of potential purchase order references/names
         :param partner_id: the vendor id matched on the vendor bill
         :param amount_total: the total amount of the vendor bill
         :param from_ocr: indicates whether this vendor bill was created from an OCR scan (less reliable)
-        :param timeout: the max time the line matching algorithm can take before timing out
-        """
+        :param timeout: the max time the line matching algorithm can take before timing out"""
         self.ensure_one()
         method, matched_po_lines, matched_inv_lines = self._match_purchase_orders(
             po_references, partner_id, amount_total, from_ocr, timeout
