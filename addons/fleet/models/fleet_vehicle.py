@@ -385,29 +385,29 @@ class FleetVehicle(models.Model):
         current_date = fields.Date.context_today(self)
         data = self.env["fleet.vehicle.log"]._read_group(
             domain=[
-                ("expiration_date", "!=", False),
+                ("date_end", "!=", False),
                 ("vehicle_id", "in", self.ids),
                 ("log_type", "=", "contract"),
-                ("state", "!=", "closed"),
+                ("log_state", "!=", "closed"),
             ],
-            groupby=["vehicle_id", "state"],
-            aggregates=["expiration_date:max"]
+            groupby=["vehicle_id", "log_state"],
+            aggregates=["date_end:max"]
         )
         prepared_data = {}
-        for vehicle_id, state, expiration_date in data:
+        for vehicle_id, state, date_end in data:
             if prepared_data.get(vehicle_id.id):
-                if prepared_data[vehicle_id.id]["expiration_date"] < expiration_date:
-                    prepared_data[vehicle_id.id]["expiration_date"] = expiration_date
+                if prepared_data[vehicle_id.id]["date_end"] < date_end:
+                    prepared_data[vehicle_id.id]["date_end"] = date_end
                     prepared_data[vehicle_id.id]["state"] = state
             else:
                 prepared_data[vehicle_id.id] = {
                     "state": state,
-                    "expiration_date": expiration_date,
+                    "date_end": date_end,
                 }
         for vehicle in self:
             vehicle_data = prepared_data.get(vehicle.id)
             if vehicle_data:
-                diff_time = (vehicle_data["expiration_date"] - current_date).days
+                diff_time = (vehicle_data["date_end"] - current_date).days
                 vehicle.contract_renewal_overdue = diff_time < 0
                 vehicle.contract_renewal_due_soon = not vehicle.contract_renewal_overdue and (diff_time < delay_alert_contract)
                 vehicle.contract_state = vehicle_data["state"]
@@ -427,13 +427,23 @@ class FleetVehicle(models.Model):
     def _compute_count_all(self):
         Log = self.env["fleet.vehicle.log"].with_context(active_test=False)
         contract_data = Log._read_group(
-            [("vehicle_id", "in", self.ids), ("log_type", "=", "contract"), ("state", "!=", "closed")], ["vehicle_id", "active"], ["__count"]
+            [
+                ("vehicle_id", "in", self.ids),
+                ("log_type", "=", "contract"),
+                ("log_state", "!=", "closed")
+            ],
+            ["vehicle_id", "active"],
+            ["__count"]
         )
         service_data = Log._read_group(
-            [("vehicle_id", "in", self.ids), ("log_type", "=", "service")], ["vehicle_id", "active"], ["__count"]
+            [("vehicle_id", "in", self.ids), ("log_type", "=", "service")],
+            ["vehicle_id", "active"],
+            ["__count"]
         )
         history_data = Log._read_group(
-            [("vehicle_id", "in", self.ids), ("log_type", "=", "driver")], ["vehicle_id"], ["__count"]
+            [("vehicle_id", "in", self.ids), ("log_type", "=", "driver")],
+            ["vehicle_id"],
+            ["__count"]
         )
 
         mapped_contract_data = defaultdict(lambda: defaultdict(lambda: 0))
@@ -467,12 +477,14 @@ class FleetVehicle(models.Model):
         limit_date = fields.Datetime.to_string(
             datetime_today + relativedelta(days=+delay_alert_contract)
         )
-        res_ids = self.env["fleet.vehicle.log"].search([
-            ("expiration_date", ">", today),
-            ("expiration_date", "<", limit_date),
-            ("log_type", "=", "contract"),
-            ("state", "in", ["open", "expired"]),
-        ]).mapped("vehicle_id").ids
+        res_ids = self.env["fleet.vehicle.log"].search(
+            [
+                ("date_end", ">", today),
+                ("date_end", "<", limit_date),
+                ("log_type", "=", "contract"),
+                ("log_state", "in", ["open", "expired"]),
+            ]
+        ).mapped("vehicle_id").ids
         res.append(("id", search_operator, res_ids))
         return res
 
@@ -488,14 +500,14 @@ class FleetVehicle(models.Model):
         # but exclude those for which a new contract has already been created for them
         vehicle_ids = self.env["fleet.vehicle"]._search([
             ("contract_ids", "any", [
-                ("expiration_date", "!=", False),
-                ("expiration_date", "<", today),
+                ("date_end", "!=", False),
+                ("date_end", "<", today),
                 ("state", "in", ["open", "expired"])
             ]),
             "!",
                 ("contract_ids", "any", [
-                    ("expiration_date", "!=", False),
-                    ("expiration_date", ">=", today),
+                    ("date_end", "!=", False),
+                    ("date_end", ">=", today),
                     ("state", "in", ["open", "futur"])
                 ]),
         ])
