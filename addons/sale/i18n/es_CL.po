@@ -11,8 +11,7 @@ msgstr ""
 "POT-Creation-Date: 2024-02-07 10:23+0000\n"
 "PO-Revision-Date: 2016-03-13 01:19+0000\n"
 "Last-Translator: Daniel Santibáñez Polanco <dansanti@gmail.com>\n"
-"Language-Team: Spanish (Chile) (http://www.transifex.com/odoo/odoo-9/"
-"language/es_CL/)\n"
+"Language-Team: Spanish (Chile) (http://www.transifex.com/odoo/odoo-9/language/es_CL/)\n"
 "Language: es_CL\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -517,7 +516,7 @@ msgstr "Estado"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__price_subtotal
 msgid "Subtotal"
-msgstr "Subtotal"
+msgstr ""
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__amount_tax
@@ -533,16 +532,16 @@ msgstr "Impuestos"
 #: model_terms:ir.actions.act_window,help:sale.action_order_report_salesperson
 msgid ""
 "This report performs analysis on your quotations and sales orders. Analysis "
-"check your sales revenues and sort it by different group criteria (salesman, "
-"partner, product, etc.) Use this report to perform analysis on sales not "
+"check your sales revenues and sort it by different group criteria (salesman,"
+" partner, product, etc.) Use this report to perform analysis on sales not "
 "having invoiced yet. If you want to analyse your turnover, you should use "
 "the Invoice Analysis report in the Accounting application."
 msgstr ""
 "Este informe realiza un análisis de sus presupuestos y pedidos de venta. El "
 "análisis verifica los ingresos de sus ventas y los ordena por diferentes "
 "grupos de criterios (comercial, empresa, producto, etc.). Utilice este "
-"informe para realizar un análisis sobre sus ventas todavía no facturadas. Si "
-"desea analizar sus ingresos, debería utilizar el informe de análisis de "
+"informe para realizar un análisis sobre sus ventas todavía no facturadas. Si"
+" desea analizar sus ingresos, debería utilizar el informe de análisis de "
 "facturas en la aplicación de Contabilidad."
 
 #. module: sale
@@ -564,7 +563,7 @@ msgstr "Para facturar"
 #: model_terms:ir.ui.view,arch_db:sale.portal_my_quotations
 #: model_terms:ir.ui.view,arch_db:sale.view_order_line_tree
 msgid "Total"
-msgstr "Total"
+msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_tree

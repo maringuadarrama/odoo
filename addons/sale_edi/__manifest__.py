@@ -11,4 +11,5 @@ creation process by extracting data from uploaded files.
     "depends": ["sale"],
     "data": [
         "views/sale_order_views.xml",
-    ],}
+    ],
+}

@@ -1,10 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from datetime import timedelta
 
-from odoo import _, api, fields, models
-from odoo.exceptions import UserError
-from odoo.tools import float_round
+from odoo import api, fields, models
 
 
 class ProductProduct(models.Model):

@@ -1,11 +1,11 @@
-import { _t } from "@web/core/l10n/translation";
-import { Component } from "@odoo/owl";
-import { formatCurrency } from "@web/core/currency";
-import { BadgeExtraPrice } from "../badge_extra_price/badge_extra_price";
-import { getSelectedCustomPtav } from "../sale_utils";
+import {_t} from "@web/core/l10n/translation";
+import {Component} from "@odoo/owl";
+import {formatCurrency} from "@web/core/currency";
+import {BadgeExtraPrice} from "../badge_extra_price/badge_extra_price";
+import {getSelectedCustomPtav} from "../sale_utils";
 
 export class ProductTemplateAttributeLine extends Component {
-    static components = { BadgeExtraPrice };
+    static components = {BadgeExtraPrice};
     static template = "sale.ProductTemplateAttributeLine";
     static props = {
         productTmplId: Number,
@@ -17,7 +17,7 @@ export class ProductTemplateAttributeLine extends Component {
                 name: String,
                 display_type: {
                     type: String,
-                    validate: type => ["color", "multi", "pills", "radio", "select"].includes(type),
+                    validate: (type) => ["color", "multi", "pills", "radio", "select"].includes(type),
                 },
             },
         },
@@ -32,14 +32,14 @@ export class ProductTemplateAttributeLine extends Component {
                     image: [Boolean, String], // backend sends 'false' when there is no image set
                     is_custom: Boolean,
                     price_extra: Number,
-                    excluded: { type: Boolean, optional: true },
+                    excluded: {type: Boolean, optional: true},
                 },
             },
         },
-        selected_attribute_value_ids: { type: Array, element: Number },
+        selected_attribute_value_ids: {type: Array, element: Number},
         create_variant: {
             type: String,
-            validate: type => ["always", "dynamic", "no_variant"].includes(type),
+            validate: (type) => ["always", "dynamic", "no_variant"].includes(type),
         },
         customValue: {type: [{value: false}, String], optional: true},
     };
@@ -55,7 +55,10 @@ export class ProductTemplateAttributeLine extends Component {
      */
     updateSelectedPTAV(event) {
         this.env.updateProductTemplateSelectedPTAV(
-            this.props.productTmplId, this.props.id, event.target.value, this.props.attribute.display_type == 'multi'
+            this.props.productTmplId,
+            this.props.id,
+            event.target.value,
+            this.props.attribute.display_type == "multi"
         );
     }
 
@@ -66,7 +69,9 @@ export class ProductTemplateAttributeLine extends Component {
      */
     updateCustomValue(event) {
         this.env.updatePTAVCustomValue(
-            this.props.productTmplId, this.props.selected_attribute_value_ids[0], event.target.value
+            this.props.productTmplId,
+            this.props.selected_attribute_value_ids[0],
+            event.target.value
         );
     }
 
@@ -87,17 +92,17 @@ export class ProductTemplateAttributeLine extends Component {
      * @return {String} - The template name to use.
      */
     getPTAVTemplate() {
-        switch(this.props.attribute.display_type) {
-            case 'select':
-                return 'sale.ptav_select';
-            case 'radio':
-                return 'sale.ptav_radio';
-            case 'pills':
-                return 'sale.ptav_pills';
-            case 'color':
-                return 'sale.ptav_color';
-            case 'multi':
-                return 'sale.ptav_multi';
+        switch (this.props.attribute.display_type) {
+            case "select":
+                return "sale.ptav_select";
+            case "radio":
+                return "sale.ptav_radio";
+            case "pills":
+                return "sale.ptav_pills";
+            case "color":
+                return "sale.ptav_color";
+            case "multi":
+                return "sale.ptav_multi";
         }
     }
 
@@ -113,9 +118,9 @@ export class ProductTemplateAttributeLine extends Component {
      */
     getPTAVSelectName(ptav) {
         if (ptav.price_extra) {
-            const sign = ptav.price_extra > 0 ? '+' : '-';
+            const sign = ptav.price_extra > 0 ? "+" : "-";
             const price = formatCurrency(Math.abs(ptav.price_extra), this.env.currency.id);
-            return ptav.name +" ("+ sign + " " + price + ")";
+            return ptav.name + " (" + sign + " " + price + ")";
         } else {
             return ptav.name;
         }
@@ -131,9 +136,10 @@ export class ProductTemplateAttributeLine extends Component {
     }
 
     get showValuesChoice() {
-        return (this.env.canChangeVariant || this.props.create_variant === 'no_variant') && (
-            this.props.attribute_values.length > 1 || this.props.attribute.display_type === 'multi'
-        )
+        return (
+            (this.env.canChangeVariant || this.props.create_variant === "no_variant") &&
+            (this.props.attribute_values.length > 1 || this.props.attribute.display_type === "multi")
+        );
     }
 
     get customValuePlaceholder() {
@@ -146,8 +152,6 @@ export class ProductTemplateAttributeLine extends Component {
      * @return {Boolean} - Whether the line has a custom ptav or not.
      */
     hasPTAVCustom() {
-        return this.props.attribute_values.some(
-            ptav => ptav.is_custom
-        );
+        return this.props.attribute_values.some((ptav) => ptav.is_custom);
     }
- }
+}

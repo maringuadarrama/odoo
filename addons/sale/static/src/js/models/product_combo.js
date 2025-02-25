@@ -1,4 +1,4 @@
-import { ProductComboItem } from './product_combo_item';
+import {ProductComboItem} from "./product_combo_item";
 
 export class ProductCombo {
     /**
@@ -9,7 +9,7 @@ export class ProductCombo {
     constructor({id, name, combo_items}) {
         this.id = id;
         this.name = name;
-        this.combo_items = combo_items.map(item => new ProductComboItem(item));
+        this.combo_items = combo_items.map((item) => new ProductComboItem(item));
     }
 
     /**
@@ -18,6 +18,6 @@ export class ProductCombo {
      * @return {ProductComboItem|undefined} The selected combo item, if any.
      */
     get selectedComboItem() {
-        return this.combo_items.find(item => item.is_selected);
+        return this.combo_items.find((item) => item.is_selected);
     }
 }

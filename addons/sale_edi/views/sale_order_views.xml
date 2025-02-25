@@ -11,11 +11,7 @@
                     role="alert"
                 >
                     <span>Warning: this order might be a duplicate of</span>
-                    <field
-                        name="duplicated_order_ids"
-                        widget="x2many_buttons"
-                        string="Duplicated Documents"
-                    />
+                    <field name="duplicated_order_ids" widget="x2many_buttons" string="Duplicated Documents" />
                 </div>
             </xpath>
         </field>

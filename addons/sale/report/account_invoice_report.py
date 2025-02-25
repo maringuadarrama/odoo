@@ -10,13 +10,14 @@ class AccountInvoiceReport(models.Model):
     This module adds a Many2one field to link invoice reports to sales teams, enabling better
     tracking and analysis of sales performance by team.
     """
-    _inherit = 'account.invoice.report'
+
+    _inherit = "account.invoice.report"
 
     # ------------------------------------------------------------
     # FIELDS
     # ------------------------------------------------------------
 
-    team_id = fields.Many2one(comodel_name='crm.team', string="Sales Team")
+    team_id = fields.Many2one(comodel_name="crm.team", string="Sales Team")
 
     # ------------------------------------------------------------
     # BUSINESS LOGIC METHODS

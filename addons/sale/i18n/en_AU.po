@@ -1823,9 +1823,8 @@ msgid ""
 "customers or sales orders/invoices.The default value comes from the "
 "customer."
 msgstr ""
-"Fiscal positions are used to adapt GST and accounts for particular "
-"customers or sales orders/invoices.The default value comes from the "
-"customer."
+"Fiscal positions are used to adapt GST and accounts for particular customers"
+" or sales orders/invoices.The default value comes from the customer."
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__message_follower_ids

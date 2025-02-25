@@ -1,15 +1,14 @@
-
-import { Component } from "@odoo/owl";
-import { formatCurrency } from "@web/core/currency";
-import { _t } from "@web/core/l10n/translation";
-import { Product } from "../product/product";
+import {Component} from "@odoo/owl";
+import {formatCurrency} from "@web/core/currency";
+import {_t} from "@web/core/l10n/translation";
+import {Product} from "../product/product";
 
 export class ProductList extends Component {
-    static components = { Product };
+    static components = {Product};
     static template = "sale.ProductList";
     static props = {
         products: Array,
-        areProductsOptional: { type: Boolean, optional: true },
+        areProductsOptional: {type: Boolean, optional: true},
     };
     static defaultProps = {
         areProductsOptional: false,
@@ -30,11 +29,8 @@ export class ProductList extends Component {
      */
     getFormattedTotal() {
         return formatCurrency(
-            this.props.products.reduce(
-                (totalPrice, product) => totalPrice + product.price * product.quantity,
-                0
-            ),
-            this.env.currency.id,
+            this.props.products.reduce((totalPrice, product) => totalPrice + product.price * product.quantity, 0),
+            this.env.currency.id
         );
     }
 }

@@ -67,7 +67,7 @@ msgstr ""
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.portal_my_orders
 msgid "&amp;nbsp;"
-msgstr "&amp;nbsp;"
+msgstr ""
 
 #. module: sale
 #: model:ir.actions.report,print_report_name:sale.action_report_pro_forma_invoice
@@ -76,20 +76,29 @@ msgstr "'پرو-فرما - %s' % (object.name)"
 
 #. module: sale
 #: model:ir.actions.report,print_report_name:sale.action_report_saleorder
-msgid "(object.state in ('draft', 'sent') and 'Quotation - %s' % (object.name)) or 'Order - %s' % (object.name)"
-msgstr "(object.state in ('draft', 'sent') and 'پیش‌فاکتور  - %s' % (object.name)) or 'سفارش - %s' % (object.name)"
+msgid ""
+"(object.state in ('draft', 'sent') and 'Quotation - %s' % (object.name)) or "
+"'Order - %s' % (object.name)"
+msgstr ""
+"(object.state in ('draft', 'sent') and 'پیش‌فاکتور  - %s' % (object.name)) "
+"or 'سفارش - %s' % (object.name)"
 
 #. module: sale
 #. odoo-javascript
 #: code:addons/sale/static/src/js/tours/sale.js:0
-msgid "<b>Congratulations</b>, your first quotation is sent!<br>Check your email to validate the quote."
+msgid ""
+"<b>Congratulations</b>, your first quotation is sent!<br>Check your email to"
+" validate the quote."
 msgstr ""
 
 #. module: sale
 #. odoo-javascript
 #: code:addons/sale/static/src/js/tours/sale.js:0
-msgid "<b>Send the quote</b> to yourself and check what the customer will receive."
-msgstr "<b>پیش‌فاکتور را</b> برای خودت ارسال کن و بررسی کن مشتری چه چیزی دریافت می‌کند."
+msgid ""
+"<b>Send the quote</b> to yourself and check what the customer will receive."
+msgstr ""
+"<b>پیش‌فاکتور را</b> برای خودت ارسال کن و بررسی کن مشتری چه چیزی دریافت "
+"می‌کند."
 
 #. module: sale
 #. odoo-javascript
@@ -366,7 +375,9 @@ msgstr "<i class=\"fa fa-download\"/> دانلود"
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.portal_my_orders
 msgid "<i class=\"fa fa-fw fa-check\" role=\"img\" aria-label=\"Done\" title=\"Done\"/>Done"
-msgstr "<i class=\"fa fa-fw fa-check\" role=\"img\" aria-label=\"Done\" title=\"Done\"/>انجام شد"
+msgstr ""
+"<i class=\"fa fa-fw fa-check\" role=\"img\" aria-label=\"Done\" "
+"title=\"Done\"/>انجام شد"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_content
@@ -400,8 +411,10 @@ msgstr "<i class=\"fa fa-fw fa-remove\"/> لغو شده"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.crm_lead_partner_kanban_view
-msgid "<i class=\"fa fa-fw fa-usd\" role=\"img\" aria-label=\"Sale orders\" title=\"Sales orders\"/>"
-msgstr "<i class=\"fa fa-fw fa-usd\" role=\"img\" aria-label=\"Sale orders\" title=\"Sales orders\"/>"
+msgid ""
+"<i class=\"fa fa-fw fa-usd\" role=\"img\" aria-label=\"Sale orders\" "
+"title=\"Sales orders\"/>"
+msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
@@ -639,7 +652,10 @@ msgstr "یک سفارش فروش تایید شده نیازمند تاریخ ت�
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_advance_payment_inv__advance_payment_method
-msgid "A standard invoice is issued with all the order lines ready for invoicing,according to their invoicing policy (based on ordered or delivered quantity)."
+msgid ""
+"A standard invoice is issued with all the order lines ready for "
+"invoicing,according to their invoicing policy (based on ordered or delivered"
+" quantity)."
 msgstr ""
 
 #. module: sale
@@ -660,8 +676,12 @@ msgstr "یک هشدار می‌تواند روی یک محصول و یا یک م
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Ability to select a package type in sales orders and to force a quantity that is a multiple of the number of units per package."
-msgstr "قابلیت انتخاب نوع بسته بندی در سفارشات فروش و اجبار به آن‌ که مقدار مضربی از تعداد واحد در هر بسته باشد."
+msgid ""
+"Ability to select a package type in sales orders and to force a quantity "
+"that is a multiple of the number of units per package."
+msgstr ""
+"قابلیت انتخاب نوع بسته بندی در سفارشات فروش و اجبار به آن‌ که مقدار مضربی از"
+" تعداد واحد در هر بسته باشد."
 
 #. module: sale
 #. odoo-python
@@ -859,8 +879,12 @@ msgstr "سطرهای تحلیلی"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Apply manual discounts on sales order lines or display discounts computed from pricelists (option to activate in the pricelist configuration)."
-msgstr "اعمال تخفیف دستی در سطرهای سفارش فروش و یا نمایش تخفیف محاسبه شده از لیست‌قیمت (گزینه‌‌ فعال سازی در پیکربندی لیست‌قیمت)."
+msgid ""
+"Apply manual discounts on sales order lines or display discounts computed "
+"from pricelists (option to activate in the pricelist configuration)."
+msgstr ""
+"اعمال تخفیف دستی در سطرهای سفارش فروش و یا نمایش تخفیف محاسبه شده از "
+"لیست‌قیمت (گزینه‌‌ فعال سازی در پیکربندی لیست‌قیمت)."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.mass_cancel_orders_view_form
@@ -874,8 +898,12 @@ msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
-msgid "Are you sure you want to void the authorized transaction? This action can't be undone."
-msgstr "آیا مطمئن هستید که می خواهید تراکنش مجاز را از درجه اعتبار ساقط کنید؟ این عملکرد قابل برگشت نیست."
+msgid ""
+"Are you sure you want to void the authorized transaction? This action can't "
+"be undone."
+msgstr ""
+"آیا مطمئن هستید که می خواهید تراکنش مجاز را از درجه اعتبار ساقط کنید؟ این "
+"عملکرد قابل برگشت نیست."
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_orders_upselling
@@ -949,7 +977,11 @@ msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Boost your sales with multiple kinds of programs: Coupons, Promotions, Gift Card, Loyalty. Specific conditions can be set (products, customers, minimum purchase amount, period). Rewards can be discounts (% or amount) or free products."
+msgid ""
+"Boost your sales with multiple kinds of programs: Coupons, Promotions, Gift "
+"Card, Loyalty. Specific conditions can be set (products, customers, minimum "
+"purchase amount, period). Rewards can be discounts (% or amount) or free "
+"products."
 msgstr ""
 
 #. module: sale
@@ -1020,7 +1052,10 @@ msgstr "دسته بندی"
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/sale_order.py:0
-msgid "Changing the company of an existing quotation might need some manual adjustments in the details of the lines. You might consider updating the prices."
+msgid ""
+"Changing the company of an existing quotation might need some manual "
+"adjustments in the details of the lines. You might consider updating the "
+"prices."
 msgstr ""
 
 #. module: sale
@@ -1154,8 +1189,12 @@ msgstr "محتویات"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order_line__product_uom_category_id
-msgid "Conversion between Units of Measure can only occur if they belong to the same category. The conversion will be made based on the ratios."
-msgstr "تبدیل بین واحدهای اندازه گیری تنها در صورتی می تواند اتفاق بیفتد که به یک دسته تعلق داشته باشند. تبدیل بر اساس نسبت ها انجام خواهد شد."
+msgid ""
+"Conversion between Units of Measure can only occur if they belong to the "
+"same category. The conversion will be made based on the ratios."
+msgstr ""
+"تبدیل بین واحدهای اندازه گیری تنها در صورتی می تواند اتفاق بیفتد که به یک "
+"دسته تعلق داشته باشند. تبدیل بر اساس نسبت ها انجام خواهد شد."
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__country_code
@@ -1215,8 +1254,12 @@ msgstr "ایجاد فاکتورها"
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_invoice_salesteams
-msgid "Create invoices, register payments and keep track of the discussions with your customers."
-msgstr "فاکتورها را ایجاد کنید، پرداخت‌ها را ثبت کنید و گفتگوه با مشتریان خود را پیگیری کنید."
+msgid ""
+"Create invoices, register payments and keep track of the discussions with "
+"your customers."
+msgstr ""
+"فاکتورها را ایجاد کنید، پرداخت‌ها را ثبت کنید و گفتگوه با مشتریان خود را "
+"پیگیری کنید."
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__create_uid
@@ -1372,7 +1415,9 @@ msgstr "تاریخ:‌ "
 #: model:ir.model.fields,help:sale.field_res_company__quotation_validity_days
 #: model:ir.model.fields,help:sale.field_res_config_settings__quotation_validity_days
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Days between quotation proposal and expiration. 0 days means automatic expiration is disabled"
+msgid ""
+"Days between quotation proposal and expiration. 0 days means automatic "
+"expiration is disabled"
 msgstr ""
 
 #. module: sale
@@ -1399,7 +1444,9 @@ msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Default values used when creating new quotations. Those can still be changed on each quotation."
+msgid ""
+"Default values used when creating new quotations. Those can still be changed"
+" on each quotation."
 msgstr ""
 
 #. module: sale
@@ -1446,8 +1493,16 @@ msgstr ""
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__expected_date
-msgid "Delivery date you can promise to the customer, computed from the minimum lead time of the order lines in case of Service products. In case of shipping, the shipping policy of the order will be taken into account to either use the minimum or maximum lead time of the order lines."
-msgstr "تاریخ تحویلی که شما می توانید به مشتری وعده دهید، در صورتی که محصولات خدماتی باشند، از حداقل زمان مورد نیاز سطرهای سفارش حساب محاسبه می‌شود. در صورت حمل، سیاست حمل و نقل از سفارش در نظر گرفته خواهد شد تا یا حداقل یا حداکثر زمان تدارک از سطرهای سفارش استفاده شود."
+msgid ""
+"Delivery date you can promise to the customer, computed from the minimum "
+"lead time of the order lines in case of Service products. In case of "
+"shipping, the shipping policy of the order will be taken into account to "
+"either use the minimum or maximum lead time of the order lines."
+msgstr ""
+"تاریخ تحویلی که شما می توانید به مشتری وعده دهید، در صورتی که محصولات خدماتی"
+" باشند، از حداقل زمان مورد نیاز سطرهای سفارش حساب محاسبه می‌شود. در صورت "
+"حمل، سیاست حمل و نقل از سفارش در نظر گرفته خواهد شد تا یا حداقل یا حداکثر "
+"زمان تدارک از سطرهای سفارش استفاده شود."
 
 #. module: sale
 #: model:product.template,name:sale.advance_product_0_product_template
@@ -1608,8 +1663,12 @@ msgstr "مبلغ پیش پرداخت %s%%"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order_line__is_downpayment
-msgid "Down payments are made when creating invoices from a sales order. They are not copied when duplicating a sales order."
-msgstr "پیش پرداخت هنگام ایجاد فاکتورها از سفارش فروش ایجاد می شوند. آنها هنگام کپی کردن سفارش های فروش کپی نمی شوند."
+msgid ""
+"Down payments are made when creating invoices from a sales order. They are "
+"not copied when duplicating a sales order."
+msgstr ""
+"پیش پرداخت هنگام ایجاد فاکتورها از سفارش فروش ایجاد می شوند. آنها هنگام کپی "
+"کردن سفارش های فروش کپی نمی شوند."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
@@ -1677,8 +1736,14 @@ msgstr "مورد انتظار:"
 #. module: sale
 #: model:ir.model.fields,help:sale.field_product_product__expense_policy
 #: model:ir.model.fields,help:sale.field_product_template__expense_policy
-msgid "Expenses and vendor bills can be re-invoiced to a customer.With this option, a validated expense can be re-invoice to a customer at its cost or sales price."
-msgstr "هزینه‌ها و صورتحساب‌های فروشنده را می‌توان برای یک مشتری دوباره فاکتور کرد. با استفاده از این گزینه، یک هزینه معتبر می‌تواند به یک مشتری با بهای تمام‌شده یا قیمت فروش آن فاکتور کردن دوباره شود."
+msgid ""
+"Expenses and vendor bills can be re-invoiced to a customer.With this option,"
+" a validated expense can be re-invoice to a customer at its cost or sales "
+"price."
+msgstr ""
+"هزینه‌ها و صورتحساب‌های فروشنده را می‌توان برای یک مشتری دوباره فاکتور کرد. "
+"با استفاده از این گزینه، یک هزینه معتبر می‌تواند به یک مشتری با بهای "
+"تمام‌شده یا قیمت فروش آن فاکتور کردن دوباره شود."
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__validity_date
@@ -1724,8 +1789,13 @@ msgstr "موقعیت مالی"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__fiscal_position_id
-msgid "Fiscal positions are used to adapt taxes and accounts for particular customers or sales orders/invoices.The default value comes from the customer."
-msgstr "موقعیت‌های مالی برای انطباق مالیات و حساب برای مشتریان خاص و یا سفارشات فروش / فاکتورها استفاده می شود. مقدار پیشفرض از مشتری می آید."
+msgid ""
+"Fiscal positions are used to adapt taxes and accounts for particular "
+"customers or sales orders/invoices.The default value comes from the "
+"customer."
+msgstr ""
+"موقعیت‌های مالی برای انطباق مالیات و حساب برای مشتریان خاص و یا سفارشات فروش"
+" / فاکتورها استفاده می شود. مقدار پیشفرض از مشتری می آید."
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__message_follower_ids
@@ -1749,8 +1819,14 @@ msgstr "ارزش‌های غیرمجاز در سطر سفارش فروش غیر�
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_account_invoice_report_salesteam
-msgid "From this report, you can have an overview of the amount invoiced to your customer. The search tool can also be used to personalise your Invoices reports and so, match this analysis to your needs."
-msgstr "از این گزارش، شما می توانید مبالغ تعیین شده برای مشتریان خود را مرور کنید. می توانید از ابزار جستجو برای شخصی سازی گزارش های پیش فاکتورها استفاده کنید و بدین شکل، این تحلیل را با نیازهای خود منطبق و جور سازید."
+msgid ""
+"From this report, you can have an overview of the amount invoiced to your "
+"customer. The search tool can also be used to personalise your Invoices "
+"reports and so, match this analysis to your needs."
+msgstr ""
+"از این گزارش، شما می توانید مبالغ تعیین شده برای مشتریان خود را مرور کنید. "
+"می توانید از ابزار جستجو برای شخصی سازی گزارش های پیش فاکتورها استفاده کنید "
+"و بدین شکل، این تحلیل را با نیازهای خود منطبق و جور سازید."
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__sale_order__invoice_status__invoiced
@@ -1777,7 +1853,8 @@ msgstr "تولید یک لینک پرداخت"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Generate the invoice automatically when the online payment is confirmed"
+msgid ""
+"Generate the invoice automatically when the online payment is confirmed"
 msgstr "تولید خودکار فاکتور وقتی پرداخت تایید شده است"
 
 #. module: sale
@@ -1868,7 +1945,8 @@ msgstr "آیکون برای نشان دادن یک فعالیت استثنا."
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__message_needaction
 msgid "If checked, new messages require your attention."
-msgstr "اگر این گزینه را انتخاب کنید، پیام‌های جدید به توجه شما نیاز خواهند داشت."
+msgstr ""
+"اگر این گزینه را انتخاب کنید، پیام‌های جدید به توجه شما نیاز خواهند داشت."
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__message_has_error
@@ -1878,8 +1956,12 @@ msgstr "اگر علامت زده شود، برخی از پیام ها دارای
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_sales_order_auto_done_setting
-msgid "If the sale is locked, you can not modify it anymore. However, you will still be able to invoice or deliver."
-msgstr "اگر فروش قفل‌شده است، شما دیگر نمی‌توانید آن را تغییر دهید. با این حال، شما هنوز هم قادر به صدورفاکتور و یا تحویل خواهید بود."
+msgid ""
+"If the sale is locked, you can not modify it anymore. However, you will "
+"still be able to invoice or deliver."
+msgstr ""
+"اگر فروش قفل‌شده است، شما دیگر نمی‌توانید آن را تغییر دهید. با این حال، شما "
+"هنوز هم قادر به صدورفاکتور و یا تحویل خواهید بود."
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_product_packaging__sales
@@ -1889,7 +1971,9 @@ msgstr ""
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__pricelist_id
 msgid "If you change the pricelist, only newly added lines will be affected."
-msgstr "اگر لیست قیمت را تغییر دهید، فقط سطرهای جدید اضافه شده تحت تاثیر قرار می گیرند."
+msgstr ""
+"اگر لیست قیمت را تغییر دهید، فقط سطرهای جدید اضافه شده تحت تاثیر قرار می "
+"گیرند."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -1985,12 +2069,20 @@ msgstr "وضعیت فاکتور"
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.product_template_form_view
 msgid "Invoice after delivery, based on quantities delivered, not ordered."
-msgstr "فاکتور پس از تحویل، بر اساس مقادیر تحویل داده شده، نه تعداد سفارش داده ایجاد میشود."
+msgstr ""
+"فاکتور پس از تحویل، بر اساس مقادیر تحویل داده شده، نه تعداد سفارش داده ایجاد"
+" میشود."
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_crm_team__invoiced
-msgid "Invoice revenue for the current month. This is the amount the sales channel has invoiced this month. It is used to compute the progression ratio of the current and target revenue on the kanban view."
-msgstr "فاکتور درآمد برای ماه جاری. این مبلغی است که کانال فروش در این ماه فاکتور کرده است. برای محاسبه نسبت پیشرفت درآمد فعلی و هدف بر روی نمای کانبان استفاده می شود."
+msgid ""
+"Invoice revenue for the current month. This is the amount the sales channel "
+"has invoiced this month. It is used to compute the progression ratio of the "
+"current and target revenue on the kanban view."
+msgstr ""
+"فاکتور درآمد برای ماه جاری. این مبلغی است که کانال فروش در این ماه فاکتور "
+"کرده است. برای محاسبه نسبت پیشرفت درآمد فعلی و هدف بر روی نمای کانبان "
+"استفاده می شود."
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__res_config_settings__default_invoice_policy__delivery
@@ -2108,7 +2200,8 @@ msgstr "هزینه است"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order_line__is_expense
-msgid "Is true if the sales order line comes from an expense or a vendor bills"
+msgid ""
+"Is true if the sales order line comes from an expense or a vendor bills"
 msgstr "درست است اگر سطر سفارش فروش از هزینه و یا یک صورتحساب فروشنده می‌آید"
 
 #. module: sale
@@ -2440,7 +2533,9 @@ msgstr "تعداد اقدامات"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order_line__customer_lead
-msgid "Number of days between the order confirmation and the shipping of the products to the customer"
+msgid ""
+"Number of days between the order confirmation and the shipping of the "
+"products to the customer"
 msgstr "تعداد روزهای بین تایید سفارش و ارسال محصولات برای مشتری"
 
 #. module: sale
@@ -2474,13 +2569,21 @@ msgstr "تعداد فروش‌ برای صدور فاکتور"
 #: model_terms:ir.actions.act_window,help:sale.action_quotations
 #: model_terms:ir.actions.act_window,help:sale.action_quotations_salesteams
 #: model_terms:ir.actions.act_window,help:sale.action_quotations_with_onboarding
-msgid "Once the quotation is confirmed by the customer, it becomes a sales order.<br> You will be able to create an invoice and collect the payment."
-msgstr "زمانیکه پیش‌فاکتور توسط مشتری تایید شد به سفارش فروش تبدیل می‌شود.<br> می‌توانید یک فاکتور ایجاد کنید و پرداختی را دریافت کنید."
+msgid ""
+"Once the quotation is confirmed by the customer, it becomes a sales "
+"order.<br> You will be able to create an invoice and collect the payment."
+msgstr ""
+"زمانیکه پیش‌فاکتور توسط مشتری تایید شد به سفارش فروش تبدیل می‌شود.<br> "
+"می‌توانید یک فاکتور ایجاد کنید و پرداختی را دریافت کنید."
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_orders
-msgid "Once the quotation is confirmed, it becomes a sales order.<br> You will be able to create an invoice and collect the payment."
-msgstr "زمانیکه پیش‌فاکتور تایید شد به شفارش فروش بدل می‌شود.<br> می‌توانید فاکتور ایجاد کنید و پرداختی را دریافت کنید."
+msgid ""
+"Once the quotation is confirmed, it becomes a sales order.<br> You will be "
+"able to create an invoice and collect the payment."
+msgstr ""
+"زمانیکه پیش‌فاکتور تایید شد به شفارش فروش بدل می‌شود.<br> می‌توانید فاکتور "
+"ایجاد کنید و پرداختی را دریافت کنید."
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_res_company__portal_confirmation_pay
@@ -2514,14 +2617,17 @@ msgstr ""
 
 #. module: sale
 #: model:ir.model.constraint,message:sale.constraint_product_attribute_custom_value_sol_custom_value_unique
-msgid "Only one Custom Value is allowed per Attribute Value per Sales Order Line."
-msgstr "فقط یک مقدار سفارشی برای هر مقدار مشخصه در هر سطر سفارش فروش مجاز است."
+msgid ""
+"Only one Custom Value is allowed per Attribute Value per Sales Order Line."
+msgstr ""
+"فقط یک مقدار سفارشی برای هر مقدار مشخصه در هر سطر سفارش فروش مجاز است."
 
 #. module: sale
 #. odoo-javascript
 #: code:addons/sale/static/src/js/tours/sale.js:0
 msgid "Open Sales app to send your first quotation in a few clicks."
-msgstr "برنامه فروش را باز کنید تا اولین پیش‌فاکتور خود را با چند کلیک ارسال کنید."
+msgstr ""
+"برنامه فروش را باز کنید تا اولین پیش‌فاکتور خود را با چند کلیک ارسال کنید."
 
 #. module: sale
 #. odoo-python
@@ -2531,7 +2637,11 @@ msgstr ""
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order_cancel__lang
-msgid "Optional translation language (ISO code) to select when sending out an email. If not set, the english version will be used. This should usually be a placeholder expression that provides the appropriate language, e.g. {{ object.partner_id.lang }}."
+msgid ""
+"Optional translation language (ISO code) to select when sending out an "
+"email. If not set, the english version will be used. This should usually be "
+"a placeholder expression that provides the appropriate language, e.g. {{ "
+"object.partner_id.lang }}."
 msgstr ""
 
 #. module: sale
@@ -3151,7 +3261,9 @@ msgstr "گزارش"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__require_signature
-msgid "Request a online signature and/or payment to the customer in order to confirm orders automatically."
+msgid ""
+"Request a online signature and/or payment to the customer in order to "
+"confirm orders automatically."
 msgstr ""
 
 #. module: sale
@@ -3177,8 +3289,10 @@ msgstr "کاربر مسئول"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_crm_team__invoiced_target
-msgid "Revenue target for the current month (untaxed total of confirmed invoices)."
-msgstr "هدف‌گذاری درآمد برای ماه جاری (جمع‌کل بدون مالیات فاکتورهای تایید شده)."
+msgid ""
+"Revenue target for the current month (untaxed total of confirmed invoices)."
+msgstr ""
+"هدف‌گذاری درآمد برای ماه جاری (جمع‌کل بدون مالیات فاکتورهای تایید شده)."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.utm_campaign_view_form
@@ -3396,7 +3510,10 @@ msgstr "هشدار های فروش"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_account_analytic_line__so_line
-msgid "Sales order item to which the time spent will be added in order to be invoiced to your customer. Remove the sales order item for the timesheet entry to be non-billable."
+msgid ""
+"Sales order item to which the time spent will be added in order to be "
+"invoiced to your customer. Remove the sales order item for the timesheet "
+"entry to be non-billable."
 msgstr ""
 
 #. module: sale
@@ -3484,8 +3601,14 @@ msgstr "یک محصول را انتخاب کنید، یا یک محصول جدی
 #: model:ir.model.fields,help:sale.field_product_template__sale_line_warn
 #: model:ir.model.fields,help:sale.field_res_partner__sale_warn
 #: model:ir.model.fields,help:sale.field_res_users__sale_warn
-msgid "Selecting the \"Warning\" option will notify user with the message, Selecting \"Blocking Message\" will throw an exception with the message and block the flow. The Message has to be written in the next field."
-msgstr "با انتخاب گزینه \"هشدار\" به کاربر با پیام اطلاع داده می شود، با انتخاب \"Blocking Message\" یک استثنا با پیام ایجاد می شود و جریان را مسدود می کند. پیام باید در قسمت بعدی نوشته شود."
+msgid ""
+"Selecting the \"Warning\" option will notify user with the message, "
+"Selecting \"Blocking Message\" will throw an exception with the message and "
+"block the flow. The Message has to be written in the next field."
+msgstr ""
+"با انتخاب گزینه \"هشدار\" به کاربر با پیام اطلاع داده می شود، با انتخاب "
+"\"Blocking Message\" یک استثنا با پیام ایجاد می شود و جریان را مسدود می کند."
+" پیام باید در قسمت بعدی نوشته شود."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -3539,7 +3662,10 @@ msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Sending an email is useful if you need to share specific information or content about a product (instructions, rules, links, media, etc.). Create and set the email template from the product detail form (in Accounting tab)."
+msgid ""
+"Sending an email is useful if you need to share specific information or "
+"content about a product (instructions, rules, links, media, etc.). Create "
+"and set the email template from the product detail form (in Accounting tab)."
 msgstr ""
 
 #. module: sale
@@ -3808,13 +3934,19 @@ msgstr "مالیات مورد استفاده برای سپرده"
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/crm_team.py:0
-msgid "Team %(team_name)s has %(sale_order_count)s active sale orders. Consider canceling them or archiving the team instead."
+msgid ""
+"Team %(team_name)s has %(sale_order_count)s active sale orders. Consider "
+"canceling them or archiving the team instead."
 msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
-msgid "Tell us why you are refusing this quotation, this will help us improve our services."
-msgstr "به ما بگویید که چرا شما این پیش‌فاکتور را رد می‌کنید، این به ما کمک خواهد کرد تا خدمات مان را بهبود ببخشیم."
+msgid ""
+"Tell us why you are refusing this quotation, this will help us improve our "
+"services."
+msgstr ""
+"به ما بگویید که چرا شما این پیش‌فاکتور را رد می‌کنید، این به ما کمک خواهد "
+"کرد تا خدمات مان را بهبود ببخشیم."
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__terms_type
@@ -3859,19 +3991,26 @@ msgstr ""
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/account_move_line.py:0
-msgid "The Sales Order %s linked to the Analytic Account %s is cancelled. You cannot register an expense on a cancelled Sales Order."
+msgid ""
+"The Sales Order %s linked to the Analytic Account %s is cancelled. You "
+"cannot register an expense on a cancelled Sales Order."
 msgstr ""
 
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/account_move_line.py:0
-msgid "The Sales Order %s linked to the Analytic Account %s is currently locked. You cannot register an expense on a locked Sales Order. Please create a new SO linked to this Analytic Account."
+msgid ""
+"The Sales Order %s linked to the Analytic Account %s is currently locked. "
+"You cannot register an expense on a locked Sales Order. Please create a new "
+"SO linked to this Analytic Account."
 msgstr ""
 
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/account_move_line.py:0
-msgid "The Sales Order %s linked to the Analytic Account %s must be validated before registering expenses."
+msgid ""
+"The Sales Order %s linked to the Analytic Account %s must be validated "
+"before registering expenses."
 msgstr ""
 
 #. module: sale
@@ -3888,7 +4027,9 @@ msgstr ""
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/sale_order.py:0
-msgid "The delivery date is sooner than the expected date. You may be unable to honor the delivery date."
+msgid ""
+"The delivery date is sooner than the expected date. You may be unable to "
+"honor the delivery date."
 msgstr ""
 
 #. module: sale
@@ -3918,8 +4059,12 @@ msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "The margin is computed as the sum of product sales prices minus the cost set in their detail form."
-msgstr "حاشیه‌سود از جمع قیمت فروش محصول منهای بهای تعیین شده در فرم جزئیات آن محصول محاسبه می شود."
+msgid ""
+"The margin is computed as the sum of product sales prices minus the cost set"
+" in their detail form."
+msgstr ""
+"حاشیه‌سود از جمع قیمت فروش محصول منهای بهای تعیین شده در فرم جزئیات آن محصول"
+" محاسبه می شود."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_sale_advance_payment_inv
@@ -3956,13 +4101,20 @@ msgstr ""
 #. module: sale
 #. odoo-python
 #: code:addons/sale/wizard/sale_make_invoice_advance.py:0
-msgid "The product used to invoice a down payment should be of type 'Service'. Please use another product or update this product."
-msgstr "کالایی که برای صدور فاکتور یک پیش‌دریافت استفاده میشود باید از نوع «خدمت» باشد. لطفا از یک کالای دیگر استفاده کنید و یا این کالا را بروزرسانی کنید."
+msgid ""
+"The product used to invoice a down payment should be of type 'Service'. "
+"Please use another product or update this product."
+msgstr ""
+"کالایی که برای صدور فاکتور یک پیش‌دریافت استفاده میشود باید از نوع «خدمت» "
+"باشد. لطفا از یک کالای دیگر استفاده کنید و یا این کالا را بروزرسانی کنید."
 
 #. module: sale
 #. odoo-python
 #: code:addons/sale/wizard/sale_make_invoice_advance.py:0
-msgid "The product used to invoice a down payment should have an invoice policyset to \"Ordered quantities\". Please update your deposit product to be able to create a deposit invoice."
+msgid ""
+"The product used to invoice a down payment should have an invoice policyset "
+"to \"Ordered quantities\". Please update your deposit product to be able to "
+"create a deposit invoice."
 msgstr ""
 
 #. module: sale
@@ -4005,21 +4157,33 @@ msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "This default value is applied to any new product created. This can be changed in the product detail form."
-msgstr "این مقدار پیش‌فرض به هر محصول جدید ایجاد شده اعمال می شود. این را می‌توان در فرم جزئیات محصول تغییر داد."
+msgid ""
+"This default value is applied to any new product created. This can be "
+"changed in the product detail form."
+msgstr ""
+"این مقدار پیش‌فرض به هر محصول جدید ایجاد شده اعمال می شود. این را می‌توان در"
+" فرم جزئیات محصول تغییر داد."
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_account_bank_statement_line__campaign_id
 #: model:ir.model.fields,help:sale.field_account_move__campaign_id
 #: model:ir.model.fields,help:sale.field_account_payment__campaign_id
 #: model:ir.model.fields,help:sale.field_sale_order__campaign_id
-msgid "This is a name that helps you keep track of your different campaign efforts, e.g. Fall_Drive, Christmas_Special"
-msgstr "این یک نام است که کمک می کند تا مسیر شما را از تلاش کمپین‌های مختلف، به عنوان مثال: Fall_Drive، Christmas_Special"
+msgid ""
+"This is a name that helps you keep track of your different campaign efforts,"
+" e.g. Fall_Drive, Christmas_Special"
+msgstr ""
+"این یک نام است که کمک می کند تا مسیر شما را از تلاش کمپین‌های مختلف، به "
+"عنوان مثال: Fall_Drive، Christmas_Special"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__commitment_date
-msgid "This is the delivery date promised to the customer. If set, the delivery order will be scheduled based on this date rather than product lead times."
-msgstr "این تاریخ تحویل وعده داده شده به مشتری است. در صورت تنظیم، سفارش تحویل بر اساس این تاریخ برنامه ریزی می شود به جای زمان تحویل محصول."
+msgid ""
+"This is the delivery date promised to the customer. If set, the delivery "
+"order will be scheduled based on this date rather than product lead times."
+msgstr ""
+"این تاریخ تحویل وعده داده شده به مشتری است. در صورت تنظیم، سفارش تحویل بر "
+"اساس این تاریخ برنامه ریزی می شود به جای زمان تحویل محصول."
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_account_bank_statement_line__medium_id
@@ -4034,39 +4198,77 @@ msgstr "این روش تحویل است، مانند کارت پستال، ای�
 #: model:ir.model.fields,help:sale.field_account_move__source_id
 #: model:ir.model.fields,help:sale.field_account_payment__source_id
 #: model:ir.model.fields,help:sale.field_sale_order__source_id
-msgid "This is the source of the link, e.g. Search Engine, another domain, or name of email list"
+msgid ""
+"This is the source of the link, e.g. Search Engine, another domain, or name "
+"of email list"
 msgstr "این منبع لینک است، مانند موتور جستجو، دامنه دیگر، یا نام لیست ایمیل"
 
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/sale_order_line.py:0
-msgid "This product is packaged by %(pack_size).2f %(pack_name)s. You should sell %(quantity).2f %(unit)s."
-msgstr "این محصول بسته‌بندی شده با %(pack_size).2f %(pack_name)s. می‌توانید بفروشید %(quantity).2f %(unit)s."
+msgid ""
+"This product is packaged by %(pack_size).2f %(pack_name)s. You should sell "
+"%(quantity).2f %(unit)s."
+msgstr ""
+"این محصول بسته‌بندی شده با %(pack_size).2f %(pack_name)s. می‌توانید بفروشید "
+"%(quantity).2f %(unit)s."
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_order_report_all
-msgid "This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application."
-msgstr "این گزارش تجزیه و تحلیل سفارشات فروش شما را انجام می دهد. درآمد فروش شما بررسی و بر اساس معیار گروهی مختلف (فروشنده، همکار، محصول و غیره) مرتب می‌‌شود. از این گزارش برای انجام تجزیه و تحلیل در فروش‌هایی که هنوز فاکتور ندارند، استفاده کنید. اگر می‌خواهید گردش مالی خود را تجزیه و تحلیل کنید، باید از گزارش تحلیل فاکتور در برنامه حسابداری استفاده کنید."
+msgid ""
+"This report performs analysis on your quotations and sales orders. Analysis "
+"check your sales revenues and sort it by different group criteria (salesman,"
+" partner, product, etc.) Use this report to perform analysis on sales not "
+"having invoiced yet. If you want to analyse your turnover, you should use "
+"the Invoice Analysis report in the Accounting application."
+msgstr ""
+"این گزارش تجزیه و تحلیل سفارشات فروش شما را انجام می دهد. درآمد فروش شما "
+"بررسی و بر اساس معیار گروهی مختلف (فروشنده، همکار، محصول و غیره) مرتب "
+"می‌‌شود. از این گزارش برای انجام تجزیه و تحلیل در فروش‌هایی که هنوز فاکتور "
+"ندارند، استفاده کنید. اگر می‌خواهید گردش مالی خود را تجزیه و تحلیل کنید، "
+"باید از گزارش تحلیل فاکتور در برنامه حسابداری استفاده کنید."
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_order_report_quotation_salesteam
-msgid "This report performs analysis on your quotations. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application."
-msgstr "این گزارش تجزیه و تحلیل سفارشات فروش شما را انجام می دهد. درآمد فروش شما بررسی و بر اساس معیار گروهی مختلف (فروشنده، همکار، محصول و غیره) مرتب می‌‌شود. از این گزارش برای انجام تجزیه و تحلیل در فروش‌هایی که هنوز فاکتور ندارند، استفاده کنید. اگر می‌خواهید گردش مالی خود را تجزیه و تحلیل کنید، باید از گزارش تحلیل فاکتور در برنامه حسابداری استفاده کنید."
+msgid ""
+"This report performs analysis on your quotations. Analysis check your sales "
+"revenues and sort it by different group criteria (salesman, partner, "
+"product, etc.) Use this report to perform analysis on sales not having "
+"invoiced yet. If you want to analyse your turnover, you should use the "
+"Invoice Analysis report in the Accounting application."
+msgstr ""
+"این گزارش تجزیه و تحلیل سفارشات فروش شما را انجام می دهد. درآمد فروش شما "
+"بررسی و بر اساس معیار گروهی مختلف (فروشنده، همکار، محصول و غیره) مرتب "
+"می‌‌شود. از این گزارش برای انجام تجزیه و تحلیل در فروش‌هایی که هنوز فاکتور "
+"ندارند، استفاده کنید. اگر می‌خواهید گردش مالی خود را تجزیه و تحلیل کنید، "
+"باید از گزارش تحلیل فاکتور در برنامه حسابداری استفاده کنید."
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_order_report_so_salesteam
-msgid "This report performs analysis on your sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application."
-msgstr "این گزارش تجزیه و تحلیل سفارشات فروش شما را انجام می دهد. درآمد فروش شما بررسی و بر اساس معیار گروهی مختلف (فروشنده، همکار، محصول و غیره) مرتب می‌‌شود. از این گزارش برای انجام تجزیه و تحلیل در فروش‌هایی که هنوز فاکتور ندارند، استفاده کنید. اگر می‌خواهید گردش مالی خود را تجزیه و تحلیل کنید، باید از گزارش تحلیل فاکتور در برنامه حسابداری استفاده کنید."
+msgid ""
+"This report performs analysis on your sales orders. Analysis check your "
+"sales revenues and sort it by different group criteria (salesman, partner, "
+"product, etc.) Use this report to perform analysis on sales not having "
+"invoiced yet. If you want to analyse your turnover, you should use the "
+"Invoice Analysis report in the Accounting application."
+msgstr ""
+"این گزارش تجزیه و تحلیل سفارشات فروش شما را انجام می دهد. درآمد فروش شما "
+"بررسی و بر اساس معیار گروهی مختلف (فروشنده، همکار، محصول و غیره) مرتب "
+"می‌‌شود. از این گزارش برای انجام تجزیه و تحلیل در فروش‌هایی که هنوز فاکتور "
+"ندارند، استفاده کنید. اگر می‌خواهید گردش مالی خود را تجزیه و تحلیل کنید، "
+"باید از گزارش تحلیل فاکتور در برنامه حسابداری استفاده کنید."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
-msgid "This will update all taxes based on the currently selected fiscal position."
+msgid ""
+"This will update all taxes based on the currently selected fiscal position."
 msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
 msgid "This will update all unit prices based on the currently set pricelist."
-msgstr "با این کار تمام قیمت‌ها بر اساس لیست‌قیمت تعیین‌شده فعلی بروز‌رسانی می‌شود."
+msgstr ""
+"با این کار تمام قیمت‌ها بر اساس لیست‌قیمت تعیین‌شده فعلی بروز‌رسانی می‌شود."
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__sale_order__invoice_status__to_invoice
@@ -4086,14 +4288,24 @@ msgstr "برای فروش بیشتر"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "To send invitations in B2B mode, open a contact or select several ones in list view and click on 'Portal Access Management' option in the dropdown menu *Action*."
-msgstr "برای ارسال دعوت نامه‌ها در حالت B2B، یک مخاطب را باز کنید یا چند مورد را در لیست‌مشاهده انتخاب کنید و روی گزینه 'Portal Access Management' در منوی بازشدنی اقدام کلیک کنید."
+msgid ""
+"To send invitations in B2B mode, open a contact or select several ones in "
+"list view and click on 'Portal Access Management' option in the dropdown "
+"menu *Action*."
+msgstr ""
+"برای ارسال دعوت نامه‌ها در حالت B2B، یک مخاطب را باز کنید یا چند مورد را در "
+"لیست‌مشاهده انتخاب کنید و روی گزینه 'Portal Access Management' در منوی "
+"بازشدنی اقدام کلیک کنید."
 
 #. module: sale
 #. odoo-javascript
 #: code:addons/sale/static/src/js/tours/sale.js:0
-msgid "To speed up order confirmation, we can activate electronic signatures or payments."
-msgstr "برای سرعت بخشیدن به تایید سفارش، ما می‌توانیم امضا و یا پرداخت الکترونیکی را فعال کنیم."
+msgid ""
+"To speed up order confirmation, we can activate electronic signatures or "
+"payments."
+msgstr ""
+"برای سرعت بخشیدن به تایید سفارش، ما می‌توانیم امضا و یا پرداخت الکترونیکی را"
+" فعال کنیم."
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
@@ -4381,7 +4593,9 @@ msgstr "شما می توانید آنها را قبل از تحویل فاکتو
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/sale_order.py:0
-msgid "You can not delete a sent quotation or a confirmed sales order. You must first cancel it."
+msgid ""
+"You can not delete a sent quotation or a confirmed sales order. You must "
+"first cancel it."
 msgstr ""
 
 #. module: sale
@@ -4401,8 +4615,13 @@ msgstr ""
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_payment_provider__so_reference_type
-msgid "You can set here the communication type that will appear on sales orders.The communication will be given to the customer when they choose the payment method."
-msgstr "شما می‌توانید در اینجا نوع ارتباطی که در سفارشات فروش ظاهر می شود را تنظیم کنید. ارتباط زمانی به مشتری داده می شود که روش پرداخت را انتخاب کنند."
+msgid ""
+"You can set here the communication type that will appear on sales orders.The"
+" communication will be given to the customer when they choose the payment "
+"method."
+msgstr ""
+"شما می‌توانید در اینجا نوع ارتباطی که در سفارشات فروش ظاهر می شود را تنظیم "
+"کنید. ارتباط زمانی به مشتری داده می شود که روش پرداخت را انتخاب کنند."
 
 #. module: sale
 #. odoo-javascript
@@ -4414,18 +4633,26 @@ msgstr ""
 #. odoo-python
 #: code:addons/sale/models/product_product.py:0
 #: code:addons/sale/models/product_template.py:0
-msgid "You cannot change the product's type because it is already used in sales orders."
+msgid ""
+"You cannot change the product's type because it is already used in sales "
+"orders."
 msgstr ""
 
 #. module: sale
 #. odoo-python
 #: code:addons/sale/models/sale_order_line.py:0
-msgid "You cannot change the type of a sale order line. Instead you should delete the current line and create a new line of the proper type."
-msgstr "شما نمی توانید نوع رکورد سفارش فروش را تغییر دهید. در عوض باید رکورد فعلی را حذف کرده و یک رکورد جدید از نوع مناسب ایجاد کنید."
+msgid ""
+"You cannot change the type of a sale order line. Instead you should delete "
+"the current line and create a new line of the proper type."
+msgstr ""
+"شما نمی توانید نوع رکورد سفارش فروش را تغییر دهید. در عوض باید رکورد فعلی را"
+" حذف کرده و یک رکورد جدید از نوع مناسب ایجاد کنید."
 
 #. module: sale
 #: model:ir.model.constraint,message:sale.constraint_res_company_check_quotation_validity_days
-msgid "You cannot set a negative number for the default quotation validity. Leave empty (or 0) to disable the automatic expiration of quotations."
+msgid ""
+"You cannot set a negative number for the default quotation validity. Leave "
+"empty (or 0) to disable the automatic expiration of quotations."
 msgstr ""
 
 #. module: sale
@@ -4513,15 +4740,23 @@ msgstr ""
 
 #. module: sale
 #: model:mail.template,subject:sale.mail_template_sale_confirmation
-msgid "{{ object.company_id.name }} {{ (object.get_portal_last_transaction().state == 'pending') and 'Pending Order' or 'Order' }} (Ref {{ object.name or 'n/a' }})"
+msgid ""
+"{{ object.company_id.name }} {{ (object.get_portal_last_transaction().state "
+"== 'pending') and 'Pending Order' or 'Order' }} (Ref {{ object.name or 'n/a'"
+" }})"
 msgstr ""
 
 #. module: sale
 #: model:mail.template,subject:sale.email_template_edi_sale
-msgid "{{ object.company_id.name }} {{ object.state in ('draft', 'sent') and (ctx.get('proforma') and 'Proforma' or 'Quotation') or 'Order' }} (Ref {{ object.name or 'n/a' }})"
+msgid ""
+"{{ object.company_id.name }} {{ object.state in ('draft', 'sent') and "
+"(ctx.get('proforma') and 'Proforma' or 'Quotation') or 'Order' }} (Ref {{ "
+"object.name or 'n/a' }})"
 msgstr ""
 
 #. module: sale
 #: model:mail.template,subject:sale.mail_template_sale_cancellation
-msgid "{{ object.company_id.name }} {{ object.type_name }} Cancelled (Ref {{ object.name or 'n/a' }})"
+msgid ""
+"{{ object.company_id.name }} {{ object.type_name }} Cancelled (Ref {{ "
+"object.name or 'n/a' }})"
 msgstr ""
