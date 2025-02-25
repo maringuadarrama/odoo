@@ -124,7 +124,7 @@
                                 <div class="d-flex fs-6">
                                     <a t-if="record.contract_count.raw_value>0" type="object"
                                         name="return_action_to_open" href="#"
-                                        data-context='{"xml_id":"fleet_vehicle_log_contract_action"}'>
+                                        data-context='{"xml_id":"action_fleet_vehicle_log_contract"}'>
                                         <field name="contract_count" /> Contract(s) <span
                                             t-if="record.contract_renewal_due_soon.raw_value and !record.contract_renewal_overdue.raw_value"
                                             class="fa fa-exclamation-triangle text-warning"
@@ -185,14 +185,14 @@
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button"
                             icon="fa-book"
-                            context="{'xml_id':'fleet_vehicle_log_contract_action', 'search_default_inactive': not active}"
+                            context="{'xml_id':'action_fleet_vehicle_log_contract', 'search_default_inactive': not active}"
                             help="show the contract for this vehicle">
                             <field name="contract_count" string="Contracts" widget="statinfo" />
                         </button>
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button"
                             icon="fa-wrench"
-                            context="{'xml_id':'fleet_vehicle_log_services_action', 'search_default_inactive': not active}"
+                            context="{'xml_id':'action_fleet_vehicle_log_service', 'search_default_inactive': not active}"
                             invisible="service_activity != 'none'"
                             help="show the services logs for this vehicle">
                             <field name="service_count" string="Services" widget="statinfo" />
@@ -200,7 +200,7 @@
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button text-danger"
                             icon="fa-wrench"
-                            context="{'xml_id':'fleet_vehicle_log_services_action', 'search_default_inactive': not active}"
+                            context="{'xml_id':'action_fleet_vehicle_log_service', 'search_default_inactive': not active}"
                             invisible="service_activity != 'overdue'"
                             help="show the services logs for this vehicle">
                             <field name="service_count" string="Services" widget="statinfo" />
@@ -208,7 +208,7 @@
                         <button name="return_action_to_open"
                             type="object" class="oe_stat_button text-warning"
                             icon="fa-wrench"
-                            context="{'xml_id':'fleet_vehicle_log_services_action', 'search_default_inactive': not active}"
+                            context="{'xml_id':'action_fleet_vehicle_log_service', 'search_default_inactive': not active}"
                             invisible="service_activity != 'today'"
                             help="show the services logs for this vehicle">
                             <field name="service_count" string="Services" widget="statinfo" />
