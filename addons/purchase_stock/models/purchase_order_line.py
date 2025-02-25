@@ -9,30 +9,17 @@ class PurchaseOrderLine(models.Model):
     _inherit = "purchase.order.line"
 
 
-    def _ondelete_stock_moves(self):
-        modified_fields = ["qty_received_manual", "qty_received_method"]
-        self.flush_recordset(fnames=["qty_received", *modified_fields])
-        self.invalidate_recordset(fnames=modified_fields, flush=False)
-        query = f"""
-            UPDATE {self._table}
-            SET qty_received_manual = qty_received, qty_received_method = 'manual'
-            WHERE id IN %(ids)s
-        """
-        self.env.cr.execute(query, {"ids": self._ids or (None,)})
-        self.modified(modified_fields)
-
-
     qty_received_method = fields.Selection(
         selection_add=[("stock_moves", "Stock Moves")],
-        ondelete={"stock_moves": _ondelete_stock_moves}
+        ondelete={"stock_moves": lambda self: self._ondelete_stock_moves()}
     )
     group_id = fields.Many2one(
-        "procurement.group",
-        "Procurement group that generated this line",
+        comodel_name="procurement.group",
+        string="Procurement group that generated this line",
     )
     orderpoint_id = fields.Many2one(
-        "stock.warehouse.orderpoint",
-        "Orderpoint",
+        comodel_name="stock.warehouse.orderpoint",
+        string="Orderpoint",
         copy=False,
         index="btree_not_null",
     )
@@ -44,13 +31,13 @@ class PurchaseOrderLine(models.Model):
         "Downstream moves alt"
     )
     location_final_id = fields.Many2one(
-        "stock.location",
-        "Location from procurement"
+        comodel_name="stock.location",
+        string="Location from procurement"
     )
     product_description_variants = fields.Char("Custom Description")
     move_ids = fields.One2many(
-        "stock.move",
-        "purchase_line_id",
+        comodel_name="stock.move",
+        inverse_name="purchase_line_id",
         string="Reservation",
         readonly=True,
         copy=False,
@@ -117,6 +104,18 @@ class PurchaseOrderLine(models.Model):
 
         return super().unlink()
 
+    def _ondelete_stock_moves(self):
+        modified_fields = ["qty_received_manual", "qty_received_method"]
+        self.flush_recordset(fnames=["qty_received", *modified_fields])
+        self.invalidate_recordset(fnames=modified_fields, flush=False)
+        query = f"""
+            UPDATE {self._table}
+            SET qty_received_manual = qty_received, qty_received_method = 'manual'
+            WHERE id IN %(ids)s
+        """
+        self.env.cr.execute(query, {"ids": self._ids or (None,)})
+        self.modified(modified_fields)
+
     def _compute_qty_received_method(self):
         super(PurchaseOrderLine, self)._compute_qty_received_method()
         for line in self.filtered(lambda l: not l.display_type):
@@ -141,7 +140,11 @@ class PurchaseOrderLine(models.Model):
                                 total -= move.product_uom._compute_quantity(
                                     move.quantity, line.product_uom_id, rounding_method="HALF-UP"
                                 )
-                        elif move.origin_returned_move_id and move.origin_returned_move_id._is_dropshipped() and not move._is_dropshipped_returned():
+                        elif (
+                            move.origin_returned_move_id
+                            and move.origin_returned_move_id._is_dropshipped()
+                            and not move._is_dropshipped_returned()
+                        ):
                             # Edge case: the dropship is returned to the stock, no to the supplier.
                             # In this case, the received quantity on the PO is set although we didn"t
                             # receive the product physically in our stock. To avoid counting the
@@ -477,26 +480,6 @@ class PurchaseOrderLine(models.Model):
                 moves = line._create_stock_moves(picking)
                 moves._action_confirm()._action_assign()
 
-    def _check_orderpoint_picking_type(self):
-        warehouse_loc = self.order_id.picking_type_id.warehouse_id.view_location_id
-        dest_loc = self.move_dest_ids.location_id or self.orderpoint_id.location_id
-        if (
-            warehouse_loc
-            and dest_loc
-            and dest_loc.warehouse_id
-            and not warehouse_loc.parent_path in dest_loc[0].parent_path
-        ):
-            raise UserError(_(
-                "The warehouse of operation type (%(operation_type)s) is inconsistent with "
-                "location (%(location)s) of reordering rule (%(reordering_rule)s) "
-                "for product %(product)s. Change the operation type or cancel the "
-                "request for quotation.",
-                product=self.product_id.display_name,
-                operation_type=self.order_id.picking_type_id.display_name,
-                location=self.orderpoint_id.location_id.display_name,
-                reordering_rule=self.orderpoint_id.display_name
-            ))
-
     def _update_move_date_deadline(self, new_date):
         """Updates corresponding move picking line deadline dates that are not yet completed."""
         moves_to_update = self.move_ids.filtered(lambda m: m.state not in ("done", "cancel"))
@@ -522,3 +505,23 @@ class PurchaseOrderLine(models.Model):
     def _merge_po_line(self, rfq_line):
         super()._merge_po_line(rfq_line)
         self.move_dest_ids += rfq_line.move_dest_ids
+
+    def _check_orderpoint_picking_type(self):
+        warehouse_loc = self.order_id.picking_type_id.warehouse_id.view_location_id
+        dest_loc = self.move_dest_ids.location_id or self.orderpoint_id.location_id
+        if (
+            warehouse_loc
+            and dest_loc
+            and dest_loc.warehouse_id
+            and not warehouse_loc.parent_path in dest_loc[0].parent_path
+        ):
+            raise UserError(_(
+                "The warehouse of operation type (%(operation_type)s) is inconsistent with "
+                "location (%(location)s) of reordering rule (%(reordering_rule)s) "
+                "for product %(product)s. Change the operation type or cancel the "
+                "request for quotation.",
+                product=self.product_id.display_name,
+                operation_type=self.order_id.picking_type_id.display_name,
+                location=self.orderpoint_id.location_id.display_name,
+                reordering_rule=self.orderpoint_id.display_name
+            ))

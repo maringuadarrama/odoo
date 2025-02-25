@@ -7,13 +7,6 @@ class ProductTemplate(models.Model):
     _inherit = "product.template"
 
 
-    @api.model
-    def _get_buy_route(self):
-        buy_route = self.env.ref("purchase_stock.route_warehouse0_buy", raise_if_not_found=False)
-        if buy_route:
-            return self.env["stock.route"].search([("id", "=", buy_route.id)]).ids
-        return []
-
 
     property_account_creditor_price_difference = fields.Many2one(
         comodel_name="account.account",
@@ -25,3 +18,11 @@ class ProductTemplate(models.Model):
              "and its related vendor bill when validating this vendor bill."
     )
     route_ids = fields.Many2many(default=lambda self: self._get_buy_route())
+
+
+    @api.model
+    def _get_buy_route(self):
+        buy_route = self.env.ref("purchase_stock.route_warehouse0_buy", raise_if_not_found=False)
+        if buy_route:
+            return self.env["stock.route"].search([("id", "=", buy_route.id)]).ids
+        return []

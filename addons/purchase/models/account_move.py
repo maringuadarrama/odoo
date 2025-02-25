@@ -17,6 +17,7 @@ class AccountMove(models.Model):
     """Inherit AccountMove"""
     _inherit = "account.move"
 
+
     # purchase_vendor_bill_id
     purchase_bill_union_id = fields.Many2one(
         comodel_name="purchase.bill.union",
@@ -280,22 +281,26 @@ class AccountMove(models.Model):
             solutions = []
             for i, line in enumerate(lines):
                 if line["amount_to_invoice"] < goal - TOLERANCE:
-                    # The amount to invoice of the current purchase order line is less than the amount we still need on
-                    # the vendor bill.
-                    # We try finding purchase order lines that match the remaining vendor bill amount minus the amount
-                    # to invoice of the current purchase order line. We only look in the purchase order lines that we
-                    # haven't passed yet.
-                    sub_solutions = find_matching_subset_po_lines(lines[i + 1:], goal - line["amount_to_invoice"])
-                    # We add all possible sub-solutions' purchase order lines in a tuple together with our current
-                    # purchase order line.
+                    # The amount to invoice of the current purchase order line is less
+                    # than the amount we still need on the vendor bill.
+                    # We try finding purchase order lines that match the remaining
+                    # vendor bill amount minus the amount to invoice of the current
+                    # purchase order line. We only look in the purchase order lines
+                    # that we haven't passed yet.
+                    sub_solutions = find_matching_subset_po_lines(
+                        lines[i + 1:], goal - line["amount_to_invoice"]
+                    )
+                    # We add all possible sub-solutions' purchase order lines in a tuple
+                    # together with our current purchase order line.
                     solutions.extend((line["line"], *solution) for solution in sub_solutions)
                 elif goal - TOLERANCE <= line["amount_to_invoice"] <= goal + TOLERANCE:
-                    # The amount to invoice of the current purchase order line matches the remaining vendor bill amount.
+                    # The amount to invoice of the current purchase order line matches
+                    # the remaining vendor bill amount.
                     # We add this purchase order line to our list of solutions.
                     solutions.append([line["line"]])
                 if len(solutions) > 1:
-                    # More than one solution was found. We can't know for sure which is the correct one, so we don't
-                    # return any solution.
+                    # More than one solution was found. We can't know for sure which is
+                    # the correct one, so we don't return any solution.
                     return []
             return solutions
 
@@ -318,8 +323,8 @@ class AccountMove(models.Model):
     def _find_matching_po_and_inv_lines(self, po_lines, inv_lines, timeout):
         """Finds purchase order lines that match some of the invoice lines.
 
-        We try to find a purchase order line for every invoice line matching on the unit price and having at least
-        the same quantity to invoice.
+        We try to find a purchase order line for every invoice line matching on the unit price
+        and having at least the same quantity to invoice.
 
         :param po_lines: list of purchase order lines that can be matched
         :param inv_lines: list of invoice lines to be matched
@@ -328,7 +333,9 @@ class AccountMove(models.Model):
             * matched "purchase.order.line"
             * tuple of purchase order line ids and their matched "account.move.line" """
         # Sort the invoice lines by unit price and quantity to speed up matching
-        invoice_lines = sorted(inv_lines, key=lambda line: (line.price_unit, line.quantity), reverse=True)
+        invoice_lines = sorted(
+            inv_lines, key=lambda line: (line.price_unit, line.quantity), reverse=True
+        )
         # Sort the purchase order lines by unit price and remaining quantity to speed up matching
         purchase_lines = sorted(
             po_lines,
@@ -355,8 +362,10 @@ class AccountMove(models.Model):
                     if purchase_line.price_unit < invoice_line.price_unit:
                         break
 
-                    if (invoice_line.price_unit == purchase_line.price_unit
-                            and invoice_line.quantity <= purchase_line.product_qty - purchase_line.qty_invoiced):
+                    if (
+                        invoice_line.price_unit == purchase_line.price_unit
+                        and invoice_line.quantity <= purchase_line.product_qty - purchase_line.qty_invoiced
+                    ):
                         # The current purchase line is a possible match for the current invoice line.
                         # We calculate the name match ratio and continue with other possible matches.
                         #
@@ -400,7 +409,6 @@ class AccountMove(models.Model):
                 * `no_match`: no result found
             * recordset of `purchase.order.line` containing purchase order lines matched with an invoice line
             * list of tuple containing every `purchase.order.line` id and its related `account.move.line`"""
-
         common_domain = [
             ("company_id", "=", self.company_id.id),
             ("state", "in", ("purchase", "done")),
@@ -413,13 +421,15 @@ class AccountMove(models.Model):
             # We first try looking for purchase orders whose names match one of the purchase order references in the
             # vendor bill.
             matching_purchase_orders |= self.env["purchase.order"].search(
-                common_domain + [("name", "in", po_references)])
+                common_domain + [("name", "in", po_references)]
+            )
 
             if not matching_purchase_orders:
                 # If not found, we try looking for purchase orders whose `partner_ref` field matches one of the
                 # purchase order references in the vendor bill.
                 matching_purchase_orders |= self.env["purchase.order"].search(
-                    common_domain + [("partner_ref", "in", po_references)])
+                    common_domain + [("partner_ref", "in", po_references)]
+                )
 
             if matching_purchase_orders:
                 # We found matching purchase orders and are extracting all purchase order lines together with their
@@ -447,7 +457,8 @@ class AccountMove(models.Model):
                     # The invoice comes from an OCR scan.
                     # We try to match the invoice total with purchase order lines.
                     matching_po_lines = self._find_matching_subset_po_lines(
-                        po_lines_with_amount, amount_total, timeout)
+                        po_lines_with_amount, amount_total, timeout
+                    )
                     if matching_po_lines:
                         return "subset_total_match", self.env["purchase.order.line"].union(*matching_po_lines), None
 
@@ -461,7 +472,8 @@ class AccountMove(models.Model):
                     # We have an invoice from an EDI document, so we try to match individual invoice lines with
                     # individual purchase order lines from referenced purchase orders.
                     matching_po_lines, matching_inv_lines = self._find_matching_po_and_inv_lines(
-                        po_lines, self.line_ids, timeout)
+                        po_lines, self.line_ids, timeout
+                    )
 
                     if matching_po_lines:
                         # We found a subset of purchase order lines that match a subset of the vendor bill lines.
@@ -482,7 +494,8 @@ class AccountMove(models.Model):
             matching_purchase_orders = self.env["purchase.order"].search(purchase_id_domain)
             if len(matching_purchase_orders) == 1:
                 # We found exactly one match on vendor and total amount (within tolerance).
-                # We return all purchase order lines of the purchase order whose total amount matched our vendor bill.
+                # We return all purchase order lines of the purchase order whose total amount
+                # matched our vendor bill.
                 return "total_match", matching_purchase_orders.order_line_ids, None
 
         # We couldn't find anything, so we return no lines.

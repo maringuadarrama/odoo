@@ -57,14 +57,24 @@ class AccountMoveLine(models.Model):
             if not valuation_stock_moves:
                 return 0, 0
 
-            valuation_price_unit_total, valuation_total_qty = valuation_stock_moves._get_valuation_price_and_qty(self, self.move_id.currency_id)
+            valuation_price_unit_total, valuation_total_qty = \
+                valuation_stock_moves._get_valuation_price_and_qty(self, self.move_id.currency_id)
             valuation_price_unit = valuation_price_unit_total / valuation_total_qty
-            valuation_price_unit = self.product_id.uom_id._compute_price(valuation_price_unit, self.product_uom_id)
+            valuation_price_unit = self.product_id.uom_id._compute_price(
+                valuation_price_unit, self.product_uom_id
+            )
         else:
-            # Valuation_price unit is always expressed in invoice currency, so that it can always be computed with the good rate
-            price_unit = self.product_id.uom_id._compute_price(self.product_id.standard_price, self.product_uom_id)
+            # Valuation_price unit is always expressed in invoice currency,
+            # so that it can always be computed with the good rate
+            price_unit = self.product_id.uom_id._compute_price(
+                self.product_id.standard_price, self.product_uom_id
+            )
             price_unit = -price_unit if self.move_id.move_type == "in_refund" else price_unit
-            valuation_date = valuation_stock_moves and max(valuation_stock_moves.mapped("date")) or self.date
+            valuation_date = (
+                valuation_stock_moves
+                and max(valuation_stock_moves.mapped("date"))
+                or self.date
+            )
             valuation_price_unit = self.company_currency_id._convert(
                 price_unit, self.currency_id,
                 self.company_id, valuation_date, round=False
@@ -140,17 +150,22 @@ class AccountMoveLine(models.Model):
         # aml and layer will never be both defined
         # we use this to get an order between posted AML and layers
         history = [(layer.create_date, False, layer) for layer in layers]
-        am_state_field = self.env["ir.model.fields"].search([("model", "=", "account.move"), ("name", "=", "state")], limit=1)
+        am_state_field = self.env["ir.model.fields"].search(
+            [("model", "=", "account.move"), ("name", "=", "state")], limit=1
+        )
         for aml in po_line.invoice_lines:
             move = aml.move_id
             if move.state != "posted":
                 continue
 
-            state_trackings = move.message_ids.tracking_value_ids.filtered(lambda t: t.field_id == am_state_field).sorted("id")
-            time = state_trackings[-1:].create_date or move.create_date  # `or` in case it has been created in posted state
+            state_trackings = move.message_ids.tracking_value_ids.filtered(
+                lambda t: t.field_id == am_state_field
+            ).sorted("id")
+            # `or` in case it has been created in posted state
+            time = state_trackings[-1:].create_date or move.create_date
             history.append((time, aml, False))
-        # Sort history based on the datetime. In case of equality, the prority is given to SVLs, then to IDs.
-        # That way, we ensure a deterministic behaviour
+        # Sort history based on the datetime. In case of equality, the prority is given to SVLs,
+        # then to IDs. That way, we ensure a deterministic behaviour
         history.sort(key=lambda item: (item[0], bool(item[1]), (item[1] or item[2]).id))
 
         # the next dict is a matrix [layer L, invoice I] where each cell gives two info:
@@ -178,7 +193,11 @@ class AccountMoveLine(models.Model):
                     qty_to_invoice_per_layer[initial_layer][0] -= common_qty
                     qty_to_invoice_per_layer[initial_layer][1] -= common_qty
                     total_layer_qty_to_invoice = max(0, total_layer_qty_to_invoice - common_qty)
-                if float_compare(total_layer_qty_to_invoice, 0, precision_rounding=product_uom.rounding) > 0:
+                if float_compare(
+                    total_layer_qty_to_invoice,
+                    0,
+                    precision_rounding=product_uom.rounding
+                ) > 0:
                     qty_to_invoice_per_layer[layer] = [total_layer_qty_to_invoice, total_layer_qty_to_invoice]
             else:
                 invoice = aml.move_id

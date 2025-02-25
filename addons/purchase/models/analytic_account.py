@@ -25,6 +25,7 @@ class AccountAnalyticAccount(models.Model):
                 ("order_line_ids.invoice_line_ids.analytic_line_ids.account_id", "in", account.ids)
             ])
 
+
     # -------------------------------------------------------------------------
     # ACTIONS
     # -------------------------------------------------------------------------
