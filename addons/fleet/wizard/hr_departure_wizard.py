@@ -27,7 +27,7 @@ class HrDepartureWizard(models.TransientModel):
         drivers = self.employee_id.user_id.partner_id | self.employee_id.sudo().work_contact_id
         assignations = self.env["fleet.vehicle.log"].search([
             ("driver_id", "in", drivers.ids),
-            ("log_type", "=", "driver"),
+            ("type", "=", "driver"),
         ])
         for assignation in assignations:
             if self.departure_date and (not assignation.date_end or assignation.date_end > self.departure_date):

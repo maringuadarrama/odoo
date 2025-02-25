@@ -387,10 +387,10 @@ class FleetVehicle(models.Model):
             domain=[
                 ("date_end", "!=", False),
                 ("vehicle_id", "in", self.ids),
-                ("log_type", "=", "contract"),
-                ("log_state", "!=", "closed"),
+                ("type", "=", "contract"),
+                ("state", "!=", "closed"),
             ],
-            groupby=["vehicle_id", "log_state"],
+            groupby=["vehicle_id", "state"],
             aggregates=["date_end:max"]
         )
         prepared_data = {}
@@ -429,19 +429,19 @@ class FleetVehicle(models.Model):
         contract_data = Log._read_group(
             [
                 ("vehicle_id", "in", self.ids),
-                ("log_type", "=", "contract"),
-                ("log_state", "!=", "closed")
+                ("type", "=", "contract"),
+                ("state", "!=", "closed")
             ],
             ["vehicle_id", "active"],
             ["__count"]
         )
         service_data = Log._read_group(
-            [("vehicle_id", "in", self.ids), ("log_type", "=", "service")],
+            [("vehicle_id", "in", self.ids), ("type", "=", "service")],
             ["vehicle_id", "active"],
             ["__count"]
         )
         history_data = Log._read_group(
-            [("vehicle_id", "in", self.ids), ("log_type", "=", "driver")],
+            [("vehicle_id", "in", self.ids), ("type", "=", "driver")],
             ["vehicle_id"],
             ["__count"]
         )
@@ -481,8 +481,8 @@ class FleetVehicle(models.Model):
             [
                 ("date_end", ">", today),
                 ("date_end", "<", limit_date),
-                ("log_type", "=", "contract"),
-                ("log_state", "in", ["open", "expired"]),
+                ("type", "=", "contract"),
+                ("state", "in", ["open", "expired"]),
             ]
         ).mapped("vehicle_id").ids
         res.append(("id", search_operator, res_ids))
@@ -535,7 +535,7 @@ class FleetVehicle(models.Model):
         return {
             "vehicle_id": self.id,
             "driver_id": vals["driver_id"],
-            "log_type": "driver",
+            "type": "driver",
             "date_start": fields.Date.today(),
             "odometer": self.odometer,
         }

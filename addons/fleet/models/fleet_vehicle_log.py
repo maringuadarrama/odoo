@@ -57,17 +57,6 @@ class FleetVehicleLog(models.Model):
         help="When the log is of type \"Contract\" here the included services can be specified"
     )
     active = fields.Boolean(default=True)
-    log_type = fields.Selection(
-        [
-            ("service", "Service"),
-            ("contract", "Contract"),
-            ("driver", "driver change"),
-        ],
-        string="Log type",
-        default="service",
-        tracking=True,
-        help="Technical name used to classify the log types",
-    )
     type = fields.Selection(
         [
             ("service", "Service"),
@@ -78,18 +67,6 @@ class FleetVehicleLog(models.Model):
         default="service",
         tracking=True,
         help="Technical name used to classify the log types",
-    )
-    log_state = fields.Selection(
-        [
-            ("new", "New"),
-            ("running", "Running"),
-            ("done", "Done"),
-            ("cancelled", "Cancelled"),
-        ],
-        string="Stage",
-        default="new",
-        group_expand=True,
-        tracking=True
     )
     state = fields.Selection(
         [

@@ -33,12 +33,12 @@
                 <field name="product_id" optional="show" />
                 <field name="amount" sum="Total" widget="monetary" optional="show" />
                 <field name="odometer" optional="show" />
-                <field name="log_state"
+                <field name="state"
                     widget="badge"
                     readonly="1"
-                    decoration-success="log_state == 'done'"
-                    decoration-warning="log_state == 'new'"
-                    decoration-info="log_state == 'running'" />
+                    decoration-success="state == 'done'"
+                    decoration-warning="state == 'new'"
+                    decoration-info="state == 'running'" />
             </list>
         </field>
     </record>
@@ -47,7 +47,7 @@
         <field name="name">fleet.vehicle.log.kanban</field>
         <field name="model">fleet.vehicle.log</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="log_state">
+            <kanban default_group_by="state">
                 <field name="currency_id" />
                 <progressbar field="activity_state"
                     colors='{"planned": "success", "today": "warning", "overdue": "danger"}' />
@@ -60,8 +60,8 @@
                             <div class="col-10 pe-2 text-truncate">
                                 <field class="fw-bolder" name="vehicle_id" />
                                 <span
-                                    t-attf-class="float-end badge #{['todo', 'running'].indexOf(record.log_state.raw_value) > -1 ? 'text-bg-secondary' : ['cancelled'].indexOf(record.log_state.raw_value) > -1 ? 'text-bg-danger' : 'text-bg-success'}">
-                                    <field name="log_state" />
+                                    t-attf-class="float-end badge #{['todo', 'running'].indexOf(record.state.raw_value) > -1 ? 'text-bg-secondary' : ['cancelled'].indexOf(record.state.raw_value) > -1 ? 'text-bg-danger' : 'text-bg-success'}">
+                                    <field name="state" />
                                 </span>
                                 <div class="text-truncate">
                                     <em>
@@ -120,7 +120,7 @@
                 <field name="active" invisible="1" />
                 <field name="currency_id" invisible="1" />
                 <header>
-                    <field name="log_state" widget="statusbar" options="{'clickable': '1'}" />
+                    <field name="state" widget="statusbar" options="{'clickable': '1'}" />
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
@@ -129,7 +129,7 @@
                         <group string="Vendor">
                             <field name="vendor_id" widget="many2one_avatar" />
                             <field name="date" />
-                            <field name="log_type" />
+                            <field name="type" />
                             <field name="product_id" />
                             <field name="service_ids" widget="many2many_tags" />
                         </group>

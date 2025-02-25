@@ -43,7 +43,7 @@ class Employee(models.Model):
 
     def _compute_vehicle_count(self):
         logs = self.env["fleet.vehicle.log"]._read_group(
-            [("driver_id", "in", self.ids), ("log_type", "=", "driver")],
+            [("driver_id", "in", self.ids), ("type", "=", "driver")],
             ["driver_id"],
             ["__count"]
         )
@@ -69,7 +69,7 @@ class Employee(models.Model):
                 [self.env.ref("fleet.view_list_fleet_vehicle_log").id, "list"],
                 [False, "form"]
             ],
-            "domain": [("driver_id", "in", self.ids), ("log_type", "=", "driver")],
+            "domain": [("driver_id", "in", self.ids), ("type", "=", "driver")],
             "context": dict(
                 self._context,
                 default_driver_id=self.id
