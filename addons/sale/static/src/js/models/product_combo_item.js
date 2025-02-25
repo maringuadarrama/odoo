@@ -1,4 +1,4 @@
-import { ProductProduct } from './product_product';
+import {ProductProduct} from "./product_product";
 
 export class ProductComboItem {
     /**

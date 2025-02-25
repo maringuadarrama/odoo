@@ -1,4 +1,4 @@
-import { queryAll, queryValue, waitUntil } from '@odoo/hoot-dom';
+import {queryAll, queryValue, waitUntil} from "@odoo/hoot-dom";
 
 function comboSelector(comboName) {
     return `
@@ -7,8 +7,8 @@ function comboSelector(comboName) {
     `;
 }
 
-function comboItemSelector(comboItemName, extraClasses=[]) {
-    const extraClassesSelector = extraClasses.map(extraClass => `.${extraClass}`).join('');
+function comboItemSelector(comboItemName, extraClasses = []) {
+    const extraClassesSelector = extraClasses.map((extraClass) => `.${extraClass}`).join("");
     return `
         .sale-combo-configurator-dialog
         .combo-item-grid
@@ -19,10 +19,8 @@ function comboItemSelector(comboItemName, extraClasses=[]) {
 function assertComboCount(count) {
     return {
         content: `Assert that there are ${count} combos`,
-        trigger: '.sale-combo-configurator-dialog',
-        run: () => queryAll(
-            '.sale-combo-configurator-dialog [name="sale_combo_configurator_title"]'
-        ).length === count,
+        trigger: ".sale-combo-configurator-dialog",
+        run: () => queryAll('.sale-combo-configurator-dialog [name="sale_combo_configurator_title"]').length === count,
     };
 }
 
@@ -30,19 +28,16 @@ function assertComboItemCount(comboName, count) {
     return {
         content: `Assert that there are ${count} combo items in combo ${comboName}`,
         trigger: comboSelector(comboName),
-        run: () => queryAll(
-            `${comboSelector(comboName)} + .combo-item-grid .product-card`
-        ).length === count,
+        run: () => queryAll(`${comboSelector(comboName)} + .combo-item-grid .product-card`).length === count,
     };
 }
 
 function assertSelectedComboItemCount(count) {
     return {
         content: `Assert that there are ${count} selected combo items`,
-        trigger: '.sale-combo-configurator-dialog',
-        run: () => queryAll(
-            `.sale-combo-configurator-dialog .combo-item-grid .product-card.selected`
-        ).length === count,
+        trigger: ".sale-combo-configurator-dialog",
+        run: () =>
+            queryAll(`.sale-combo-configurator-dialog .combo-item-grid .product-card.selected`).length === count,
     };
 }
 
@@ -50,14 +45,14 @@ function selectComboItem(comboItemName) {
     return {
         content: `Select combo item ${comboItemName}`,
         trigger: comboItemSelector(comboItemName),
-        run: 'click',
+        run: "click",
     };
 }
 
 function assertComboItemSelected(comboItemName) {
     return {
         content: `Assert that combo item ${comboItemName} is selected`,
-        trigger: comboItemSelector(comboItemName, ['selected']),
+        trigger: comboItemSelector(comboItemName, ["selected"]),
     };
 }
 
@@ -65,7 +60,7 @@ function increaseQuantity() {
     return {
         content: "Increase the combo quantity",
         trigger: '.sale-combo-configurator-dialog button[name="sale_quantity_button_plus"]',
-        run: 'click',
+        run: "click",
     };
 }
 
@@ -73,7 +68,7 @@ function decreaseQuantity() {
     return {
         content: "Decrease the combo quantity",
         trigger: '.sale-combo-configurator-dialog button[name="sale_quantity_button_minus"]',
-        run: 'click',
+        run: "click",
     };
 }
 
@@ -90,8 +85,7 @@ function assertQuantity(quantity) {
     return {
         content: `Assert that the combo quantity is ${quantity}`,
         trigger: quantitySelector,
-        run: async () =>
-            await waitUntil(() => queryValue(quantitySelector) === quantity, { timeout: 1000 }),
+        run: async () => await waitUntil(() => queryValue(quantitySelector) === quantity, {timeout: 1000}),
     };
 }
 
@@ -115,14 +109,14 @@ function assertPriceInfo(priceInfo) {
 function assertFooterButtonsDisabled() {
     return {
         content: "Assert that the footer buttons are disabled",
-        trigger: '.sale-combo-configurator-dialog footer.modal-footer button:disabled',
+        trigger: ".sale-combo-configurator-dialog footer.modal-footer button:disabled",
     };
 }
 
 function assertFooterButtonsEnabled() {
     return {
         content: "Assert that the footer buttons are enabled",
-        trigger: '.sale-combo-configurator-dialog footer.modal-footer button:enabled',
+        trigger: ".sale-combo-configurator-dialog footer.modal-footer button:enabled",
     };
 }
 
@@ -154,10 +148,11 @@ function saveConfigurator() {
                 .sale-combo-configurator-dialog
                 button[name="sale_combo_configurator_confirm_button"]
             `,
-            run: 'click',
-        }, {
+            run: "click",
+        },
+        {
             content: "Wait until the modal is closed",
-            trigger: 'body:not(:has(.sale-combo-configurator-dialog))',
+            trigger: "body:not(:has(.sale-combo-configurator-dialog))",
         },
     ];
 }

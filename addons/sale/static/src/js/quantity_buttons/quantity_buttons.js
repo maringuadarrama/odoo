@@ -1,14 +1,13 @@
-
-import { Component } from '@odoo/owl';
+import {Component} from "@odoo/owl";
 
 export class QuantityButtons extends Component {
-    static template = 'sale.QuantityButtons';
+    static template = "sale.QuantityButtons";
     static props = {
         quantity: Number,
         setQuantity: Function,
-        isMinusButtonDisabled: { type: Boolean, optional: true },
-        isPlusButtonDisabled: { type: Boolean, optional: true },
-        btnClasses: { type: String, optional: true },
+        isMinusButtonDisabled: {type: Boolean, optional: true},
+        isPlusButtonDisabled: {type: Boolean, optional: true},
+        btnClasses: {type: String, optional: true},
     };
 
     /**

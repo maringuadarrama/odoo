@@ -1,6 +1,6 @@
-import { click, getFixture } from "@web/../tests/helpers/utils";
-import { makeView, setupViewRegistries } from "@web/../tests/views/helpers";
-import { registry } from "@web/core/registry";
+import {click, getFixture} from "@web/../tests/helpers/utils";
+import {makeView, setupViewRegistries} from "@web/../tests/views/helpers";
+import {registry} from "@web/core/registry";
 
 const serviceRegistry = registry.category("services");
 
@@ -14,11 +14,11 @@ QUnit.module("Sales Team Dashboard", {
             models: {
                 "crm.team": {
                     fields: {
-                        foo: { string: "Foo", type: "char" },
-                        invoiced: { string: "Invoiced", type: "integer" },
-                        invoiced_target: { string: "Invoiced_target", type: "integer" },
+                        foo: {string: "Foo", type: "char"},
+                        invoiced: {string: "Invoiced", type: "integer"},
+                        invoiced_target: {string: "Invoiced_target", type: "integer"},
                     },
-                    records: [{ id: 1, foo: "yop", invoiced: 0, invoiced_target: 0 }],
+                    records: [{id: 1, foo: "yop", invoiced: 0, invoiced_target: 0}],
                 },
             },
         };
@@ -47,13 +47,13 @@ QUnit.test("edit progressbar target", async (assert) => {
             },
         }),
     };
-    serviceRegistry.add("action", fakeActionService, { force: true });
+    serviceRegistry.add("action", fakeActionService, {force: true});
 
     await makeView({
         serverData,
         type: "kanban",
         resModel: "crm.team",
-        arch: /* xml */`
+        arch: /* xml */ `
             <kanban>
                 <field name="invoiced_target"/>
                 <templates>
@@ -63,7 +63,7 @@ QUnit.test("edit progressbar target", async (assert) => {
                 </templates>
             </kanban>`,
         resId: 1,
-        async mockRPC(route, { method, model }) {
+        async mockRPC(route, {method, model}) {
             if (route === "/web/dataset/call_kw/crm.team/get_formview_action") {
                 return {
                     method,
@@ -75,10 +75,7 @@ QUnit.test("edit progressbar target", async (assert) => {
         },
     });
 
-    assert.containsOnce(
-        target,
-        ".o_field_sales_team_progressbar:contains(Click to define an invoicing target)"
-    );
+    assert.containsOnce(target, ".o_field_sales_team_progressbar:contains(Click to define an invoicing target)");
     assert.containsNone(target, ".o_progressbar input");
 
     await click(target, ".sale_progressbar_form_link"); // should trigger a do_action

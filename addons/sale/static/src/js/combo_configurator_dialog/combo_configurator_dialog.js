@@ -1,37 +1,35 @@
-import { Component, useState, useSubEnv } from '@odoo/owl';
-import { formatCurrency } from '@web/core/currency';
-import { Dialog } from '@web/core/dialog/dialog';
-import { _t } from '@web/core/l10n/translation';
-import { rpc } from '@web/core/network/rpc';
-import { useService } from '@web/core/utils/hooks';
-import { ProductCombo } from '../models/product_combo';
-import { ProductTemplateAttributeLine } from '../models/product_template_attribute_line';
-import { ProductCard } from '../product_card/product_card';
-import {
-    ProductConfiguratorDialog
-} from '../product_configurator_dialog/product_configurator_dialog';
-import { QuantityButtons } from '../quantity_buttons/quantity_buttons';
+import {Component, useState, useSubEnv} from "@odoo/owl";
+import {formatCurrency} from "@web/core/currency";
+import {Dialog} from "@web/core/dialog/dialog";
+import {_t} from "@web/core/l10n/translation";
+import {rpc} from "@web/core/network/rpc";
+import {useService} from "@web/core/utils/hooks";
+import {ProductCombo} from "../models/product_combo";
+import {ProductTemplateAttributeLine} from "../models/product_template_attribute_line";
+import {ProductCard} from "../product_card/product_card";
+import {ProductConfiguratorDialog} from "../product_configurator_dialog/product_configurator_dialog";
+import {QuantityButtons} from "../quantity_buttons/quantity_buttons";
 
 export class ComboConfiguratorDialog extends Component {
-    static template = 'sale.ComboConfiguratorDialog';
-    static components = { Dialog, ProductCard, QuantityButtons };
+    static template = "sale.ComboConfiguratorDialog";
+    static components = {Dialog, ProductCard, QuantityButtons};
     static props = {
         product_tmpl_id: Number,
         display_name: String,
         quantity: Number,
         price: Number,
-        combos: { type: Array, element: ProductCombo },
+        combos: {type: Array, element: ProductCombo},
         currency_id: Number,
-        company_id: { type: Number, optional: true },
-        pricelist_id: { type: Number, optional: true },
+        company_id: {type: Number, optional: true},
+        pricelist_id: {type: Number, optional: true},
         date: String,
-        price_info: { type: String, optional: true },
-        edit: { type: Boolean, optional: true },
+        price_info: {type: String, optional: true},
+        edit: {type: Boolean, optional: true},
         options: {
             type: Object,
             optional: true,
             shape: {
-                showQuantity : { type: Boolean, optional: true },
+                showQuantity: {type: Boolean, optional: true},
             },
         },
         save: Function,
@@ -40,7 +38,7 @@ export class ComboConfiguratorDialog extends Component {
     };
 
     setup() {
-        this.dialog = useService('dialog');
+        this.dialog = useService("dialog");
         this.env.dialogData.dismiss = !this.props.edit && this.props.discard.bind(this);
         this.state = useState({
             // Maps combo ids to selected combo items.
@@ -52,8 +50,8 @@ export class ComboConfiguratorDialog extends Component {
             isLoading: false,
         });
         this._initSelectedComboItems();
-        this.getPriceUrl = '/sale/combo_configurator/get_price';
-        useSubEnv({ currency: { id: this.props.currency_id } });
+        this.getPriceUrl = "/sale/combo_configurator/get_price";
+        useSubEnv({currency: {id: this.props.currency_id}});
     }
 
     /**
@@ -78,8 +76,8 @@ export class ComboConfiguratorDialog extends Component {
                 currencyId: this.props.currency_id,
                 soDate: this.props.date,
                 edit: true, // Hide the optional products, if any.
-                options: { canChangeVariant: false, showQuantity: false, showPrice: false },
-                save: async configuredProduct => {
+                options: {canChangeVariant: false, showQuantity: false, showPrice: false},
+                save: async (configuredProduct) => {
                     const selectedComboItem = comboItem.deepCopy();
                     selectedComboItem.product.ptals = configuredProduct.attribute_lines.map(
                         ProductTemplateAttributeLine.fromProductConfiguratorPtal
@@ -154,9 +152,9 @@ export class ComboConfiguratorDialog extends Component {
 
     async confirm(options) {
         this.state.isLoading = true;
-        await this.props.save(this._comboProductData, this._selectedComboItems, options).finally(
-            () => this.state.isLoading = false
-        )
+        await this.props
+            .save(this._comboProductData, this._selectedComboItems, options)
+            .finally(() => (this.state.isLoading = false));
         this.props.close();
     }
 
@@ -191,7 +189,8 @@ export class ComboConfiguratorDialog extends Component {
      */
     get _comboPrice() {
         const extraPrice = Array.from(this.state.selectedComboItems.values()).reduce(
-            (price, item) => price + item.totalExtraPrice, 0
+            (price, item) => price + item.totalExtraPrice,
+            0
         );
         return this.state.basePrice + extraPrice;
     }
@@ -202,7 +201,7 @@ export class ComboConfiguratorDialog extends Component {
      * @return {Object} Data about the combo product.
      */
     get _comboProductData() {
-        return { 'quantity': this.state.quantity };
+        return {quantity: this.state.quantity};
     }
 
     /**
@@ -211,11 +210,13 @@ export class ComboConfiguratorDialog extends Component {
      * @return {ProductComboItem[]} The sorted selected combo items.
      */
     get _selectedComboItems() {
-        const sortedItems = new Map([...this.state.selectedComboItems.entries()].sort(
-            (entry1, entry2) =>
-                this.props.combos.findIndex(combo => combo.id === entry1[0])
-                - this.props.combos.findIndex(combo => combo.id === entry2[0])
-        ));
+        const sortedItems = new Map(
+            [...this.state.selectedComboItems.entries()].sort(
+                (entry1, entry2) =>
+                    this.props.combos.findIndex((combo) => combo.id === entry1[0]) -
+                    this.props.combos.findIndex((combo) => combo.id === entry2[0])
+            )
+        );
         return Array.from(sortedItems.values());
     }
 
