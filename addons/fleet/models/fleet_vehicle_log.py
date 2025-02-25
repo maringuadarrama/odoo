@@ -68,6 +68,17 @@ class FleetVehicleLog(models.Model):
         tracking=True,
         help="Technical name used to classify the log types",
     )
+    type = fields.Selection(
+        [
+            ("service", "Service"),
+            ("contract", "Contract"),
+            ("driver", "driver change"),
+        ],
+        string="Type",
+        default="service",
+        tracking=True,
+        help="Technical name used to classify the log types",
+    )
     log_state = fields.Selection(
         [
             ("new", "New"),
@@ -76,6 +87,18 @@ class FleetVehicleLog(models.Model):
             ("cancelled", "Cancelled"),
         ],
         string="Stage",
+        default="new",
+        group_expand=True,
+        tracking=True
+    )
+    state = fields.Selection(
+        [
+            ("new", "New"),
+            ("running", "Running"),
+            ("done", "Done"),
+            ("cancelled", "Cancelled"),
+        ],
+        string="State",
         default="new",
         group_expand=True,
         tracking=True
