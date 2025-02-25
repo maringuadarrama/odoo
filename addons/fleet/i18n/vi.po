@@ -490,7 +490,7 @@ msgid "Contract Count"
 msgstr "Số lượng hợp đồng"
 
 #. module: fleet
-#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Contract Expiration Date"
 msgstr "Ngày hết hạn hợp đồng"
 
@@ -679,7 +679,7 @@ msgid "Date when the coverage of the contract begins"
 msgstr "Ngày mà phạm vi bao quát của hợp đồng bắt đầu"
 
 #. module: fleet
-#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Date when the coverage of the contract expirates (by default, one year after begin date)"
 msgstr "Ngày mà phạm vi bao quát của hợp đồng kết thúc (mặc định, một năm sau ngày bắt đầu)"
 

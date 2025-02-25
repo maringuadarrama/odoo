@@ -501,7 +501,7 @@ msgid "Contract Count"
 msgstr "Sözleşme Sayısı"
 
 #. module: fleet
-#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Contract Expiration Date"
 msgstr "Sözleşme Bitiş Tarihi"
 
@@ -690,7 +690,7 @@ msgid "Date when the coverage of the contract begins"
 msgstr "Sözleşme kapsamının başladığı Tarihi"
 
 #. module: fleet
-#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Date when the coverage of the contract expirates (by default, one year after begin date)"
 msgstr "Sözleşme kapsamı süresinin dolduğu tarih (varsayılan olarak, başlama tarihinden bir yıl sonra)"
 

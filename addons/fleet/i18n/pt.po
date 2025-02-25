@@ -497,7 +497,7 @@ msgid "Contract Count"
 msgstr "Contador de Contratos"
 
 #. module: fleet
-#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Contract Expiration Date"
 msgstr "Data de expiração do contrato"
 
@@ -686,7 +686,7 @@ msgid "Date when the coverage of the contract begins"
 msgstr "Data em que se inicia a cobertura do contrato"
 
 #. module: fleet
-#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Date when the coverage of the contract expirates (by default, one year after begin date)"
 msgstr "Data em que a cobertura do contrato expira (por omissão, um ano após a data de início)"
 

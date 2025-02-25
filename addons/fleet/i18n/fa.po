@@ -494,7 +494,7 @@ msgid "Contract Count"
 msgstr "تعداد قرارداد"
 
 #. module: fleet
-#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Contract Expiration Date"
 msgstr "تاریخ انقضای قرارداد"
 
@@ -683,7 +683,7 @@ msgid "Date when the coverage of the contract begins"
 msgstr "تاریخ وقتی که پوشش قرارداد آغاز می‌شود"
 
 #. module: fleet
-#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Date when the coverage of the contract expirates (by default, one year after begin date)"
 msgstr ""
 

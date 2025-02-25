@@ -487,7 +487,7 @@ msgid "Contract Count"
 msgstr "合約統計"
 
 #. module: fleet
-#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Contract Expiration Date"
 msgstr "合約到期日期"
 
@@ -676,7 +676,7 @@ msgid "Date when the coverage of the contract begins"
 msgstr "合約有效期內的起始日期"
 
 #. module: fleet
-#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Date when the coverage of the contract expirates (by default, one year after begin date)"
 msgstr "合約覆蓋範圍的有效日期（在預設情況下，開始日期一年之後）"
 

@@ -487,7 +487,7 @@ msgid "Contract Count"
 msgstr "근로 계약 건수"
 
 #. module: fleet
-#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,field_description:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Contract Expiration Date"
 msgstr "계약 만료 날짜"
 
@@ -676,7 +676,7 @@ msgid "Date when the coverage of the contract begins"
 msgstr "계약이 시작되는 날짜"
 
 #. module: fleet
-#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__expiration_date
+#: model:ir.model.fields,help:fleet.field_fleet_vehicle_log_contract__date_end
 msgid "Date when the coverage of the contract expirates (by default, one year after begin date)"
 msgstr "계약이 만료되는 날짜 (기본으로 1년 후에 시작 날짜)"
 

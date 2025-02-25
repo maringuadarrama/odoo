@@ -998,9 +998,9 @@
         <field name="name">Daily leasing contract</field>
         <field name="cost_generated">20</field>
         <field name="cost_frequency">daily</field>
-        <field name="expiration_date"
+        <field name="date_end"
             eval="(DateTime.now() - timedelta(days=233)).strftime('%Y-%m-%d')" />
-        <field name="expiration_date" eval="(DateTime.now() + timedelta(5)).strftime('%Y-%m-%d')" />
+        <field name="date_end" eval="(DateTime.now() + timedelta(5)).strftime('%Y-%m-%d')" />
         <field name="driver_id" ref="hr.employee_fpi" />
         <field name="vendor_id" ref="base.res_partner_2" />
         <field name="notes">Daily leasing contract</field>
@@ -1023,7 +1023,7 @@
         <field name="cost_frequency">weekly</field>
         <field name="date" eval="time.strftime('%Y-01-01')" />
         <field name="start_date" eval="(DateTime.now() - timedelta(days=289)).strftime('%Y-%m-%d')" />
-        <field name="expiration_date" eval="(DateTime.now() + timedelta(-1)).strftime('%Y-%m-%d')" />
+        <field name="date_end" eval="(DateTime.now() + timedelta(-1)).strftime('%Y-%m-%d')" />
         <field name="driver_id" ref="hr.employee_fpi" />
         <field name="vendor_id" ref="base.res_partner_2" />
         <field name="notes">Weekly leasing contract</field>
@@ -1046,7 +1046,7 @@
         <field name="cost_frequency">monthly</field>
         <field name="date" eval="time.strftime('%Y-01-01')" />
         <field name="start_date" eval="time.strftime('%Y-01-01')" />
-        <field name="expiration_date" eval="time.strftime('%Y-12-31')" />
+        <field name="date_end" eval="time.strftime('%Y-12-31')" />
         <field name="driver_id" ref="hr.employee_fpi" />
         <field name="vendor_id" ref="base.res_partner_2" />
         <field name="notes">Monthly leasing contract</field>
@@ -1069,7 +1069,7 @@
         <field name="cost_frequency">yearly</field>
         <field name="date" eval="time.strftime('%Y-01-01')" />
         <field name="start_date" eval="time.strftime('%Y-01-01')" />
-        <field name="expiration_date" eval="time.strftime('%Y-12-31')" />
+        <field name="date_end" eval="time.strftime('%Y-12-31')" />
         <field name="driver_id" ref="hr.employee_fpi" />
         <field name="vendor_id" ref="base.res_partner_2" />
         <field name="notes">Yearly leasing contract</field>
@@ -1092,7 +1092,7 @@
         <field name="cost_frequency">no</field>
         <field name="date" eval="(DateTime.now() - timedelta(days=300)).strftime('%Y-%m-%d')" />
         <field name="start_date" eval="(DateTime.now() - timedelta(days=300)).strftime('%Y-%m-%d')" />
-        <field name="expiration_date" eval="(DateTime.now() + timedelta(-60)).strftime('%Y-%m-%d')" />
+        <field name="date_end" eval="(DateTime.now() + timedelta(-60)).strftime('%Y-%m-%d')" />
         <field name="driver_id" ref="hr.employee_fpi" />
         <field name="vendor_id" ref="base.res_partner_2" />
         <field name="notes">Unique leasing contract</field>

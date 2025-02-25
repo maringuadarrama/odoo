@@ -32,14 +32,14 @@ class TestFleet(common.TransactionCase):
         Log = self.env['fleet.vehicle.log']
         Log.create({
             'vehicle_id': car_2.id,
-            'expiration_date': fields.Date.add(fields.Date.today(), days=10)
+            'date_end': fields.Date.add(fields.Date.today(), days=10)
         })
         res = self.env["fleet.vehicle"].search([('contract_renewal_due_soon', '=', True), ('id', '=', car_2.id)])
         self.assertEqual(res, car_2)
 
         Log.create({
             'vehicle_id': car_1.id,
-            'expiration_date': fields.Date.add(fields.Date.today(), days=-10)
+            'date_end': fields.Date.add(fields.Date.today(), days=-10)
         })
         res = self.env["fleet.vehicle"].search([('contract_renewal_overdue', '=', True), ('id', '=', car_1.id)])
         self.assertEqual(res, car_1)
@@ -66,11 +66,11 @@ class TestFleet(common.TransactionCase):
         Log = self.env['fleet.vehicle.log']
         Log.create({
             'vehicle_id': car_1.id,
-            'expiration_date': fields.Date.add(fields.Date.today(), days=-2)
+            'date_end': fields.Date.add(fields.Date.today(), days=-2)
         })
         Log.create({
             'vehicle_id': car_1.id,
-            'expiration_date': fields.Date.add(fields.Date.today(), days=365)
+            'date_end': fields.Date.add(fields.Date.today(), days=365)
         })
 
         res = self.env["fleet.vehicle"].search([('contract_renewal_overdue', '=', True), ('id', '=', car_1.id)])
