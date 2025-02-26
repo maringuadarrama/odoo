@@ -453,7 +453,7 @@ class ProductTemplate(models.Model):
 
     @api.onchange('uom_id')
     def _onchange_uom_id(self):
-        if self._origin.uom_id == self.uom_id or not self.with_context(active_test=False).product_variant_ids._trigger_uom_warning():
+        if self._origin.uom_id == self.uom_id or not self.with_context(active_test=False).product_variant_ids._check_uom_used():
             return
         message = _(
             'Changing the unit of measure for your product will apply a conversion 1 %(old_uom_name)s = 1 %(new_uom_name)s.\n'

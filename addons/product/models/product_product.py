@@ -354,12 +354,12 @@ class ProductProduct(models.Model):
                 'message': _("The Reference '%s' already exists.", self.default_code),
             }}
 
-    def _trigger_uom_warning(self):
+    def _check_uom_used(self):
         return False
 
     @api.onchange('uom_id')
     def _onchange_uom_id(self):
-        if self._origin.uom_id == self.uom_id or not self._trigger_uom_warning():
+        if self._origin.uom_id == self.uom_id or not self._check_uom_used():
             return
         message = _(
             'Changing the unit of measure for your product will apply a conversion 1 %(old_uom_name)s = 1 %(new_uom_name)s.\n'
