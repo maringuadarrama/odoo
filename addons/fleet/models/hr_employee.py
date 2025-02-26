@@ -26,12 +26,6 @@ class Employee(models.Model):
     mobility_card = fields.Char(
         groups="fleet.fleet_group_user"
     )
-    plan_to_change_car = fields.Boolean(
-        string="Plan To Change Car",
-        default=False,
-        tracking=True,
-    )
-
 
     @api.depends("private_car_plate", "vehicle_ids.license_plate")
     def _compute_license_plate(self):

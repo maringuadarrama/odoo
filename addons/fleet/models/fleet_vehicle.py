@@ -59,10 +59,6 @@ class FleetVehicle(models.Model):
         tracking=True,
         help="Driver address of the vehicle",
     )
-    plan_to_change_car = fields.Boolean(
-        related="driver_id.plan_to_change_car", store=True,
-        readonly=False,
-    )
     mobility_card = fields.Char(
         related="driver_id.mobility_card", store=True
     )
@@ -522,8 +518,6 @@ class FleetVehicle(models.Model):
         if self.env.su:
             return su_vals
 
-        if "plan_to_change_car" in vals:
-            su_vals["plan_to_change_car"] = vals.pop("plan_to_change_car")
         return su_vals
 
     def _get_analytic_name(self):
@@ -553,8 +547,6 @@ class FleetVehicle(models.Model):
         ])
         vehicles.write({"driver_id": False})
         for vehicle in self:
-            if vehicle.vehicle_type == "car":
-                vehicle.future_driver_id.sudo().write({"plan_to_change_car": False})
             vehicle.driver_id = vehicle.future_driver_id
             vehicle.future_driver_id = False
 
