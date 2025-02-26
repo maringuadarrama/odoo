@@ -99,7 +99,9 @@ class FleetVehicleLog(models.Model):
     )
     odometer = fields.Float(
         string="Odometer Value",
-        required=True,
+        # TODO improve logic for account.move.line to set odometer
+        # or to inforce only on the view
+        # required=True,
         help="Odometer measure of the vehicle at the moment of this log",
     )
     amount = fields.Monetary(
