@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models
@@ -8,9 +7,11 @@ from odoo.tools import SQL
 class PurchaseReport(models.Model):
     _inherit = "purchase.report"
 
-    picking_type_id = fields.Many2one('stock.warehouse', 'Warehouse', readonly=True)
+
+    picking_type_id = fields.Many2one("stock.warehouse", "Warehouse", readonly=True)
     effective_date = fields.Datetime(string="Effective Date")
-    days_to_arrival = fields.Float('Effective Days To Arrival', digits=(16, 2), readonly=True, aggregator='avg')
+    days_to_arrival = fields.Float("Effective Days To Arrival", digits=(16, 2), readonly=True, aggregator="avg")
+
 
     def _select(self) -> SQL:
         return SQL(

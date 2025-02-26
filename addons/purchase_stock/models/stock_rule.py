@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
@@ -15,9 +14,12 @@ from odoo.tools import groupby
 class StockRule(models.Model):
     _inherit = 'stock.rule'
 
-    action = fields.Selection(selection_add=[
-        ('buy', 'Buy')
-    ], ondelete={'buy': 'cascade'})
+
+    action = fields.Selection(
+        selection_add=[('buy', 'Buy')],
+        ondelete={'buy': 'cascade'}
+    )
+
 
     def _get_message_dict(self):
         message_dict = super(StockRule, self)._get_message_dict()
@@ -131,7 +133,7 @@ class StockRule(models.Model):
             procurements = self._merge_procurements(procurements_to_merge)
 
             po_lines_by_product = {}
-            grouped_po_lines = groupby(po.order_line.filtered(lambda l: not l.display_type and l.product_uom_id == l.product_id.uom_id), key=lambda l: l.product_id.id)
+            grouped_po_lines = groupby(po.order_line_ids.filtered(lambda l: not l.display_type and l.product_uom_id == l.product_id.uom_id), key=lambda l: l.product_id.id)
             for product, po_lines in grouped_po_lines:
                 po_lines_by_product[product] = self.env['purchase.order.line'].concat(*po_lines)
             po_line_values = []

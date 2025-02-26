@@ -1,15 +1,17 @@
-# -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models
 
 
 class AccountAnalyticApplicability(models.Model):
-    _inherit = 'account.analytic.applicability'
+    """Inherit AccountAnalyticApplicability"""
+    _inherit = "account.analytic.applicability"
     _description = "Analytic Plan's Applicabilities"
+
 
     business_domain = fields.Selection(
         selection_add=[
-            ('purchase_order', 'Purchase Order'),
+            ("purchase_order", "Purchase Order"),
         ],
-        ondelete={'purchase_order': 'cascade'},
+        ondelete={"purchase_order": "cascade"},
     )

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
@@ -10,22 +9,18 @@ from odoo.tools import OrderedSet
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
-    mrp_production_count = fields.Integer(
-        "Count of MO Source",
-        compute='_compute_mrp_production_count',
-        groups='mrp.group_mrp_user')
 
-    @api.depends('order_line.move_dest_ids.group_id.mrp_production_ids')
+    mrp_production_count = fields.Integer(
+        string="Count of MO Source",
+        compute='_compute_mrp_production_count',
+        groups='mrp.group_mrp_user',
+    )
+
+
+    @api.depends('order_line_ids.move_dest_ids.group_id.mrp_production_ids')
     def _compute_mrp_production_count(self):
         for purchase in self:
             purchase.mrp_production_count = len(purchase._get_mrp_productions())
-
-    def _get_mrp_productions(self, **kwargs):
-        linked_mo = self.order_line.move_dest_ids.group_id.mrp_production_ids \
-                  | self.env['stock.move'].browse(self.order_line.move_ids._rollup_move_dests()).group_id.mrp_production_ids
-        group_mo = self.order_line.group_id.mrp_production_ids
-
-        return linked_mo | group_mo
 
     def action_view_mrp_productions(self):
         self.ensure_one()
@@ -46,6 +41,16 @@ class PurchaseOrder(models.Model):
                 'view_mode': 'list,form',
             })
         return action
+
+    def _get_mrp_productions(self, **kwargs):
+        linked_mo = (
+            self.order_line_ids.move_dest_ids.group_id.mrp_production_ids
+            | self.env['stock.move'].browse(
+                self.order_line_ids.move_ids._rollup_move_dests()
+            ).group_id.mrp_production_ids
+        )
+        group_mo = self.order_line_ids.group_id.mrp_production_ids
+        return linked_mo | group_mo
 
 
 class PurchaseOrderLine(models.Model):

@@ -724,8 +724,8 @@ class ProductProduct(models.Model):
         products_with_routes += self.search([('id', 'in', (self - products_with_routes).ids), ('categ_id.total_route_ids', '!=', False)])
         return products_with_routes
 
-    def _trigger_uom_warning(self):
-        res = super()._trigger_uom_warning()
+    def _check_uom_used(self):
+        res = super()._check_uom_used()
         if res:
             return res
         moves = self.env['stock.move'].sudo().search_count(
