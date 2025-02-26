@@ -5,7 +5,7 @@ from odoo.tests import tagged
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
 @tagged('post_install', '-at_install')
-class TestFleetVehicleLogServices(AccountTestInvoicingCommon):
+class TestFleetVehicleLog(AccountTestInvoicingCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -96,7 +96,7 @@ class TestFleetVehicleLogServices(AccountTestInvoicingCommon):
         with self.assertRaises(UserError):
             self.car_1.log_services[0].unlink()
 
-        log_service_without_bill = self.env['fleet.vehicle.log.services'].create({
+        log_service_without_bill = self.env['fleet.vehicle.log'].create({
             'vehicle_id': self.car_1.id,
             'service_type_id': self.fleet_service_type.id,
             'amount': 1440,
@@ -170,7 +170,7 @@ class TestFleetVehicleLogServices(AccountTestInvoicingCommon):
         })
         move.action_post()
         line = move.line_ids[0]
-        fleet_service = self.env['fleet.vehicle.log.services'].search([('vendor_id', '=', partner.id),
+        fleet_service = self.env['fleet.vehicle.log'].search([('vendor_id', '=', partner.id),
                                                                        ('description', '=', False)])
 
         self.assertNotEqual(line.debit, line.price_subtotal)
