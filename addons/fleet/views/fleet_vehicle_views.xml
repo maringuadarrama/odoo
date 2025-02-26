@@ -13,15 +13,13 @@
                 <field name="tag_ids" />
                 <field name="vehicle_properties" string="Properties" />
                 <filter name="available" string="Available"
-                    domain="['&amp;', ('future_driver_id', '=', False), '|', ('driver_id', '=', False), '&amp;', ('plan_to_change_car', '=', True), ('vehicle_type', '=', 'car')]" />
+                    domain="['&amp;', ('future_driver_id', '=', False), ('driver_id', '=', False)]" />
                 <filter name="bikes" string="Bikes"
                     domain="[('vehicle_type', '=', 'bike')]" />
                 <filter name="cars" string="Cars"
                     domain="[('vehicle_type', '=', 'car')]" />
                 <filter name="trailer_hook" string="Trailer Hook"
                     domain="[('trailer_hook', '=', True)]" />
-                <filter name="planned" string="Planned for Change"
-                    domain="[('vehicle_type', '=', 'car'), ('plan_to_change_car', '=', True)]" />
                 <separator />
                 <filter name="alert_true" string="Need Action"
                     domain="['|', ('contract_renewal_due_soon', '=', True), ('contract_renewal_overdue', '=', True)]" />
@@ -240,9 +238,6 @@
                                 widget="many2one_avatar"
                                 domain="['|', ('company_id', '=', False ), ('company_id', '=', company_id)]" />
                             <field name="future_driver_id" widget="many2one_avatar" />
-                            <field name="plan_to_change_car"
-                                invisible="vehicle_type != 'car'"
-                                groups="fleet.fleet_group_manager" />
                             <field name="manager_id"
                                 widget="many2one_avatar_user"
                                 domain="[('share', '=', False), ('company_id', '=', company_id)]" />
