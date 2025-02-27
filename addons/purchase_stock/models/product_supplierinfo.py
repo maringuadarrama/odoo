@@ -4,15 +4,16 @@ from odoo import fields, models
 
 
 class ProductSupplierinfo(models.Model):
+    "Inherit ProductSupplierinfo"
     _inherit = "product.supplierinfo"
 
 
     last_purchase_date = fields.Date(
-        "Last Purchase",
-        compute="_compute_last_purchase_date"
+        string="Last Purchase",
+        compute="_compute_last_purchase_date",
     )
     show_set_supplier_button = fields.Boolean(
-        "Show Set Supplier Button",
+        string="Show Set Supplier Button",
         compute="_compute_show_set_supplier_button",
     )
 

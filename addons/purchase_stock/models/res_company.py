@@ -4,6 +4,7 @@ from odoo import fields, models
 
 
 class ResCompany(models.Model):
+    "Inherit ResCompany"
     _inherit = "res.company"
 
 

@@ -6,17 +6,18 @@ from odoo import api, fields, models
 
 
 class StockLot(models.Model):
+    "Inherit StockLot"
     _inherit = "stock.lot"
 
 
     purchase_order_ids = fields.Many2many(
-        "purchase.order",
+        comodel_name="purchase.order",
         string="Purchase Orders",
         compute="_compute_purchase_order_ids", store=False,
         readonly=True,
     )
     count_purchase_order = fields.Integer(
-        "Purchase order count",
+        string="Purchase order count",
         compute="_compute_purchase_order_ids",
     )
 

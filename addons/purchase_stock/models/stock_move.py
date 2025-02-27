@@ -8,6 +8,7 @@ from odoo.exceptions import UserError
 
 
 class StockMove(models.Model):
+    "Inherit StockMove"
     _inherit = "stock.move"
 
 
@@ -39,24 +40,6 @@ class StockMove(models.Model):
         # dropshipped moves should have their partner_ids directly set
         not_dropshipped_moves = self.filtered(lambda m: not m._is_dropshipped())
         super(StockMove, not_dropshipped_moves)._compute_partner_id()
-
-    @api.model
-    def _prepare_merge_moves_distinct_fields(self):
-        distinct_fields = super(StockMove, self)._prepare_merge_moves_distinct_fields()
-        distinct_fields += ["purchase_line_id", "created_purchase_line_ids"]
-        return distinct_fields
-
-    @api.model
-    def _prepare_merge_negative_moves_excluded_distinct_fields(self):
-        excluded_fields = super()._prepare_merge_negative_moves_excluded_distinct_fields() + ["created_purchase_line_ids"]
-        if self.env["ir.config_parameter"].sudo().get_param("purchase_stock.merge_different_procurement"):
-            excluded_fields += ["procure_method"]
-        return excluded_fields
-
-    def _prepare_move_split_vals(self, uom_qty):
-        vals = super(StockMove, self)._prepare_move_split_vals(uom_qty)
-        vals["purchase_line_id"] = self.purchase_line_id.id
-        return vals
 
     def _get_price_unit(self):
         """Returns the unit price for the move"""
@@ -123,21 +106,44 @@ class StockMove(models.Model):
             # https://github.com/odoo/odoo/blob/2f789b6863407e63f90b3a2d4cc3be09815f7002/addons/stock/models/stock_move.py#L36
             convert_date = fields.Date.context_today(self)
             # use currency rate at bill date when invoice before receipt
-            if float_compare(line.qty_invoiced, received_qty, precision_rounding=line.product_uom_id.rounding) > 0:
-                convert_date = max(line.sudo().invoice_lines.move_id.filtered(lambda m: m.state == "posted").mapped("invoice_date"), default=convert_date)
+            if float_compare(
+                line.qty_invoiced,
+                received_qty,
+                precision_rounding=line.product_uom_id.rounding
+            ) > 0:
+                convert_date = max(
+                    line.sudo().invoice_lines.move_id.filtered(
+                        lambda m: m.state == "posted"
+                    ).mapped("invoice_date"),
+                    default=convert_date
+                )
             price_unit = order.currency_id._convert(
-                price_unit, order.company_id.currency_id, order.company_id, convert_date, round=False)
+                price_unit,
+                order.company_id.currency_id,
+                order.company_id,
+                convert_date,
+                round=False
+            )
         if self.product_id.lot_valuated:
             return dict.fromkeys(self.lot_ids, price_unit)
 
         return {self.env["stock.lot"]: price_unit}
 
     def _get_upstream_documents_and_responsibles(self, visited):
-        created_pl = self.created_purchase_line_ids.filtered(lambda cpl: cpl.state not in ("done", "cancel") and (cpl.state != "draft" or self._context.get("include_draft_documents")))
+        created_pl = self.created_purchase_line_ids.filtered(
+            lambda cpl:
+                cpl.state not in ("done", "cancel")
+                and (cpl.state != "draft" or self._context.get("include_draft_documents"))
+        )
         if created_pl:
-            return [(pl.order_id, pl.order_id.user_id, visited) for pl in created_pl]
+            return [
+                (pl.order_id, pl.order_id.user_id, visited)
+                for pl in created_pl
+            ]
         elif self.purchase_line_id and self.purchase_line_id.state not in ("done", "cancel"):
-            return[(self.purchase_line_id.order_id, self.purchase_line_id.order_id.user_id, visited)]
+            return [
+                (self.purchase_line_id.order_id, self.purchase_line_id.order_id.user_id, visited)
+            ]
         else:
             return super(StockMove, self)._get_upstream_documents_and_responsibles(visited)
 
@@ -186,8 +192,11 @@ class StockMove(models.Model):
     def _get_all_related_aml(self):
         # The back and for between account_move and account_move_line is necessary to catch the
         # additional lines from a cogs correction
-        return super()._get_all_related_aml() | self.purchase_line_id.invoice_line_ids.move_id.line_ids.filtered(
-            lambda aml: aml.product_id == self.purchase_line_id.product_id
+        return (
+            super()._get_all_related_aml()
+            | self.purchase_line_id.invoice_line_ids.move_id.line_ids.filtered(
+                lambda aml: aml.product_id == self.purchase_line_id.product_id
+            )
         )
 
     def _get_all_related_sm(self, product):
@@ -213,6 +222,27 @@ class StockMove(models.Model):
                 ]
             )
         return None, None
+
+    @api.model
+    def _prepare_merge_moves_distinct_fields(self):
+        distinct_fields = super(StockMove, self)._prepare_merge_moves_distinct_fields()
+        distinct_fields += ["purchase_line_id", "created_purchase_line_ids"]
+        return distinct_fields
+
+    @api.model
+    def _prepare_merge_negative_moves_excluded_distinct_fields(self):
+        excluded_fields = (
+            super()._prepare_merge_negative_moves_excluded_distinct_fields()
+            + ["created_purchase_line_ids"]
+        )
+        if self.env["ir.config_parameter"].sudo().get_param("purchase_stock.merge_different_procurement"):
+            excluded_fields += ["procure_method"]
+        return excluded_fields
+
+    def _prepare_move_split_vals(self, uom_qty):
+        vals = super(StockMove, self)._prepare_move_split_vals(uom_qty)
+        vals["purchase_line_id"] = self.purchase_line_id.id
+        return vals
 
     def _generate_valuation_lines_data(
         self, partner_id, qty, debit_value, credit_value, debit_account_id, credit_account_id, svl_id, description
@@ -284,19 +314,40 @@ class StockMove(models.Model):
         am_vals_list = super()._account_entry_move(qty, description, svl_id, cost)
         returned_move = self.origin_returned_move_id
         move = (self | returned_move).with_prefetch(self._prefetch_ids)
-        pdiff_exists = bool(move.stock_valuation_layer_ids.stock_valuation_layer_ids.account_move_line_id)
+        pdiff_exists = bool(
+            move.stock_valuation_layer_ids.stock_valuation_layer_ids.account_move_line_id
+        )
 
-        if not am_vals_list or not self.purchase_line_id or pdiff_exists or float_is_zero(qty, precision_rounding=self.product_id.uom_id.rounding):
+        if (
+            not am_vals_list
+            or not self.purchase_line_id
+            or pdiff_exists
+            or float_is_zero(qty, precision_rounding=self.product_id.uom_id.rounding)
+        ):
             return am_vals_list
 
         layer = self.env["stock.valuation.layer"].browse(svl_id)
 
         if returned_move and self._is_out() and self._is_returned(valued_type="out"):
-            returned_layer = returned_move.stock_valuation_layer_ids.filtered(lambda svl: not svl.stock_valuation_layer_id)[:1]
-            unit_diff = layer._get_layer_price_unit() - returned_layer._get_layer_price_unit() if returned_layer else 0
-        elif returned_move and returned_move._is_out() and returned_move._is_returned(valued_type="out"):
-            returned_layer = returned_move.stock_valuation_layer_ids.filtered(lambda svl: not svl.stock_valuation_layer_id)[:1]
-            unit_diff = returned_layer._get_layer_price_unit() - self.purchase_line_id._get_gross_price_unit()
+            returned_layer = returned_move.stock_valuation_layer_ids.filtered(
+                lambda svl: not svl.stock_valuation_layer_id
+            )[:1]
+            unit_diff = (
+                layer._get_layer_price_unit() - returned_layer._get_layer_price_unit()
+                if returned_layer
+                else 0
+            )
+        elif (
+            returned_move
+            and returned_move._is_out()
+            and returned_move._is_returned(valued_type="out")
+        ):
+            returned_layer = returned_move.stock_valuation_layer_ids.filtered(
+                lambda svl: not svl.stock_valuation_layer_id
+            )[:1]
+            unit_diff = (
+                returned_layer._get_layer_price_unit() - self.purchase_line_id._get_gross_price_unit()
+            )
         else:
             return am_vals_list
 
@@ -310,7 +361,9 @@ class StockMove(models.Model):
         acc_exp_id = accounts["expense"].id
         acc_stock_in_id = accounts["stock_input"].id
         journal_id = accounts["stock_journal"].id
-        vals = sm._prepare_account_move_vals(acc_exp_id, acc_stock_in_id, journal_id, qty, description, False, diff)
+        vals = sm._prepare_account_move_vals(
+            acc_exp_id, acc_stock_in_id, journal_id, qty, description, False, diff
+        )
         am_vals_list.append(vals)
 
         return am_vals_list

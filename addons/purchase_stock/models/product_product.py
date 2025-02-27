@@ -5,6 +5,7 @@ from odoo.osv import expression
 
 
 class ProductProduct(models.Model):
+    "Inherit ProductProduct"
     _inherit = "product.product"
 
 
@@ -21,7 +22,9 @@ class ProductProduct(models.Model):
         if not warehouse_ids:
             warehouse_ids = []
 
-        qty_by_product_location, qty_by_product_wh = super()._get_quantity_in_progress(location_ids, warehouse_ids)
+        qty_by_product_location, qty_by_product_wh = super()._get_quantity_in_progress(
+            location_ids, warehouse_ids
+        )
         domain = self._get_lines_domain(location_ids, warehouse_ids)
         groups = self.env["purchase.order.line"].sudo()._read_group(domain,
             ["order_id", "product_id", "product_uom_id", "orderpoint_id", "location_final_id"],

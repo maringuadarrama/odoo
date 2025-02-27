@@ -4,8 +4,8 @@ from odoo import api, fields, models
 
 
 class ProductTemplate(models.Model):
+    "Inherit ProductTemplate"
     _inherit = "product.template"
-
 
 
     property_account_creditor_price_difference = fields.Many2one(

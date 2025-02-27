@@ -4,6 +4,7 @@ from odoo import fields, models
 
 
 class ProductCategory(models.Model):
+    "Inherit ProductCategory"
     _inherit = "product.category"
 
 
@@ -12,5 +13,6 @@ class ProductCategory(models.Model):
         string="Price Difference Account",
         company_dependent=True,
         ondelete="restrict",
-        help="This account will be used to value price difference between purchase price and accounting cost."
+        help="This account will be used to value price difference "
+             "between purchase price and accounting cost."
     )

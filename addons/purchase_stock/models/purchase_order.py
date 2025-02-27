@@ -11,6 +11,7 @@ from odoo.tools.misc import OrderedSet
 
 
 class PurchaseOrder(models.Model):
+    "Inherit PurchaseOrder"
     _inherit = "purchase.order"
 
 
@@ -20,16 +21,17 @@ class PurchaseOrder(models.Model):
 
 
     on_time_rate = fields.Float(
-        related="partner_id.on_time_rate", compute_sudo=False
+        related="partner_id.on_time_rate",
+        compute_sudo=False,
     )
     dest_address_id = fields.Many2one(
-        "res.partner",
+        comodel_name="res.partner",
         compute="_compute_dest_address_id", store=True,
         readonly=False,
     )
     picking_type_id = fields.Many2one(
-        "stock.picking.type",
-        "Deliver To",
+        comodel_name="stock.picking.type",
+        string="Deliver To",
         required=True,
         default=_default_picking_type,
         domain="['|', ('warehouse_id', '=', False), ('warehouse_id.company_id', '=', company_id)]",
@@ -42,23 +44,24 @@ class PurchaseOrder(models.Model):
         help="Technical field used to display the Drop Ship Address",
     )
     group_id = fields.Many2one(
-        "procurement.group",
+        comodel_name="procurement.group",
         string="Procurement Group",
         copy=False,
     )
     incoterm_location = fields.Char(string="Incoterm Location")
     picking_ids = fields.Many2many(
-        "stock.picking",
+        comodel_name="stock.picking",
         string="Receptions",
         compute="_compute_picking_ids", store=True,
-        copy=False,)
+        copy=False,
+    )
     incoming_picking_count = fields.Integer(
-        "Incoming Shipment count",
+        string="Incoming Shipment count",
         compute="_compute_incoming_picking_count",
     )
     is_shipped = fields.Boolean(compute="_compute_is_shipped")
     effective_date = fields.Datetime(
-        "Arrival",
+        string="Arrival",
         compute="_compute_effective_date", store=True,
         copy=False,
         help="Completion date of the first receipt order."
@@ -105,6 +108,7 @@ class PurchaseOrder(models.Model):
                 if to_log:
                     order._log_decrease_ordered_quantity(to_log)
         return res
+
 
     # --------------------------------------------------
     # COMPUTE METHODS
@@ -208,8 +212,10 @@ class PurchaseOrder(models.Model):
             ))
 
         for order in self:
-            # If the product is MTO, change the procure_method of the closest move to purchase to MTS.
-            # The purpose is to link the po that the user will manually generate to the existing moves's chain.
+            # If the product is MTO, change the procure_method
+            # of the closest move to purchase to MTS.
+            # The purpose is to link the po that the user will
+            # manually generate to the existing moves's chain.
             if order.state in ("draft", "sent", "to approve", "purchase"):
                 order_lines_ids.update(order.order_line_ids.ids)
 
@@ -281,9 +287,13 @@ class PurchaseOrder(models.Model):
         elif len(pickings) == 1:
             res = self.env.ref("stock.view_picking_form", False)
             form_view = [(res and res.id or False, "form")]
-            result["views"] = form_view + [(state, view) for state, view in result.get("views", []) if view != "form"]
+            result["views"] = form_view + [
+                (state, view) for state, view in result.get("views", [])
+                if view != "form"
+            ]
             result["res_id"] = pickings.id
         return result
+
 
     # --------------------------------------------------
     # Business methods
@@ -301,7 +311,10 @@ class PurchaseOrder(models.Model):
             )
             purchase_order_ids = order_line_ids.mapped("order_id")
             move_ids = self.env["stock.move"].concat(*rendering_context.keys())
-            impacted_pickings = move_ids.mapped("picking_id")._get_impacted_pickings(move_ids) - move_ids.mapped("picking_id")
+            impacted_pickings = (
+                move_ids.mapped("picking_id")._get_impacted_pickings(move_ids)
+                - move_ids.mapped("picking_id")
+            )
             values = {
                 "purchase_order_ids": purchase_order_ids,
                 "order_exceptions": order_exceptions.values(),
@@ -319,7 +332,9 @@ class PurchaseOrder(models.Model):
                     continue
 
             filtered_documents[(parent, responsible)] = rendering_context
-        self.env["stock.picking"]._log_activity(_render_note_exception_quantity_po, filtered_documents)
+        self.env["stock.picking"]._log_activity(
+            _render_note_exception_quantity_po, filtered_documents
+        )
 
     def _get_destination_location(self):
         self.ensure_one()
@@ -369,7 +384,8 @@ class PurchaseOrder(models.Model):
             self.group_id = self.group_id.create(self._prepare_group_vals())
         if not self.partner_id.property_stock_supplier.id:
             raise UserError(_(
-                "You must set a Vendor Location for this partner %s", self.partner_id.name
+                "You must set a Vendor Location for this partner %s",
+                self.partner_id.name
             ))
 
         return {
@@ -398,7 +414,10 @@ class PurchaseOrder(models.Model):
         result = super().retrieve_dashboard()
         three_months_ago = fields.Datetime.to_string(fields.Datetime.now() - relativedelta(months=3))
         purchases = self.env["purchase.order"].search_fetch(
-            [("state", "in", ["purchase", "done"]), ("date_planned", ">=", three_months_ago)],
+            [
+                ("state", "in", ["purchase", "done"]),
+                ("date_planned", ">=", three_months_ago)
+            ],
             ["date_planned", "effective_date", "user_id"]
         )
         otd_purchase_count = 0
@@ -414,8 +433,24 @@ class PurchaseOrder(models.Model):
             if po.user_id == self.env.user:
                 my_otd_purchase_count += 1
 
-        result["global"]["otd"] = _("%(otd)s %%", otd=float_repr(otd_purchase_count / len(purchases) * 100 if purchases else 100, precision_digits=0))
-        result["my"]["otd"] = _("%(otd)s %%", otd=float_repr(my_otd_purchase_count / my_purchase_count * 100 if my_purchase_count else 100, precision_digits=0))
+        result["global"]["otd"] = _(
+            "%(otd)s %%",
+            otd=float_repr(
+                otd_purchase_count / len(purchases) * 100
+                if purchases
+                else 100,
+                precision_digits=0
+            )
+        )
+        result["my"]["otd"] = _(
+            "%(otd)s %%",
+            otd=float_repr(
+                my_otd_purchase_count / my_purchase_count * 100
+                if my_purchase_count
+                else 100,
+                precision_digits=0
+            )
+        )
         result["days_to_purchase"] = self.env.company.days_to_purchase
         return result
 
@@ -432,7 +467,9 @@ class PurchaseOrder(models.Model):
                 else:
                     picking = pickings[0]
                 moves = order.order_line_ids._create_stock_moves(picking)
-                moves = moves.filtered(lambda x: x.state not in ("done", "cancel"))._action_confirm()
+                moves = moves.filtered(
+                    lambda x: x.state not in ("done", "cancel")
+                )._action_confirm()
                 seq = 0
                 for move in sorted(moves, key=lambda move: move.date):
                     seq += 5

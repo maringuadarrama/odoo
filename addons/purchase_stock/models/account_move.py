@@ -6,6 +6,7 @@ from odoo.tools.misc import unique
 
 
 class AccountMove(models.Model):
+    "Inherit AccountMove"
     _inherit = "account.move"
 
 
@@ -53,8 +54,7 @@ class AccountMove(models.Model):
         ---------------------------------------------------------------
         xxxxxx Expenses                             | 1.0   |
         ---------------------------------------------------------------
-        :return: A list of Python dictionary to be passed to env["account.move.line"].create.
-        """
+        :return: A list of Python dictionary to be passed to env["account.move.line"].create."""
         lines_vals_list = []
         price_unit_prec = self.env["decimal.precision"].precision_get("Product Price")
 
@@ -182,7 +182,10 @@ class AccountMove(models.Model):
                 continue
 
             lot = lot.with_company(company.id)
-            if not float_is_zero(lot.quantity_svl, precision_rounding=lot.product_id.uom_id.rounding):
+            if not float_is_zero(
+                lot.quantity_svl,
+                precision_rounding=lot.product_id.uom_id.rounding
+            ):
                 lot.sudo().with_context(disable_auto_svl=True).write(
                     {"standard_price": lot.value_svl / lot.quantity_svl}
                 )
