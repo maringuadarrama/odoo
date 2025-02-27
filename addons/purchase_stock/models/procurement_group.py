@@ -5,12 +5,13 @@ from odoo import api, fields, models
 
 
 class ProcurementGroup(models.Model):
+    "Inherit ProcurementGroup"
     _inherit = "procurement.group"
 
 
     purchase_line_ids = fields.One2many(
-        "purchase.order.line",
-        "group_id",
+        comodel_name="purchase.order.line",
+        inverse_name="group_id",
         string="Linked Purchase Order Lines",
         copy=False,
     )

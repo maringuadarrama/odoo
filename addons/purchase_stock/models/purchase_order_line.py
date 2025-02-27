@@ -6,6 +6,7 @@ from odoo.exceptions import UserError
 
 
 class PurchaseOrderLine(models.Model):
+    "Inherit PurchaseOrderLine"
     _inherit = "purchase.order.line"
 
 
@@ -131,8 +132,8 @@ class PurchaseOrderLine(models.Model):
         for line in self:
             if line.qty_received_method == "stock_moves":
                 total = 0.0
-                # In case of a BOM in kit, the products delivered do not correspond to the products in
-                # the PO. Therefore, we can skip them since they will be handled later on.
+                # In case of a BOM in kit, the products delivered do not correspond to the products
+                # in the PO. Therefore, we can skip them since they will be handled later on.
                 for move in line._get_po_line_moves():
                     if move.state == "done":
                         if move._is_purchase_return():
@@ -150,7 +151,11 @@ class PurchaseOrderLine(models.Model):
                             # receive the product physically in our stock. To avoid counting the
                             # quantity twice, we do nothing.
                             pass
-                        elif move.origin_returned_move_id and move.origin_returned_move_id._is_purchase_return() and not move.to_refund:
+                        elif (
+                            move.origin_returned_move_id
+                            and move.origin_returned_move_id._is_purchase_return()
+                            and not move.to_refund
+                        ):
                             pass
                         else:
                             total += move.product_uom._compute_quantity(
@@ -338,11 +343,19 @@ class PurchaseOrderLine(models.Model):
             qty_to_push = self.product_qty - move_dests_initial_demand
 
         if float_compare(qty_to_attach, 0.0, precision_rounding=self.product_uom_id.rounding) > 0:
-            product_uom_qty, product_uom = self.product_uom_id._adjust_uom_quantities(qty_to_attach, self.product_id.uom_id)
-            res.append(self._prepare_stock_move_vals(picking, price_unit, product_uom_qty, product_uom))
+            product_uom_qty, product_uom = self.product_uom_id._adjust_uom_quantities(
+                qty_to_attach, self.product_id.uom_id
+            )
+            res.append(self._prepare_stock_move_vals(
+                picking, price_unit, product_uom_qty, product_uom)
+            )
         if not float_is_zero(qty_to_push, precision_rounding=self.product_uom_id.rounding):
-            product_uom_qty, product_uom = self.product_uom_id._adjust_uom_quantities(qty_to_push, self.product_id.uom_id)
-            extra_move_vals = self._prepare_stock_move_vals(picking, price_unit, product_uom_qty, product_uom)
+            product_uom_qty, product_uom = self.product_uom_id._adjust_uom_quantities(
+                qty_to_push, self.product_id.uom_id
+            )
+            extra_move_vals = self._prepare_stock_move_vals(
+                picking, price_unit, product_uom_qty, product_uom
+            )
             extra_move_vals["move_dest_ids"] = False  # don't attach
             res.append(extra_move_vals)
         return res
@@ -388,7 +401,8 @@ class PurchaseOrderLine(models.Model):
 
     @api.model
     def _prepare_purchase_order_line_from_procurement(
-        self, product_id, product_qty, product_uom, location_dest_id, name, origin, company_id, values, po
+        self, product_id, product_qty, product_uom, location_dest_id,
+        name, origin, company_id, values, po
     ):
         line_description = ""
         if values.get("product_description_variants"):
@@ -492,7 +506,8 @@ class PurchaseOrderLine(models.Model):
 
     def _update_date_planned(self, updated_date):
         move_to_update = self.move_ids.filtered(lambda m: m.state not in ["done", "cancel"])
-        if not self.move_ids or move_to_update:  # Only change the date if there is no move done or none
+        # Only change the date if there is no move done or none
+        if not self.move_ids or move_to_update: 
             super()._update_date_planned(updated_date)
         if move_to_update:
             self._update_move_date_deadline(updated_date)

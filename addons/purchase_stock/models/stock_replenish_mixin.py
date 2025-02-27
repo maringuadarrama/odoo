@@ -4,6 +4,7 @@ from odoo import api, fields, models
 
 
 class StockReplenishMixin(models.AbstractModel):
+    "Inherit StockReplenishMixin"
     _inherit = "stock.replenish.mixin"
 
 

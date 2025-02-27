@@ -4,6 +4,7 @@ from odoo import models
 
 
 class StockReturnPicking(models.TransientModel):
+    "Inherit StockReturnPicking"
     _inherit = "stock.return.picking"
 
 
@@ -18,4 +19,3 @@ class StockReturnPicking(models.TransientModel):
         if len(picking.move_ids.partner_id) == 1:
             picking.partner_id = picking.move_ids.partner_id
         return picking
-
