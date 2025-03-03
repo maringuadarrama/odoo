@@ -66,7 +66,7 @@ class PurchaseOrder(models.Model):
         help="You can find a vendor by its Name, TIN, Email or Internal Reference.",
     )
     count_partner_supplier_invoice = fields.Integer(
-        related="partner_id.supplier_invoice_count"
+        related="partner_id.count_supplier_invoice"
     )
     dest_address_id = fields.Many2one(
         comodel_name="res.partner",
