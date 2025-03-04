@@ -60,9 +60,9 @@ class ProductProduct(models.Model):
     # COMPUTE METHODS
     # ------------------------------------------------------------
 
-    def _compute_sales_count(self):
+    def _compute_count_sales(self):
         r = {}
-        self.sales_count = 0
+        self.count_sales = 0
         if not self.env.user.has_group("sales_team.group_sale_salesman"):
             return r
         date_from = fields.Date.today() - timedelta(days=365)
@@ -80,9 +80,9 @@ class ProductProduct(models.Model):
             r[product.id] = product_uom_qty
         for product in self:
             if not product.id:
-                product.sales_count = 0.0
+                product.count_sales = 0.0
                 continue
-            product.sales_count = float_round(r.get(product.id, 0), precision_rounding=product.uom_id.rounding)
+            product.count_sales = float_round(r.get(product.id, 0), precision_rounding=product.uom_id.rounding)
         return r
 
     # ------------------------------------------------------------
@@ -109,7 +109,7 @@ class ProductProduct(models.Model):
 
     @api.onchange("type")
     def _onchange_type(self):
-        if self._origin and self.sales_count > 0:
+        if self._origin and self.count_sales > 0:
             return {
                 "warning": {
                     "title": _("Warning"),

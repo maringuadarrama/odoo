@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<odoO noupdate="1">
+<odoo noupdate="1">
 
     <!-- Sale-related subtypes for messaging / Chatter -->
     <record id="mt_order_sent" model="mail.message.subtype">

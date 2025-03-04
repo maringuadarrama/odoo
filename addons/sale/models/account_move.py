@@ -141,7 +141,7 @@ class AccountMove(models.Model):
             )
 
     @api.depends("line_ids.sale_line_ids")
-    def _compute_origin_so_count(self):
+    def _compute_count_sale_order(self):
         for move in self:
             move.count_sale_order = len(move.line_ids.sale_line_ids.order_id)
 

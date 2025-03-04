@@ -117,12 +117,12 @@ class CrmTeam(models.Model):
         teams = self.browse()
         for datum in quotation_data:
             team = self.browse(datum["team_id"])
-            team.quotations_amount = datum["amount_total"]
-            team.quotations_count = datum["count"]
+            team.amount_quotations = datum["amount_total"]
+            team.count_quotations = datum["count"]
             teams |= team
         remaining = self - teams
-        remaining.quotations_amount = 0
-        remaining.quotations_count = 0
+        remaining.amount_quotations = 0
+        remaining.count_quotations = 0
 
     def _compute_sales_to_invoice(self):
         sale_order_data = self.env["sale.order"]._read_group(

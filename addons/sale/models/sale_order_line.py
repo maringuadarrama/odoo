@@ -17,8 +17,25 @@ class SaleOrderLine(models.Model):
     Handles product details, quantities, pricing, discounts, taxes, and subtotal calculations
     associated with each sales order line.
     """
+    _name = 'sale.order.line'
+    _inherit = ['analytic.mixin']
+    _description = "Sales Order Line"
+    _rec_names_search = ['name', 'order_id.name']
+    _order = 'order_id, sequence, id'
+    _check_company_auto = True
 
-    _name = "sale.order.line"
+    # ------------------------------------------------------------
+    # SQL CONSTRAINTS
+    # ------------------------------------------------------------
+
+    _accountable_required_fields = models.Constraint(
+        'CHECK(display_type IS NOT NULL OR is_downpayment OR (product_id IS NOT NULL AND product_uom_id IS NOT NULL))',
+        'Missing required fields on accountable sale order line.',
+    )
+    _non_accountable_null_fields = models.Constraint(
+        'CHECK(display_type IS NULL OR (product_id IS NULL AND price_unit = 0 AND product_uom_qty = 0 AND product_uom_id IS NULL AND customer_lead = 0))',
+        'Forbidden values on non-accountable sale order line',
+    )
 
     # ------------------------------------------------------------
     # FIELDS
