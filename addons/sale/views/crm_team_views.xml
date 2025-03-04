@@ -105,18 +105,18 @@
             </xpath>
 
             <xpath expr="//t[@name='second_options']" position="after">
-                <div class="row" t-if="record.quotations_count.raw_value">
+                <div class="row" t-if="record.count_quotations.raw_value">
                     <a
                         class="col"
                         name="%(action_quotations_salesteams)d"
                         type="action"
                         context="{'search_default_draft': True, 'search_default_sent': True}"
                     >
-                        <field name="quotations_count" class="me-1" />
-                        <t t-if="record.quotations_count.raw_value == 1">Quotation</t>
+                        <field name="count_quotations" class="me-1" />
+                        <t t-if="record.count_quotations.raw_value == 1">Quotation</t>
                         <t t-else="">Quotations</t>
                     </a>
-                    <field class="col-auto text-truncate" name="quotations_amount" widget="monetary" />
+                    <field class="col-auto text-truncate" name="amount_quotations" widget="monetary" />
                 </div>
                 <div class="row" name="orders_to_invoice" t-if="record.count_sales_to_invoice.raw_value">
                     <a class="col-8" name="%(action_orders_to_invoice_salesteams)d" type="action">

@@ -355,7 +355,7 @@ class TestPoSSale(TestPointOfSaleHttpCommon):
         self.main_pos_config.open_ui()
         self.start_pos_tour('PosSettleOrderWithNote', login="accountman")
 
-    def test_order_sales_count(self):
+    def test_order_count_sales(self):
         self.main_pos_config.open_ui()
         current_session = self.main_pos_config.current_session_id
         partner_1 = self.env['res.partner'].create({'name': 'Test Partner'})
@@ -389,7 +389,7 @@ class TestPoSSale(TestPointOfSaleHttpCommon):
 
         current_session.close_session_from_ui()
         self.env.flush_all()
-        self.assertEqual(self.desk_pad.sales_count, 1)
+        self.assertEqual(self.desk_pad.count_sales, 1)
 
     def test_untaxed_invoiced_amount(self):
         """Make sure that orders invoiced in the pos gets their untaxed invoiced

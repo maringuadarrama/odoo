@@ -18,7 +18,7 @@ class ProductTemplate(models.Model):
     # ------------------------------------------------------------
 
     # Float
-    sales_count = fields.Float(string="Sold", compute="_compute_sales_count", digits="Product Unit")
+    count_sales = fields.Float(string="Sold", compute="_compute_count_sales", digits="Product Unit")
 
     # Many2many
     optional_product_ids = fields.Many2many(
@@ -241,11 +241,11 @@ class ProductTemplate(models.Model):
     def _compute_expense_policy(self):
         self.filtered(lambda t: not t.sale_ok).expense_policy = "no"
 
-    @api.depends("product_variant_ids.sales_count")
-    def _compute_sales_count(self):
+    @api.depends("product_variant_ids.count_sales")
+    def _compute_count_sales(self):
         for product in self:
-            product.sales_count = float_round(
-                sum([p.sales_count for p in product.with_context(active_test=False).product_variant_ids]),
+            product.count_sales = float_round(
+                sum([p.count_sales for p in product.with_context(active_test=False).product_variant_ids]),
                 precision_rounding=product.uom_id.rounding,
             )
 
@@ -264,7 +264,7 @@ class ProductTemplate(models.Model):
     @api.onchange("type")
     def _onchange_type(self):
         res = super()._onchange_type()
-        if self._origin and self.sales_count > 0:
+        if self._origin and self.count_sales > 0:
             res["warning"] = {
                 "title": _("Warning"),
                 "message": _("You cannot change the product's type because it is already used in sales orders."),

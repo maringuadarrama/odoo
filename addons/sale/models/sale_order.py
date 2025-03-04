@@ -9,9 +9,9 @@ from odoo.tools import (
     float_is_zero,
     format_amount,
     format_date,
-    html_keep_url,
     is_html_empty,
 )
+from odoo.tools.mail import html_keep_url
 from odoo.tools.translate import _
 
 from odoo.addons.payment import utils as payment_utils
@@ -39,7 +39,7 @@ class SaleOrder(models.Model):
     """
 
     _name = "sale.order"
-    _inherit = ["portal.mixin", "mail.thread", "mail.activity.mixin", "utm.mixin"]
+    _inherit = ["portal.mixin", "mail.thread", "mail.activity.mixin", "mail.activity.mixin", "utm.mixin"]
     _description = "Sales Order"
     _mail_thread_customer = True
     _order = "date_order desc, id desc"
@@ -1072,7 +1072,7 @@ class SaleOrder(models.Model):
             order.has_archived_products = any(not product.active for product in order.order_line.product_id)
 
     @api.depends("order_line.invoice_lines")
-    def __compute_invoices(self):
+    def _compute_invoices(self):
         # The invoice_ids are obtained thanks to the invoice lines of the SO
         # lines, and we also search for possible refunds created directly from
         # existing invoices. This is necessary since such a refund is not
