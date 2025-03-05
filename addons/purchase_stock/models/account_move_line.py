@@ -370,9 +370,9 @@ class AccountMoveLine(models.Model):
             out_qty_to_invoice = product_uom._compute_quantity(
                 out_qty_to_invoice, self.product_uom_id
             )
-            if (
-                not self.currency_id.is_zero(unit_valuation_difference_curr * out_qty_to_invoice)
-                and self.product_id.valuation == 'real_time'
+            if not float_is_zero(
+                unit_valuation_difference_curr * out_qty_to_invoice,
+                precision_rounding=self.currency_id.rounding
             ):
                 aml_vals_list += self._prepare_pdiff_aml_vals(
                     out_qty_to_invoice, unit_valuation_difference_curr
