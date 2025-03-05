@@ -23,7 +23,7 @@
         <br/>
         <t t-set="documents" t-value="object._get_product_documents()"/>
         <t t-if="documents">
-            <br/> 
+            <br/>
             <t t-if="len(documents)>1">
                 Here are some additional documents that may interest you:
             </t>
@@ -117,7 +117,7 @@
         <br/>
         <t t-set="documents" t-value="object._get_product_documents()"/>
         <t t-if="documents">
-            <br/> 
+            <br/>
             <t t-if="len(documents)>1">
                 Here are some additional documents that may interest you:
             </t>
@@ -219,7 +219,7 @@
                         <td style="width: 150px;">
                             <img t-attf-src="/web/image/product.product/{{ line.product_id.id }}/image_128" style="width: 64px; height: 64px; object-fit: contain;" alt="Product image"></img>
                         </td>
-                        <td align="left" t-out="line.product_id.name or ''">	Taking care of Trees Course</td>
+                        <td align="left" t-out="line.product_id.name or ''">    Taking care of Trees Course</td>
                         <td width="15%" align="center" t-out="line.product_uom_qty or ''">1</td>
                         <td width="20%" align="right"><span style="font-weight:bold; white-space: nowrap;">
                         <t t-if="object.website_id.show_line_subtotals_tax_selection == 'tax_excluded'">

@@ -1,31 +1,29 @@
 import logging
 
 from odoo import SUPERUSER_ID, _, api, fields, models
-from odoo.fields import Command
 from odoo.exceptions import RedirectWarning, UserError
+from odoo.fields import Command
 from odoo.tools import SQL
 
 _logger = logging.getLogger(__name__)
 
 
 class SaleOrder(models.Model):
-    _inherit = 'sale.order'
+    _inherit = "sale.order"
 
     # ------------------------------------------------------------
     # FIELDS
     # ------------------------------------------------------------
 
     # Many2many
-    duplicated_order_ids = fields.Many2many(
-        comodel_name='sale.order',
-        compute='_compute_duplicated_order_ids')
+    duplicated_order_ids = fields.Many2many(comodel_name="sale.order", compute="_compute_duplicated_order_ids")
 
     # ------------------------------------------------------------
     # HELPERS
     # ------------------------------------------------------------
 
     def _fetch_duplicate_orders(self):
-        """ Fectch duplicated orders.
+        """Fectch duplicated orders.
 
         :return: Dictionary mapping order to it's related duplicated orders.
         :rtype: dict
@@ -35,16 +33,18 @@ class SaleOrder(models.Model):
             return {}
 
         used_fields = (
-            'company_id',
-            'partner_id',
-            'client_order_ref',
-            'origin',
-            'date_order',
-            'state',
+            "company_id",
+            "partner_id",
+            "client_order_ref",
+            "origin",
+            "date_order",
+            "state",
         )
-        self.env['sale.order'].flush_model(used_fields)
+        self.env["sale.order"].flush_model(used_fields)
 
-        result = self.env.execute_query(SQL("""
+        result = self.env.execute_query(
+            SQL(
+                """
             SELECT
                 sale_order.id AS order_id,
                 array_agg(duplicate_order.id) AS duplicate_ids
@@ -63,15 +63,13 @@ class SaleOrder(models.Model):
              WHERE sale_order.id IN %(orders)s
              GROUP BY sale_order.id
             """,
-            orders=tuple(orders.ids),
-        ))
-        return {
-            order_id: set(duplicate_ids)
-            for order_id, duplicate_ids in result
-        }
-        
+                orders=tuple(orders.ids),
+            )
+        )
+        return {order_id: set(duplicate_ids) for order_id, duplicate_ids in result}
+
     def _get_order_edi_decoder(self, file_data):
-        """ To be extended with decoding capabilities of order data from file data.
+        """To be extended with decoding capabilities of order data from file data.
 
         :returns:  Function to be later used to import the file.
                    Function' args:
@@ -79,7 +77,7 @@ class SaleOrder(models.Model):
                    - file_data: attachemnt information / value
                    returns True if was able to process the order
         """
-        if file_data['type'] in ('pdf', 'binary'):
+        if file_data["type"] in ("pdf", "binary"):
             return lambda *args: False
         return
 
@@ -87,7 +85,7 @@ class SaleOrder(models.Model):
     # COMPUTE METHODS
     # ------------------------------------------------------------
 
-    @api.depends('client_order_ref', 'date_order', 'origin', 'partner_id')
+    @api.depends("client_order_ref", "date_order", "origin", "partner_id")
     def _compute_duplicated_order_ids(self):
         order_to_duplicate_orders = self._fetch_duplicate_orders()
         for order in self:
@@ -101,11 +99,11 @@ class SaleOrder(models.Model):
     def action_open_business_doc(self):
         self.ensure_one()
         return {
-            'name': _("Order"),
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order',
-            'res_id': self.id,
-            'views': [(False, 'form')],
+            "name": _("Order"),
+            "type": "ir.actions.act_window",
+            "res_model": "sale.order",
+            "res_id": self.id,
+            "views": [(False, "form")],
         }
 
     # ------------------------------------------------------------
@@ -113,7 +111,7 @@ class SaleOrder(models.Model):
     # ------------------------------------------------------------
 
     def _extend_with_attachments(self, attachment):
-        """ Main entry point to extend/enhance order with attachment.
+        """Main entry point to extend/enhance order with attachment.
 
         :param attachment: A recordset of ir.attachment.
         :returns: None
@@ -131,42 +129,44 @@ class SaleOrder(models.Model):
             except Exception:
                 message = _(
                     "Error importing attachment '%(file_name)s' as order (decoder=%(decoder)s)",
-                    file_name=file_data['filename'],
+                    file_name=file_data["filename"],
                     decoder=decoder.__name__,
                 )
                 self.with_user(SUPERUSER_ID).message_post(body=message)
                 _logger.exception(message)
 
-        if file_data.get('on_close'):
-            file_data['on_close']()
+        if file_data.get("on_close"):
+            file_data["on_close"]()
         return True
 
     @api.model
     def _create_order_from_attachment(self, attachment_ids):
-        """ Create the sale orders from given attachment_ids and fill data by extracting detail
+        """Create the sale orders from given attachment_ids and fill data by extracting detail
         from attachments and return generated orders.
 
         :param list attachment_ids: List of attachments process.
         :return: Recordset of order.
         """
-        attachments = self.env['ir.attachment'].browse(attachment_ids)
+        attachments = self.env["ir.attachment"].browse(attachment_ids)
         if not attachments:
             raise UserError(_("No attachment was provided"))
 
         orders = self.browse()
         for attachment in attachments:
-            order = self.create({
-                'partner_id': self.env.user.partner_id.id,
-            })
+            order = self.create(
+                {
+                    "partner_id": self.env.user.partner_id.id,
+                }
+            )
             order._extend_with_attachments(attachment)
             orders |= order
             order.message_post(attachment_ids=attachment.ids)
-            attachment.write({'res_model': self._name, 'res_id': order.id})
+            attachment.write({"res_model": self._name, "res_id": order.id})
 
         return orders
 
     def create_document_from_attachment(self, attachment_ids):
-        """ Create the sale orders from given attachment_ids and redirect newly create order view.
+        """Create the sale orders from given attachment_ids and redirect newly create order view.
 
         :param list attachment_ids: List of attachments process.
         :return: An action redirecting to related sale order view.
