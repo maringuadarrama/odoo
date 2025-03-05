@@ -18,13 +18,31 @@ class StockPickingBatch(models.Model):
     vehicle_volume_capacity = fields.Float(string="Max Volume (m³)",
                               related='vehicle_category_id.volume_capacity')
     volume_uom_name = fields.Char(string='Volume unit of measure label', compute='_compute_volume_uom_name')
-    driver_id = fields.Many2one(
-        'res.partner', compute="_compute_driver_id", string="Driver", store=True, readonly=False)
     used_weight_percentage = fields.Float(
         string="Weight %", compute='_compute_capacity_percentage')
     used_volume_percentage = fields.Float(
         string="Volume %", compute='_compute_capacity_percentage')
     end_date = fields.Datetime('End Date', default=fields.Datetime.now)
+    driver_id = fields.Many2one(
+        'hr.employee', compute="_compute_driver_id", string="Driver", store=True, readonly=False)
+    vehicle_type = fields.Selection(
+        related="vehicle_id.vehicle_type", store=True,
+    )
+    odometer_uom_id = fields.Many2one(
+        comodel_name="uom.uom",
+        string="Odometer Unit",
+        compute="_compute_odometer_uom_id",
+        store=True,
+        readonly=True,
+        help="Odometer measure of the vehicle",
+    )
+    odometer = fields.Float(
+        string="Odometer",
+        compute="_compute_odometer",
+        store=True,
+        readonly=True,
+        help="Odometer measure of the vehicle",
+    )
 
     # Compute
     @api.depends('vehicle_id')
@@ -49,6 +67,16 @@ class StockPickingBatch(models.Model):
     def _compute_driver_id(self):
         for rec in self:
             rec.driver_id = rec.vehicle_id.driver_id
+
+    @api.depends('vehicle_id')
+    def _compute_odometer_uom_id(self):
+        for rec in self:
+            rec.odometer_uom_id = rec.vehicle_id.odometer_uom_id
+
+    @api.depends('vehicle_id')
+    def _compute_odometer(self):
+        for rec in self:
+            rec.odometer = rec.vehicle_id.odometer
 
     @api.depends('estimated_shipping_weight', 'vehicle_category_id.weight_capacity',
                  'estimated_shipping_volume', 'vehicle_category_id.volume_capacity')
