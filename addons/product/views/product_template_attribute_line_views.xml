@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-
     <record id="product_template_attribute_line_view_tree" model="ir.ui.view">
         <field name="name">product.template.attribute.line.view.list</field>
         <field name="model">product.template.attribute.line</field>
@@ -16,4 +15,27 @@
         </field>
     </record>
 
+    <record id="product_template_attribute_line_form" model="ir.ui.view">
+        <field name="name">product.template.attribute.line.form</field>
+        <field name="model">product.template.attribute.line</field>
+        <field name="mode">primary</field>
+        <field name="priority" eval="8" />
+        <field name="arch" type="xml">
+            <form string="Product Attribute and Values">
+                <group name="main_field">
+                    <label for="attribute_id" string="Attribute Name" />
+                    <field name="attribute_id" nolabel="1" />
+                    <field name="value_ids" widget="one2many">
+                        <list string="Values">
+                            <field name="name" />
+                            <field name="html_color" />
+                        </list>
+                        <form string="Values">
+                            <field name="name" />
+                        </form>
+                    </field>
+                </group>
+            </form>
+        </field>
+    </record>
 </odoo>

@@ -37,7 +37,7 @@ class StockPutawayRule(models.Model):
         if self.env.context.get('active_model') == 'product.template' and self.env.context.get('active_id'):
             product_template = self.env['product.template'].browse(self.env.context.get('active_id'))
             product_template = product_template.exists()
-            if product_template.product_variant_count == 1:
+            if product_template.count_product_variant == 1:
                 return product_template.product_variant_id
         elif self.env.context.get('active_model') == 'product.product':
             return self.env.context.get('active_id')

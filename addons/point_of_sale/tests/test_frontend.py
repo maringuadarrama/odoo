@@ -1217,7 +1217,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         # Check that two product variant are created
-        self.assertEqual(product_2_template.product_variant_count, 2)
+        self.assertEqual(product_2_template.count_product_variant, 2)
         product_2_template.product_variant_ids[0].write({'barcode': '0100201'})
         product_2_template.product_variant_ids[1].write({'barcode': '0100202'})
 

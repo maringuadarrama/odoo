@@ -22,15 +22,15 @@
             </xpath>
             <group name="purchase" position="before">
                 <field name="seller_ids"
-                    readonly="product_variant_count &gt; 1"
+                    readonly="count_product_variant &gt; 1"
                     nolabel="1"
                     context="{'default_product_tmpl_id': id, 'default_price': standard_price, 'product_template_invisible_variant': True, 'list_view_ref':'purchase.product_supplierinfo_tree_view2'}"
-                    invisible="product_variant_count &gt; 1" />
+                    invisible="count_product_variant &gt; 1" />
                 <field name="variant_seller_ids"
-                    readonly="product_variant_count &lt;= 1"
+                    readonly="count_product_variant &lt;= 1"
                     nolabel="1"
                     context="{'model': 'product.template', 'active_id': id, 'list_view_ref':'purchase.product_supplierinfo_tree_view2'}"
-                    invisible="product_variant_count &lt;= 1" />
+                    invisible="count_product_variant &lt;= 1" />
             </group>
             <group name="bill" position="attributes">
                 <attribute name="groups">purchase.group_purchase_manager</attribute>
