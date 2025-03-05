@@ -155,7 +155,11 @@ class AccountMoveLine(models.Model):
         # we use this to get an order between posted AML and layers
         history = [(layer.create_date, False, layer) for layer in layers]
         am_state_field = self.env["ir.model.fields"].search(
-            [("model", "=", "account.move"), ("name", "=", "state")], limit=1
+            [
+                ("model", "=", "account.move"),
+                ("name", "=", "state")
+            ],
+            limit=1
         )
         for aml in po_line.invoice_lines:
             move = aml.move_id
@@ -370,9 +374,9 @@ class AccountMoveLine(models.Model):
             out_qty_to_invoice = product_uom._compute_quantity(
                 out_qty_to_invoice, self.product_uom_id
             )
-            if not float_is_zero(
-                unit_valuation_difference_curr * out_qty_to_invoice,
-                precision_rounding=self.currency_id.rounding
+            if (
+                not self.currency_id.is_zero(unit_valuation_difference_curr * out_qty_to_invoice)
+                and self.product_id.valuation == "real_time"
             ):
                 aml_vals_list += self._prepare_pdiff_aml_vals(
                     out_qty_to_invoice, unit_valuation_difference_curr
