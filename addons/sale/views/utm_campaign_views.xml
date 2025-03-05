@@ -15,12 +15,12 @@
                         <field name="invoiced_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                     </span>
                 </a>
-                <a t-if="record.quotation_count" href="#" title="Quotations" role="button"
+                <a t-if="record.count_quotation" href="#" title="Quotations" role="button"
                     groups="sales_team.group_sale_salesman" type="object" name="action_redirect_to_quotations"
                     class="btn-outline-primary rounded-pill me-1 order-2">
                     <span class="badge">
                         <i class="fa fa-fw fa-money me-1" aria-label="Quotations" role="img"/>
-                        <field name="quotation_count"/>
+                        <field name="count_quotation"/>
                     </span>
                 </a>
             </xpath>
@@ -39,7 +39,7 @@
                 </button>
                 <button name="action_redirect_to_quotations"
                     type="object" class="oe_stat_button order-2" icon="fa-money" groups="sales_team.group_sale_salesman">
-                    <field name="quotation_count" widget="statinfo" string="Quotations"/>
+                    <field name="count_quotation" widget="statinfo" string="Quotations"/>
                 </button>
             </xpath>
         </field>

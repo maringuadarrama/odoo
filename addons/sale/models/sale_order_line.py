@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from collections import defaultdict
 from datetime import timedelta
 
@@ -12,223 +10,58 @@ from odoo.osv import expression
 from odoo.tools import float_compare, float_is_zero, format_date, groupby
 from odoo.tools.translate import _
 
-
 class SaleOrderLine(models.Model):
+    """Manages an individual line item within a sales order.
+    
+    Handles product details, quantities, pricing, discounts, taxes, and subtotal calculations 
+    associated with each sales order line.
+    """
     _name = 'sale.order.line'
-    _inherit = ['analytic.mixin']
-    _description = "Sales Order Line"
-    _rec_names_search = ['name', 'order_id.name']
-    _order = 'order_id, sequence, id'
-    _check_company_auto = True
 
-    _accountable_required_fields = models.Constraint(
-        'CHECK(display_type IS NOT NULL OR is_downpayment OR (product_id IS NOT NULL AND product_uom_id IS NOT NULL))',
-        'Missing required fields on accountable sale order line.',
-    )
-    _non_accountable_null_fields = models.Constraint(
-        'CHECK(display_type IS NULL OR (product_id IS NULL AND price_unit = 0 AND product_uom_qty = 0 AND product_uom_id IS NULL AND customer_lead = 0))',
-        'Forbidden values on non-accountable sale order line',
-    )
+    # ------------------------------------------------------------
+    # FIELDS 
+    # ------------------------------------------------------------
+    
+    # Char
+    virtual_id = fields.Char(help="Uniquely identifies this sale order line before the record is saved in the DB, i.e. before the record has an `id`.")
+    linked_virtual_id = fields.Char(help="Links this sale order line to another sale order line, via its `virtual_id`")
+    selected_combo_items = fields.Char(store=False, help="Local storage of this sale order line's selected combo items, iff this is a combo product line.")
 
-    # Fields are ordered according by tech & business logics
-    # and computed fields are defined after their dependencies.
-    # This reduces execution stacks depth when precomputing fields
-    # on record creation (and is also a good ordering logic imho)
-
-    order_id = fields.Many2one(
-        comodel_name='sale.order',
-        string="Order Reference",
-        required=True, ondelete='cascade', index=True, copy=False)
+    # Integer
     sequence = fields.Integer(string="Sequence", default=10)
 
-    # Order-related fields
-    company_id = fields.Many2one(
-        related='order_id.company_id',
-        store=True, index=True, precompute=True)
-    currency_id = fields.Many2one(
-        related='order_id.currency_id',
-        depends=['order_id.currency_id'],
-        store=True, precompute=True)
-    order_partner_id = fields.Many2one(
-        related='order_id.partner_id',
-        string="Customer",
-        store=True, index=True, precompute=True)
-    salesman_id = fields.Many2one(
-        related='order_id.user_id',
-        string="Salesperson",
-        store=True, precompute=True)
-    state = fields.Selection(
-        related='order_id.state',
-        string="Order Status",
-        copy=False, store=True, precompute=True)
-    tax_country_id = fields.Many2one(related='order_id.tax_country_id')
-
-    # Fields specifying custom line logic
-    display_type = fields.Selection(
-        selection=[
-            ('line_section', "Section"),
-            ('line_note', "Note"),
-        ],
-        default=False)
-    is_configurable_product = fields.Boolean(
-        string="Is the product configurable?",
-        related='product_template_id.has_configurable_attributes',
-        depends=['product_id'])
-    is_downpayment = fields.Boolean(
-        string="Is a down payment",
-        help="Down payments are made when creating invoices from a sales order."
-            " They are not copied when duplicating a sales order.")
-    is_expense = fields.Boolean(
-        string="Is expense",
-        help="Is true if the sales order line comes from an expense or a vendor bills")
-
-    # Generic configuration fields
-    product_id = fields.Many2one(
-        comodel_name='product.product',
-        string="Product",
-        change_default=True, ondelete='restrict', index='btree_not_null',
-        domain="[('sale_ok', '=', True)]")
-    product_template_id = fields.Many2one(
-        string="Product Template",
-        comodel_name='product.template',
-        compute='_compute_product_template_id',
-        readonly=False,
-        search='_search_product_template_id',
-        # previously related='product_id.product_tmpl_id'
-        # not anymore since the field must be considered editable for product configurator logic
-        # without modifying the related product_id when updated.
-        domain=[('sale_ok', '=', True)])
-
-    product_template_attribute_value_ids = fields.Many2many(
-        related='product_id.product_template_attribute_value_ids',
-        depends=['product_id'])
-    product_custom_attribute_value_ids = fields.One2many(
-        comodel_name='product.attribute.custom.value', inverse_name='sale_order_line_id',
-        string="Custom Values",
-        compute='_compute_custom_attribute_values',
-        store=True, readonly=False, precompute=True, copy=True)
-    # M2M holding the values of product.attribute with create_variant field set to 'no_variant'
-    # It allows keeping track of the extra_price associated to those attribute values and add them to the SO line description
-    product_no_variant_attribute_value_ids = fields.Many2many(
-        comodel_name='product.template.attribute.value',
-        string="Extra Values",
-        compute='_compute_no_variant_attribute_values',
-        store=True, readonly=False, precompute=True, ondelete='restrict')
-    is_product_archived = fields.Boolean(compute="_compute_is_product_archived")
-
-    name = fields.Text(
-        string="Description",
-        compute='_compute_name',
-        store=True, readonly=False, required=True, precompute=True)
-
+    # Float
     product_uom_qty = fields.Float(
         string="Quantity",
         compute='_compute_product_uom_qty',
         digits='Product Unit', default=1.0,
         store=True, readonly=False, required=True, precompute=True)
-    product_uom_id = fields.Many2one(
-        comodel_name='uom.uom',
-        string="Unit",
-        compute='_compute_product_uom_id',
-        domain='[("id", "in", allowed_uom_ids)]',
-        store=True, readonly=False, precompute=True, ondelete='restrict')
-    allowed_uom_ids = fields.Many2many('uom.uom', compute='_compute_allowed_uom_ids')
-    linked_line_id = fields.Many2one(
-        string="Linked Order Line",
-        comodel_name='sale.order.line',
-        ondelete='cascade',
-        domain="[('order_id', '=', order_id)]",
-        copy=False,
-        index=True,
-    )
-    linked_line_ids = fields.One2many(
-        string="Linked Order Lines", comodel_name='sale.order.line', inverse_name='linked_line_id',
-    )
-    # Uniquely identifies this sale order line before the record is saved in the DB, i.e. before the
-    # record has an `id`.
-    virtual_id = fields.Char()
-    # Links this sale order line to another sale order line, via its `virtual_id`.
-    linked_virtual_id = fields.Char()
-    # Local storage of this sale order line's selected combo items, iff this is a combo product
-    # line.
-    selected_combo_items = fields.Char(store=False)
-    combo_item_id = fields.Many2one(comodel_name='product.combo.item')
-
-    # Pricing fields
-    tax_ids = fields.Many2many(
-        comodel_name='account.tax',
-        string="Taxes",
-        compute='_compute_tax_ids',
-        store=True, readonly=False, precompute=True,
-        context={'active_test': False},
-        check_company=True)
-
-    # Tech field caching pricelist rule used for price & discount computation
-    pricelist_item_id = fields.Many2one(
-        comodel_name='product.pricelist.item',
-        compute='_compute_pricelist_item_id')
-
     price_unit = fields.Float(
         string="Unit Price",
         compute='_compute_price_unit',
         digits='Product Price',
         store=True, readonly=False, required=True, precompute=True)
     technical_price_unit = fields.Float()
-
     discount = fields.Float(
         string="Discount (%)",
         compute='_compute_discount',
         digits='Discount',
         store=True, readonly=False, precompute=True)
-
-    price_subtotal = fields.Monetary(
-        string="Subtotal",
-        compute='_compute_amount',
-        store=True, precompute=True)
     price_tax = fields.Float(
         string="Total Tax",
         compute='_compute_amount',
         store=True, precompute=True)
-    price_total = fields.Monetary(
-        string="Total",
-        compute='_compute_amount',
-        store=True, precompute=True)
-    price_reduce_taxexcl = fields.Monetary(
-        string="Price Reduce Tax excl",
-        compute='_compute_price_reduce_taxexcl',
-        store=True, precompute=True)
-    price_reduce_taxinc = fields.Monetary(
-        string="Price Reduce Tax incl",
-        compute='_compute_price_reduce_taxinc',
-        store=True, precompute=True)
-
     customer_lead = fields.Float(
         string="Lead Time",
         compute='_compute_customer_lead',
         store=True, readonly=False, required=True, precompute=True,
         help="Number of days between the order confirmation and the shipping of the products to the customer")
-
-    qty_delivered_method = fields.Selection(
-        selection=[
-            ('manual', "Manual"),
-            ('analytic', "Analytic From Expenses"),
-        ],
-        string="Method to update delivered qty",
-        compute='_compute_qty_delivered_method',
-        store=True, precompute=True,
-        help="According to product configuration, the delivered quantity can be automatically computed by mechanism:\n"
-             "  - Manual: the quantity is set manually on the line\n"
-             "  - Analytic From expenses: the quantity is the quantity sum from posted expenses\n"
-             "  - Timesheet: the quantity is the sum of hours recorded on tasks linked to this sale line\n"
-             "  - Stock Moves: the quantity comes from confirmed pickings\n")
     qty_delivered = fields.Float(
         string="Delivery Quantity",
         compute='_compute_qty_delivered',
         default=0.0,
         digits='Product Unit',
         store=True, readonly=False, copy=False)
-
-    # Analytic & Invoicing fields
     qty_invoiced = fields.Float(
         string="Invoiced Quantity",
         compute='_compute_qty_invoiced',
@@ -244,15 +77,50 @@ class SaleOrderLine(models.Model):
         digits='Product Unit',
         store=True)
 
-    analytic_line_ids = fields.One2many(
-        comodel_name='account.analytic.line', inverse_name='so_line',
-        string="Analytic lines")
-
-    invoice_lines = fields.Many2many(
-        comodel_name='account.move.line',
-        relation='sale_order_line_invoice_rel', column1='order_line_id', column2='invoice_line_id',
-        string="Invoice Lines",
-        copy=False)
+    # Boolean
+    is_configurable_product = fields.Boolean(
+        string="Is the product configurable?",
+        related='product_template_id.has_configurable_attributes',
+        depends=['product_id'])
+    is_downpayment = fields.Boolean(
+        string="Is a down payment",
+        help="Down payments are made when creating invoices from a sales order."
+            " They are not copied when duplicating a sales order.")
+    is_expense = fields.Boolean(
+        string="Is expense",
+        help="Is true if the sales order line comes from an expense or a vendor bills")
+    is_product_archived = fields.Boolean(compute="_compute_is_product_archived")
+    product_updatable = fields.Boolean(
+        string="Can Edit Product",
+        compute='_compute_product_updatable')
+    product_uom_readonly = fields.Boolean(
+        compute='_compute_product_uom_readonly') 
+    
+    # Selection
+    state = fields.Selection(
+        related='order_id.state',
+        string="Order Status",
+        copy=False, store=True, precompute=True)
+    display_type = fields.Selection(
+        selection=[
+            ('line_section', "Section"),
+            ('line_note', "Note"),
+        ],
+        default=False,
+        help="It specify custom line logic, whether is a product or just a text")
+    qty_delivered_method = fields.Selection(
+        selection=[
+            ('manual', "Manual"),
+            ('analytic', "Analytic From Expenses"),
+        ],
+        string="Method to update delivered qty",
+        compute='_compute_qty_delivered_method',
+        store=True, precompute=True,
+        help="According to product configuration, the delivered quantity can be automatically computed by mechanism:\n"
+             "  - Manual: the quantity is set manually on the line\n"
+             "  - Analytic From expenses: the quantity is the quantity sum from posted expenses\n"
+             "  - Timesheet: the quantity is the sum of hours recorded on tasks linked to this sale line\n"
+             "  - Stock Moves: the quantity comes from confirmed pickings\n")
     invoice_status = fields.Selection(
         selection=[
             ('upselling', "Upselling Opportunity"),
@@ -263,7 +131,142 @@ class SaleOrderLine(models.Model):
         string="Invoice Status",
         compute='_compute_invoice_status',
         store=True)
+    product_type = fields.Selection(
+        related='product_id.type',
+        depends=['product_id'],
+        readonly=True,
+        help="Technical computed field for UX purposes (hide/make fields readonly, invisible, ...)")
+    service_tracking = fields.Selection(
+        related='product_id.service_tracking',
+        depends=['product_id'],
+        readonly=True,
+        help="Technical computed field for UX purposes (hide/make fields readonly, invisible, ...)")
+    tax_calculation_rounding_method = fields.Selection(
+        related='company_id.tax_calculation_rounding_method',
+        string='Tax calculation rounding method',
+        readonly=True,
+        help="Technical computed field for UX purposes (hide/make fields readonly, invisible, ...)")
+    company_price_include = fields.Selection(
+        related="company_id.account_price_include",
+        readonly=True,
+        help="Technical computed field for UX purposes (hide/make fields readonly, invisible, ...)")
+    
+    # Text
+    name = fields.Text(
+        string="Description",
+        compute='_compute_name',
+        store=True, readonly=False, required=True, precompute=True)
 
+    # Many2one
+    order_id = fields.Many2one(
+        comodel_name='sale.order',
+        string="Order Reference",
+        required=True, ondelete='cascade', index=True, copy=False)
+    company_id = fields.Many2one(
+        related='order_id.company_id',
+        store=True, index=True, precompute=True)
+    currency_id = fields.Many2one(
+        related='order_id.currency_id',
+        depends=['order_id.currency_id'],
+        store=True, precompute=True)
+    order_partner_id = fields.Many2one(
+        related='order_id.partner_id',
+        string="Customer",
+        store=True, index=True, precompute=True)
+    salesman_id = fields.Many2one(
+        related='order_id.user_id',
+        string="Salesperson",
+        store=True, precompute=True)
+    tax_country_id = fields.Many2one(related='order_id.tax_country_id')
+    product_id = fields.Many2one(
+        comodel_name='product.product',
+        string="Product",
+        change_default=True, ondelete='restrict', index='btree_not_null',
+        domain="[('sale_ok', '=', True)]")
+    product_template_id = fields.Many2one(
+        string="Product Template",
+        comodel_name='product.template',
+        compute='_compute_product_template_id',
+        readonly=False,
+        search='_search_product_template_id',
+        # previously related='product_id.product_tmpl_id'
+        # not anymore since the field must be considered editable for product configurator logic
+        # without modifying the related product_id when updated.
+        domain=[('sale_ok', '=', True)])
+    product_uom_id = fields.Many2one(
+        comodel_name='uom.uom',
+        string="Unit",
+        compute='_compute_product_uom_id',
+        domain='[("id", "in", allowed_uom_ids)]',
+        store=True, readonly=False, precompute=True, ondelete='restrict')
+    linked_line_id = fields.Many2one(
+        string="Linked Order Line",
+        comodel_name='sale.order.line',
+        ondelete='cascade',
+        domain="[('order_id', '=', order_id)]",
+        copy=False,
+        index=True,
+    )
+    combo_item_id = fields.Many2one(comodel_name='product.combo.item')
+    pricelist_item_id = fields.Many2one(
+        comodel_name='product.pricelist.item',
+        compute='_compute_pricelist_item_id',
+        help="Tech field caching pricelist rule used for price & discount computation")
+
+    # One2many
+    product_custom_attribute_value_ids = fields.One2many(
+        comodel_name='product.attribute.custom.value', inverse_name='sale_order_line_id',
+        string="Custom Values",
+        compute='_compute_custom_attribute_values',
+        store=True, readonly=False, precompute=True, copy=True)
+    linked_line_ids = fields.One2many(
+        string="Linked Order Lines", comodel_name='sale.order.line', inverse_name='linked_line_id',
+    )
+    analytic_line_ids = fields.One2many(
+        comodel_name='account.analytic.line', inverse_name='so_line',
+        string="Analytic lines")
+
+    # Many2many
+    product_template_attribute_value_ids = fields.Many2many(
+        related='product_id.product_template_attribute_value_ids',
+        depends=['product_id'])
+    product_no_variant_attribute_value_ids = fields.Many2many(
+        comodel_name='product.template.attribute.value',
+        string="Extra Values",
+        compute='_compute_no_variant_attribute_values',
+        store=True, readonly=False, precompute=True, ondelete='restrict')
+    allowed_uom_ids = fields.Many2many('uom.uom', compute='_compute_allowed_uom_ids')
+    tax_ids = fields.Many2many(
+        comodel_name='account.tax',
+        string="Taxes",
+        compute='_compute_tax_ids',
+        store=True, readonly=False, precompute=True,
+        context={'active_test': False},
+        check_company=True,
+        help="Is a pricing purpose field to specify taxes applied on the line.")
+    invoice_lines = fields.Many2many(
+        comodel_name='account.move.line',
+        relation='sale_order_line_invoice_rel', column1='order_line_id', column2='invoice_line_id',
+        string="Invoice Lines",
+        copy=False)
+
+    # Monetary
+    price_subtotal = fields.Monetary(
+        string="Subtotal",
+        compute='_compute_amount',
+        store=True, precompute=True)
+    price_total = fields.Monetary(
+        string="Total",
+        compute='_compute_amount',
+        store=True, precompute=True)
+    price_reduce_taxexcl = fields.Monetary(
+        string="Price Reduce Tax excl",
+        compute='_compute_price_reduce_taxexcl',
+        store=True, precompute=True)
+    price_reduce_taxinc = fields.Monetary(
+        string="Price Reduce Tax incl",
+        compute='_compute_price_reduce_taxinc',
+        store=True, precompute=True)
     untaxed_amount_invoiced = fields.Monetary(
         string="Untaxed Invoiced Amount",
         compute='_compute_untaxed_amount_invoiced',
@@ -279,88 +282,74 @@ class SaleOrderLine(models.Model):
         string="Un-invoiced Balance",
         compute='_compute_amount_to_invoice')
 
-    # Technical computed fields for UX purposes (hide/make fields readonly, ...)
-    product_type = fields.Selection(related='product_id.type', depends=['product_id'])
-    service_tracking = fields.Selection(related='product_id.service_tracking', depends=['product_id'])
-    product_updatable = fields.Boolean(
-        string="Can Edit Product",
-        compute='_compute_product_updatable')
-    product_uom_readonly = fields.Boolean(
-        compute='_compute_product_uom_readonly')
-    tax_calculation_rounding_method = fields.Selection(
-        related='company_id.tax_calculation_rounding_method',
-        string='Tax calculation rounding method', readonly=True)
-    company_price_include = fields.Selection(related="company_id.account_price_include")
+    # ------------------------------------------------------------
+    # HELPERS 
+    # ------------------------------------------------------------
 
-    #=== COMPUTE METHODS ===#
+    def _is_delivery(self):
+        self.ensure_one()
+        return False
 
-    @api.depends('order_partner_id', 'order_id', 'product_id')
-    def _compute_display_name(self):
-        name_per_id = self._additional_name_per_id()
-        for so_line in self.sudo():
-            name = '{} - {}'.format(so_line.order_id.name, so_line.name and so_line.name.split('\n')[0] or so_line.product_id.name)
-            additional_name = name_per_id.get(so_line.id)
-            if additional_name:
-                name = f'{name} {additional_name}'
-            so_line.display_name = name
-
-    @api.depends('product_id')
-    def _compute_product_template_id(self):
-        for line in self:
-            line.product_template_id = line.product_id.product_tmpl_id
+    def _is_not_sellable_line(self):
+        # True if the line is a computed line (reward, delivery, ...) that user cannot add manually
+        return False
+    
+    def _expected_date(self):
+        self.ensure_one()
+        if self.state == 'sale' and self.order_id.date_order:
+            order_date = self.order_id.date_order
+        else:
+            order_date = fields.Datetime.now()
+        return order_date + timedelta(days=self.customer_lead or 0.0)
 
     def _search_product_template_id(self, operator, value):
         return [('product_id.product_tmpl_id', operator, value)]
 
-    @api.depends('product_id')
-    def _compute_is_product_archived(self):
-        for line in self:
-            line.is_product_archived = line.product_id and not line.product_id.active
+    def has_valued_move_ids(self):
+        return self.move_ids
 
-    @api.depends('product_id')
-    def _compute_custom_attribute_values(self):
-        for line in self:
-            if not line.product_id:
-                line.product_custom_attribute_value_ids = False
-                continue
-            if not line.product_custom_attribute_value_ids:
-                continue
-            valid_values = line.product_id.product_tmpl_id.valid_product_template_attribute_line_ids.product_template_value_ids
-            # remove the is_custom values that don't belong to this template
-            for pacv in line.product_custom_attribute_value_ids:
-                if pacv.custom_product_template_attribute_value_id not in valid_values:
-                    line.product_custom_attribute_value_ids -= pacv
+    def _can_be_invoiced_alone(self):
+        """ Whether a given line is meaningful to invoice alone.
 
-    @api.depends('product_id')
-    def _compute_no_variant_attribute_values(self):
-        for line in self:
-            if not line.product_id:
-                line.product_no_variant_attribute_value_ids = False
-                continue
-            if not line.product_no_variant_attribute_value_ids:
-                continue
-            valid_values = line.product_id.product_tmpl_id.valid_product_template_attribute_line_ids.product_template_value_ids
-            # remove the no_variant attributes that don't belong to this template
-            for ptav in line.product_no_variant_attribute_value_ids:
-                if ptav._origin not in valid_values:
-                    line.product_no_variant_attribute_value_ids -= ptav
+        It is generally meaningless/confusing or even wrong to invoice some specific SOlines
+        (delivery, discounts, rewards, ...) without others, unless they are the only left to invoice
+        in the SO.
+        """
+        self.ensure_one()
+        return self.product_id.id != self.company_id.sale_discount_product_id.id
 
-    @api.depends('product_id', 'linked_line_id', 'linked_line_ids')
-    def _compute_name(self):
-        for line in self:
-            if not line.product_id and not line.is_downpayment:
-                continue
+    def _get_linked_line(self):
+        """ Return the linked line of this line, if any.
 
-            lang = line.order_id._get_lang()
-            if lang != self.env.lang:
-                line = line.with_context(lang=lang)
+        This method relies on either `linked_line_id` or `linked_virtual_id` to retrieve the linked
+        line, depending on whether the linked line is saved in the DB.
+        """
+        self.ensure_one()
+        return self.linked_line_id or (
+            self.linked_virtual_id and self.order_id.order_line.filtered(
+                lambda line: line.virtual_id == self.linked_virtual_id
+            ).ensure_one()
+        ) or self.env['sale.order.line']
 
-            if line.product_id:
-                line.name = line._get_sale_order_line_multiline_description_sale()
-                continue
+    def _get_linked_lines(self):
+        """ Return the linked lines of this line, if any.
 
-            if line.is_downpayment:
-                line.name = line._get_downpayment_description()
+        This method relies on either `linked_line_id` or `linked_virtual_id` to retrieve the linked
+        lines, depending on whether this line is saved in the DB.
+
+        Note: we can't rely on `linked_line_ids` as it will only be populated when both this line
+        and its linked lines are saved in the DB, which we can't ensure.
+        """
+        self.ensure_one()
+        return (
+            self._origin and self.order_id.order_line.filtered(
+                lambda line: line.linked_line_id._origin == self._origin
+            )
+        ) or (
+            self.virtual_id and self.order_id.order_line.filtered(
+                lambda line: line.linked_virtual_id == self.virtual_id
+            )
+        ) or self.env['sale.order.line']
 
     def _get_sale_order_line_multiline_description_sale(self):
         """ Compute a default multiline description for this sales order line.
@@ -454,98 +443,9 @@ class SaleOrderLine(models.Model):
 
         return name
 
-    @api.depends('display_type', 'product_id')
-    def _compute_product_uom_qty(self):
-        for line in self:
-            if line.display_type:
-                line.product_uom_qty = 0.0
-
-    @api.depends('product_id')
-    def _compute_product_uom_id(self):
-        for line in self:
-            if not line.product_uom_id or (line.product_id.uom_id.id != line.product_uom_id.id):
-                line.product_uom_id = line.product_id.uom_id
-
-    @api.depends('product_id', 'product_id.uom_id', 'product_id.uom_ids')
-    def _compute_allowed_uom_ids(self):
-        for line in self:
-            line.allowed_uom_ids = line.product_id.uom_id | line.product_id.uom_ids
-
-    @api.depends('product_id', 'company_id')
-    def _compute_tax_ids(self):
-        lines_by_company = defaultdict(lambda: self.env['sale.order.line'])
-        cached_taxes = {}
-        for line in self:
-            if line.product_type == 'combo':
-                line.tax_ids = False
-                continue
-            lines_by_company[line.company_id] += line
-        for company, lines in lines_by_company.items():
-            for line in lines.with_company(company):
-                taxes = None
-                if line.product_id:
-                    taxes = line.product_id.taxes_id._filter_taxes_by_company(company)
-                if not line.product_id or not taxes:
-                    # Nothing to map
-                    line.tax_ids = False
-                    continue
-                fiscal_position = line.order_id.fiscal_position_id
-                cache_key = (fiscal_position.id, company.id, tuple(taxes.ids))
-                cache_key += line._get_custom_compute_tax_cache_key()
-                if cache_key in cached_taxes:
-                    result = cached_taxes[cache_key]
-                else:
-                    result = fiscal_position.map_tax(taxes)
-                    cached_taxes[cache_key] = result
-                # If company_id is set, always filter taxes by the company
-                line.tax_ids = result
-
     def _get_custom_compute_tax_cache_key(self):
         """Hook method to be able to set/get cached taxes while computing them"""
         return tuple()
-
-    @api.depends('product_id', 'product_uom_id', 'product_uom_qty')
-    def _compute_pricelist_item_id(self):
-        for line in self:
-            if not line.product_id or line.display_type or not line.order_id.pricelist_id:
-                line.pricelist_item_id = False
-            else:
-                line.pricelist_item_id = line.order_id.pricelist_id._get_product_rule(
-                    line.product_id,
-                    quantity=line.product_uom_qty or 1.0,
-                    uom=line.product_uom_id,
-                    date=line._get_order_date(),
-                )
-
-    @api.depends('product_id', 'product_uom_id', 'product_uom_qty')
-    def _compute_price_unit(self):
-        for line in self:
-            # Don't compute the price for deleted lines.
-            if not line.order_id:
-                continue
-            # check if the price has been manually set or there is already invoiced amount.
-            # if so, the price shouldn't change as it might have been manually edited.
-            if (
-                (line.technical_price_unit != line.price_unit and not line.env.context.get('force_price_recomputation'))
-                or line.qty_invoiced > 0
-                or (line.product_id.expense_policy == 'cost' and line.is_expense)
-            ):
-                continue
-            line = line.with_context(sale_write_from_compute=True)
-            if not line.product_uom_id or not line.product_id:
-                line.price_unit = 0.0
-                line.technical_price_unit = 0.0
-            else:
-                line = line.with_company(line.company_id)
-                price = line._get_display_price()
-                line.price_unit = line.product_id._get_tax_included_unit_price_from_price(
-                    price,
-                    product_taxes=line.product_id.taxes_id.filtered(
-                        lambda tax: tax.company_id == line.env.company
-                    ),
-                    fiscal_position=line.order_id.fiscal_position_id,
-                )
-                line.technical_price_unit = line.price_unit
 
     def _get_order_date(self):
         self.ensure_one()
@@ -695,113 +595,6 @@ class SaleOrderLine(models.Model):
             )
         )
 
-    @api.depends('product_id', 'product_uom_id', 'product_uom_qty')
-    def _compute_discount(self):
-        discount_enabled = self.env['product.pricelist.item']._is_discount_feature_enabled()
-        for line in self:
-            if not line.product_id or line.display_type:
-                line.discount = 0.0
-
-            if not (line.order_id.pricelist_id and discount_enabled):
-                continue
-
-            line.discount = 0.0
-
-            if not line.pricelist_item_id._show_discount():
-                # No pricelist rule was found for the product
-                # therefore, the pricelist didn't apply any discount/change
-                # to the existing sales price.
-                continue
-
-            line = line.with_company(line.company_id)
-            pricelist_price = line._get_pricelist_price()
-            base_price = line._get_pricelist_price_before_discount()
-
-            if base_price != 0:  # Avoid division by zero
-                discount = (base_price - pricelist_price) / base_price * 100
-                if (discount > 0 and base_price > 0) or (discount < 0 and base_price < 0):
-                    # only show negative discounts if price is negative
-                    # otherwise it's a surcharge which shouldn't be shown to the customer
-                    line.discount = discount
-
-    def _prepare_base_line_for_taxes_computation(self, **kwargs):
-        """ Convert the current record to a dictionary in order to use the generic taxes computation method
-        defined on account.tax.
-
-        :return: A python dictionary.
-        """
-        self.ensure_one()
-        return self.env['account.tax']._prepare_base_line_for_taxes_computation(
-            self,
-            **{
-                'tax_ids': self.tax_ids,
-                'quantity': self.product_uom_qty,
-                'partner_id': self.order_id.partner_id,
-                'currency_id': self.order_id.currency_id or self.order_id.company_id.currency_id,
-                'rate': self.order_id.currency_rate,
-                **kwargs,
-            },
-        )
-
-    @api.depends('product_uom_qty', 'discount', 'price_unit', 'tax_ids')
-    def _compute_amount(self):
-        for line in self:
-            base_line = line._prepare_base_line_for_taxes_computation()
-            self.env['account.tax']._add_tax_details_in_base_line(base_line, line.company_id)
-            line.price_subtotal = base_line['tax_details']['raw_total_excluded_currency']
-            line.price_total = base_line['tax_details']['raw_total_included_currency']
-            line.price_tax = line.price_total - line.price_subtotal
-
-    @api.depends('price_subtotal', 'product_uom_qty')
-    def _compute_price_reduce_taxexcl(self):
-        for line in self:
-            line.price_reduce_taxexcl = line.price_subtotal / line.product_uom_qty if line.product_uom_qty else 0.0
-
-    @api.depends('price_total', 'product_uom_qty')
-    def _compute_price_reduce_taxinc(self):
-        for line in self:
-            line.price_reduce_taxinc = line.price_total / line.product_uom_qty if line.product_uom_qty else 0.0
-
-    # This computed default is necessary to have a clean computation inheritance
-    # (cf sale_stock) instead of simply removing the default and specifying
-    # the compute attribute & method in sale_stock.
-    def _compute_customer_lead(self):
-        self.customer_lead = 0.0
-
-    @api.depends('is_expense')
-    def _compute_qty_delivered_method(self):
-        """ Sale module compute delivered qty for product [('type', 'in', ['consu']), ('service_type', '=', 'manual')]
-                - consu + expense_policy : analytic (sum of analytic unit_amount)
-                - consu + no expense_policy : manual (set manually on SOL)
-                - service (+ service_type='manual', the only available option) : manual
-
-            This is true when only sale is installed: sale_stock redifine the behavior for 'consu' type,
-            and sale_timesheet implements the behavior of 'service' + service_type=timesheet.
-        """
-        for line in self:
-            if line.is_expense:
-                line.qty_delivered_method = 'analytic'
-            else:  # service and consu
-                line.qty_delivered_method = 'manual'
-
-    @api.depends(
-        'qty_delivered_method',
-        'analytic_line_ids.so_line',
-        'analytic_line_ids.unit_amount',
-        'analytic_line_ids.product_uom_id')
-    def _compute_qty_delivered(self):
-        """ This method compute the delivered quantity of the SO lines: it covers the case provide by sale module, aka
-            expense/vendor bills (sum of unit_amount of AAL), and manual case.
-            This method should be overridden to provide other way to automatically compute delivered qty. Overrides should
-            take their concerned so lines, compute and set the `qty_delivered` field, and call super with the remaining
-            records.
-        """
-        # compute for analytic lines
-        lines_by_analytic = self.filtered(lambda sol: sol.qty_delivered_method == 'analytic')
-        mapping = lines_by_analytic._get_delivered_quantity_by_analytic([('amount', '<=', 0.0)])
-        for so_line in lines_by_analytic:
-            so_line.qty_delivered = mapping.get(so_line.id or so_line._origin.id, 0.0)
-
     def _get_downpayment_state(self):
         self.ensure_one()
 
@@ -849,6 +642,243 @@ class SaleOrderLine(models.Model):
 
         return result
 
+    def _get_invoice_lines(self):
+        self.ensure_one()
+        if self._context.get('accrual_entry_date'):
+            return self.invoice_lines.filtered(
+                lambda l: l.move_id.invoice_date and l.move_id.invoice_date <= self._context['accrual_entry_date']
+            )
+        else:
+            return self.invoice_lines
+
+    def _get_protected_fields(self):
+        """ Give the fields that should not be modified on a locked SO.
+
+        :returns: list of field names
+        :rtype: list
+        """
+        return [
+            'product_id', 'name', 'price_unit', 'product_uom_id', 'product_uom_qty',
+            'tax_ids', 'analytic_distribution', 'discount'
+        ]
+    
+    def _get_invoice_line_sequence(self, new=0, old=0):
+        """
+        Method intended to be overridden in third-party module if we want to prevent the resequencing
+        of invoice lines.
+
+        :param int new:   the new line sequence
+        :param int old:   the old line sequence
+
+        :return:          the sequence of the SO line, by default the new one.
+        """
+        return new or old
+
+    def _get_downpayment_line_price_unit(self, invoices):
+        return sum(
+            l.price_unit if l.move_id.move_type == 'out_invoice' else -l.price_unit
+            for l in self.invoice_lines
+            if l.move_id.state == 'posted' and l.move_id not in invoices  # don't recompute with the final invoice
+        )
+
+    def _validate_analytic_distribution(self):
+        for line in self.filtered(lambda l: not l.display_type and l.state in ['draft', 'sent']):
+            line._validate_distribution(**{
+                'product': line.product_id.id,
+                'business_domain': 'sale_order',
+                'company_id': line.company_id.id,
+            })
+
+    def _set_analytic_distribution(self, inv_line_vals, **optional_values):
+        if self.analytic_distribution and not self.display_type:
+            inv_line_vals['analytic_distribution'] = self.analytic_distribution
+
+    def _prepare_base_line_for_taxes_computation(self, **kwargs):
+        """ Convert the current record to a dictionary in order to use the generic taxes computation method
+        defined on account.tax.
+
+        :return: A python dictionary.
+        """
+        self.ensure_one()
+        return self.env['account.tax']._prepare_base_line_for_taxes_computation(
+            self,
+            **{
+                'tax_ids': self.tax_ids,
+                'quantity': self.product_uom_qty,
+                'partner_id': self.order_id.partner_id,
+                'currency_id': self.order_id.currency_id or self.order_id.company_id.currency_id,
+                'rate': self.order_id.currency_rate,
+                **kwargs,
+            },
+        )
+    
+    def _prepare_invoice_line(self, **optional_values):
+        """Prepare the values to create the new invoice line for a sales order line.
+
+        :param optional_values: any parameter that should be added to the returned invoice line
+        :rtype: dict
+        """
+        self.ensure_one()
+
+        if self.product_id.type == 'combo':
+            # If the quantity to invoice is a whole number, format it as an integer (with no decimal point)
+            qty_to_invoice = int(self.qty_to_invoice) if self.qty_to_invoice == int(self.qty_to_invoice) else self.qty_to_invoice
+            return {
+                'display_type': 'line_section',
+                'sequence': self.sequence,
+                'name': f'{self.product_id.name} x {qty_to_invoice}',
+            }
+        res = {
+            'display_type': self.display_type or 'product',
+            'sequence': self.sequence,
+            'name': self.env['account.move.line']._get_journal_items_full_name(self.name, self.product_id.display_name),
+            'product_id': self.product_id.id,
+            'product_uom_id': self.product_uom_id.id,
+            'quantity': self.qty_to_invoice,
+            'discount': self.discount,
+            'price_unit': self.price_unit,
+            'tax_ids': [Command.set(self.tax_ids.ids)],
+            'sale_line_ids': [Command.link(self.id)],
+            'is_downpayment': self.is_downpayment,
+        }
+        self._set_analytic_distribution(res, **optional_values)
+        downpayment_lines = self.invoice_lines.filtered('is_downpayment')
+        if self.is_downpayment and downpayment_lines:
+            res['account_id'] = downpayment_lines.account_id[:1].id
+        if optional_values:
+            res.update(optional_values)
+        if self.display_type:
+            res['account_id'] = False
+        return res 
+
+    def _prepare_procurement_values(self, group_id=False):
+        """ Prepare specific key for moves or other components that will be created from a stock rule
+        coming from a sale order line. This method could be override in order to add other custom key that could
+        be used in move/po creation.
+        """
+        return {}
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS 
+    # ------------------------------------------------------------
+
+    # This computed default is necessary to have a clean computation inheritance
+    # (cf sale_stock) instead of simply removing the default and specifying
+    # the compute attribute & method in sale_stock.
+    def _compute_customer_lead(self):
+        self.customer_lead = 0.0
+
+    @api.depends('product_id')
+    def _compute_product_template_id(self):
+        for line in self:
+            line.product_template_id = line.product_id.product_tmpl_id
+
+    @api.depends('product_id')
+    def _compute_is_product_archived(self):
+        for line in self:
+            line.is_product_archived = line.product_id and not line.product_id.active
+
+    @api.depends('product_id')
+    def _compute_custom_attribute_values(self):
+        for line in self:
+            if not line.product_id:
+                line.product_custom_attribute_value_ids = False
+                continue
+            if not line.product_custom_attribute_value_ids:
+                continue
+            valid_values = line.product_id.product_tmpl_id.valid_product_template_attribute_line_ids.product_template_value_ids
+            # remove the is_custom values that don't belong to this template
+            for pacv in line.product_custom_attribute_value_ids:
+                if pacv.custom_product_template_attribute_value_id not in valid_values:
+                    line.product_custom_attribute_value_ids -= pacv
+
+    @api.depends('product_id')
+    def _compute_no_variant_attribute_values(self):
+        for line in self:
+            if not line.product_id:
+                line.product_no_variant_attribute_value_ids = False
+                continue
+            if not line.product_no_variant_attribute_value_ids:
+                continue
+            valid_values = line.product_id.product_tmpl_id.valid_product_template_attribute_line_ids.product_template_value_ids
+            # remove the no_variant attributes that don't belong to this template
+            for ptav in line.product_no_variant_attribute_value_ids:
+                if ptav._origin not in valid_values:
+                    line.product_no_variant_attribute_value_ids -= ptav
+
+    @api.depends('product_id')
+    def _compute_product_uom_id(self):
+        for line in self:
+            if not line.product_uom_id or (line.product_id.uom_id.id != line.product_uom_id.id):
+                line.product_uom_id = line.product_id.uom_id
+
+    @api.depends('is_expense')
+    def _compute_qty_delivered_method(self):
+        """ Sale module compute delivered qty for product [('type', 'in', ['consu']), ('service_type', '=', 'manual')]
+                - consu + expense_policy : analytic (sum of analytic unit_amount)
+                - consu + no expense_policy : manual (set manually on SOL)
+                - service (+ service_type='manual', the only available option) : manual
+
+            This is true when only sale is installed: sale_stock redifine the behavior for 'consu' type,
+            and sale_timesheet implements the behavior of 'service' + service_type=timesheet.
+        """
+        for line in self:
+            if line.is_expense:
+                line.qty_delivered_method = 'analytic'
+            else:  # service and consu
+                line.qty_delivered_method = 'manual'
+
+    @api.depends('state')
+    def _compute_product_uom_readonly(self):
+        for line in self:
+            # line.ids checks whether it's a new record not yet saved
+            line.product_uom_readonly = line.ids and line.state in ['sale', 'cancel']
+
+    @api.depends('price_subtotal', 'product_uom_qty')
+    def _compute_price_reduce_taxexcl(self):
+        for line in self:
+            line.price_reduce_taxexcl = line.price_subtotal / line.product_uom_qty if line.product_uom_qty else 0.0
+
+    @api.depends('price_total', 'product_uom_qty')
+    def _compute_price_reduce_taxinc(self):
+        for line in self:
+            line.price_reduce_taxinc = line.price_total / line.product_uom_qty if line.product_uom_qty else 0.0
+
+    @api.depends('display_type', 'product_id')
+    def _compute_product_uom_qty(self):
+        for line in self:
+            if line.display_type:
+                line.product_uom_qty = 0.0
+
+    @api.depends('product_id', 'company_id')
+    def _compute_tax_ids(self):
+        lines_by_company = defaultdict(lambda: self.env['sale.order.line'])
+        cached_taxes = {}
+        for line in self:
+            if line.product_type == 'combo':
+                line.tax_ids = False
+                continue
+            lines_by_company[line.company_id] += line
+        for company, lines in lines_by_company.items():
+            for line in lines.with_company(company):
+                taxes = None
+                if line.product_id:
+                    taxes = line.product_id.taxes_id._filter_taxes_by_company(company)
+                if not line.product_id or not taxes:
+                    # Nothing to map
+                    line.tax_ids = False
+                    continue
+                fiscal_position = line.order_id.fiscal_position_id
+                cache_key = (fiscal_position.id, company.id, tuple(taxes.ids))
+                cache_key += line._get_custom_compute_tax_cache_key()
+                if cache_key in cached_taxes:
+                    result = cached_taxes[cache_key]
+                else:
+                    result = fiscal_position.map_tax(taxes)
+                    cached_taxes[cache_key] = result
+                # If company_id is set, always filter taxes by the company
+                line.tax_ids = result
+
     @api.depends('invoice_lines.move_id.state', 'invoice_lines.quantity')
     def _compute_qty_invoiced(self):
         """
@@ -884,14 +914,161 @@ class SaleOrderLine(models.Model):
                     qty_invoiced_posted += qty_signed
             line.qty_invoiced_posted = qty_invoiced_posted
 
-    def _get_invoice_lines(self):
-        self.ensure_one()
-        if self._context.get('accrual_entry_date'):
-            return self.invoice_lines.filtered(
-                lambda l: l.move_id.invoice_date and l.move_id.invoice_date <= self._context['accrual_entry_date']
-            )
-        else:
-            return self.invoice_lines
+    @api.depends('order_id.partner_id', 'product_id')
+    def _compute_analytic_distribution(self):
+        for line in self:
+            if not line.display_type:
+                distribution = line.env['account.analytic.distribution.model']._get_distribution({
+                    "product_id": line.product_id.id,
+                    "product_categ_id": line.product_id.categ_id.id,
+                    "partner_id": line.order_id.partner_id.id,
+                    "partner_category_id": line.order_id.partner_id.category_id.ids,
+                    "company_id": line.company_id.id,
+                })
+                line.analytic_distribution = distribution or line.analytic_distribution
+
+    @api.depends('order_partner_id', 'order_id', 'product_id')
+    def _compute_display_name(self):
+        name_per_id = self._additional_name_per_id()
+        for so_line in self.sudo():
+            name = '{} - {}'.format(so_line.order_id.name, so_line.name and so_line.name.split('\n')[0] or so_line.product_id.name)
+            additional_name = name_per_id.get(so_line.id)
+            if additional_name:
+                name = f'{name} {additional_name}'
+            so_line.display_name = name
+
+    @api.depends('product_id', 'linked_line_id', 'linked_line_ids')
+    def _compute_name(self):
+        for line in self:
+            if not line.product_id and not line.is_downpayment:
+                continue
+
+            lang = line.order_id._get_lang()
+            if lang != self.env.lang:
+                line = line.with_context(lang=lang)
+
+            if line.product_id:
+                line.name = line._get_sale_order_line_multiline_description_sale()
+                continue
+
+            if line.is_downpayment:
+                line.name = line._get_downpayment_description()
+
+    @api.depends('product_id', 'product_id.uom_id', 'product_id.uom_ids')
+    def _compute_allowed_uom_ids(self):
+        for line in self:
+            line.allowed_uom_ids = line.product_id.uom_id | line.product_id.uom_ids
+
+    @api.depends('product_id', 'product_uom_id', 'product_uom_qty')
+    def _compute_pricelist_item_id(self):
+        for line in self:
+            if not line.product_id or line.display_type or not line.order_id.pricelist_id:
+                line.pricelist_item_id = False
+            else:
+                line.pricelist_item_id = line.order_id.pricelist_id._get_product_rule(
+                    line.product_id,
+                    quantity=line.product_uom_qty or 1.0,
+                    uom=line.product_uom_id,
+                    date=line._get_order_date(),
+                )
+
+    @api.depends('product_id', 'product_uom_id', 'product_uom_qty')
+    def _compute_price_unit(self):
+        for line in self:
+            # Don't compute the price for deleted lines.
+            if not line.order_id:
+                continue
+            # check if the price has been manually set or there is already invoiced amount.
+            # if so, the price shouldn't change as it might have been manually edited.
+            if (
+                (line.technical_price_unit != line.price_unit and not line.env.context.get('force_price_recomputation'))
+                or line.qty_invoiced > 0
+                or (line.product_id.expense_policy == 'cost' and line.is_expense)
+            ):
+                continue
+            line = line.with_context(sale_write_from_compute=True)
+            if not line.product_uom_id or not line.product_id:
+                line.price_unit = 0.0
+                line.technical_price_unit = 0.0
+            else:
+                line = line.with_company(line.company_id)
+                price = line._get_display_price()
+                line.price_unit = line.product_id._get_tax_included_unit_price_from_price(
+                    price,
+                    product_taxes=line.product_id.taxes_id.filtered(
+                        lambda tax: tax.company_id == line.env.company
+                    ),
+                    fiscal_position=line.order_id.fiscal_position_id,
+                )
+                line.technical_price_unit = line.price_unit
+
+    @api.depends('product_id', 'product_uom_id', 'product_uom_qty')
+    def _compute_discount(self):
+        discount_enabled = self.env['product.pricelist.item']._is_discount_feature_enabled()
+        for line in self:
+            if not line.product_id or line.display_type:
+                line.discount = 0.0
+
+            if not (line.order_id.pricelist_id and discount_enabled):
+                continue
+
+            line.discount = 0.0
+
+            if not line.pricelist_item_id._show_discount():
+                # No pricelist rule was found for the product
+                # therefore, the pricelist didn't apply any discount/change
+                # to the existing sales price.
+                continue
+
+            line = line.with_company(line.company_id)
+            pricelist_price = line._get_pricelist_price()
+            base_price = line._get_pricelist_price_before_discount()
+
+            if base_price != 0:  # Avoid division by zero
+                discount = (base_price - pricelist_price) / base_price * 100
+                if (discount > 0 and base_price > 0) or (discount < 0 and base_price < 0):
+                    # only show negative discounts if price is negative
+                    # otherwise it's a surcharge which shouldn't be shown to the customer
+                    line.discount = discount
+
+    @api.depends('invoice_lines', 'invoice_lines.price_total', 'invoice_lines.move_id.state')
+    def _compute_amount_invoiced(self):
+        for line in self:
+            amount_invoiced = 0.0
+            for invoice_line in line._get_invoice_lines():
+                invoice = invoice_line.move_id
+                if invoice.state == 'posted' or invoice_line.move_id.payment_state == 'invoicing_legacy':
+                    invoice_date = invoice.invoice_date or fields.Date.context_today(self)
+                    amount_invoiced_unsigned = invoice_line.currency_id._convert(invoice_line.price_total, line.currency_id, line.company_id, invoice_date)
+                    amount_invoiced += amount_invoiced_unsigned * -invoice.direction_sign
+            line.amount_invoiced = amount_invoiced
+
+    @api.depends('product_uom_qty', 'discount', 'price_unit', 'tax_ids')
+    def _compute_amount(self):
+        for line in self:
+            base_line = line._prepare_base_line_for_taxes_computation()
+            self.env['account.tax']._add_tax_details_in_base_line(base_line, line.company_id)
+            line.price_subtotal = base_line['tax_details']['raw_total_excluded_currency']
+            line.price_total = base_line['tax_details']['raw_total_included_currency']
+            line.price_tax = line.price_total - line.price_subtotal
+
+    @api.depends(
+        'qty_delivered_method',
+        'analytic_line_ids.so_line',
+        'analytic_line_ids.unit_amount',
+        'analytic_line_ids.product_uom_id')
+    def _compute_qty_delivered(self):
+        """ This method compute the delivered quantity of the SO lines: it covers the case provide by sale module, aka
+            expense/vendor bills (sum of unit_amount of AAL), and manual case.
+            This method should be overridden to provide other way to automatically compute delivered qty. Overrides should
+            take their concerned so lines, compute and set the `qty_delivered` field, and call super with the remaining
+            records.
+        """
+        # compute for analytic lines
+        lines_by_analytic = self.filtered(lambda sol: sol.qty_delivered_method == 'analytic')
+        mapping = lines_by_analytic._get_delivered_quantity_by_analytic([('amount', '<=', 0.0)])
+        for so_line in lines_by_analytic:
+            so_line.qty_delivered = mapping.get(so_line.id or so_line._origin.id, 0.0)
 
     # no trigger product_id.invoice_policy to avoid retroactively changing SO
     @api.depends('qty_invoiced', 'qty_delivered', 'product_uom_qty', 'state')
@@ -909,46 +1086,20 @@ class SaleOrderLine(models.Model):
             else:
                 line.qty_to_invoice = 0
 
-    @api.depends('state', 'product_uom_qty', 'qty_delivered', 'qty_to_invoice', 'qty_invoiced')
-    def _compute_invoice_status(self):
-        """
-        Compute the invoice status of a SO line. Possible statuses:
-        - no: if the SO is not in status 'sale', we consider that there is nothing to
-          invoice. This is also the default value if the conditions of no other status is met.
-        - to invoice: we refer to the quantity to invoice of the line. Refer to method
-          `_compute_qty_to_invoice()` for more information on how this quantity is calculated.
-        - upselling: this is possible only for a product invoiced on ordered quantities for which
-          we delivered more than expected. The could arise if, for example, a project took more
-          time than expected but we decided not to invoice the extra cost to the client. This
-          occurs only in state 'sale', the upselling opportunity is removed from the list.
-        - invoiced: the quantity invoiced is larger or equal to the quantity ordered.
-        """
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+    @api.depends('product_id', 'state', 'qty_invoiced', 'qty_delivered')
+    def _compute_product_updatable(self):
+        self.product_updatable = True
         for line in self:
-            if line.state != 'sale':
-                line.invoice_status = 'no'
-            elif line.is_downpayment and line.untaxed_amount_to_invoice == 0:
-                line.invoice_status = 'invoiced'
-            elif not float_is_zero(line.qty_to_invoice, precision_digits=precision):
-                line.invoice_status = 'to invoice'
-            elif line.state == 'sale' and line.product_id.invoice_policy == 'order' and\
-                    line.product_uom_qty >= 0.0 and\
-                    float_compare(line.qty_delivered, line.product_uom_qty, precision_digits=precision) == 1:
-                line.invoice_status = 'upselling'
-            elif float_compare(line.qty_invoiced, line.product_uom_qty, precision_digits=precision) >= 0:
-                line.invoice_status = 'invoiced'
-            else:
-                line.invoice_status = 'no'
-
-    def _can_be_invoiced_alone(self):
-        """ Whether a given line is meaningful to invoice alone.
-
-        It is generally meaningless/confusing or even wrong to invoice some specific SOlines
-        (delivery, discounts, rewards, ...) without others, unless they are the only left to invoice
-        in the SO.
-        """
-        self.ensure_one()
-        return self.product_id.id != self.company_id.sale_discount_product_id.id
+            if (
+                line.is_downpayment
+                or line.state == 'cancel'
+                or line.state == 'sale' and (
+                    line.order_id.locked
+                    or line.qty_invoiced > 0
+                    or line.qty_delivered > 0
+                )
+            ):
+                line.product_updatable = False
 
     @api.depends('invoice_lines', 'invoice_lines.price_total', 'invoice_lines.move_id.state', 'invoice_lines.move_id.move_type')
     def _compute_untaxed_amount_invoiced(self):
@@ -969,18 +1120,6 @@ class SaleOrderLine(models.Model):
                     elif invoice_line.move_id.move_type == 'out_refund':
                         amount_invoiced -= invoice_line.currency_id._convert(invoice_line.price_subtotal, line.currency_id, line.company_id, invoice_date)
             line.untaxed_amount_invoiced = amount_invoiced
-
-    @api.depends('invoice_lines', 'invoice_lines.price_total', 'invoice_lines.move_id.state')
-    def _compute_amount_invoiced(self):
-        for line in self:
-            amount_invoiced = 0.0
-            for invoice_line in line._get_invoice_lines():
-                invoice = invoice_line.move_id
-                if invoice.state == 'posted' or invoice_line.move_id.payment_state == 'invoicing_legacy':
-                    invoice_date = invoice.invoice_date or fields.Date.context_today(self)
-                    amount_invoiced_unsigned = invoice_line.currency_id._convert(invoice_line.price_total, line.currency_id, line.company_id, invoice_date)
-                    amount_invoiced += amount_invoiced_unsigned * -invoice.direction_sign
-            line.amount_invoiced = amount_invoiced
 
     @api.depends('state', 'product_id', 'untaxed_amount_invoiced', 'qty_delivered', 'product_uom_qty', 'price_unit')
     def _compute_untaxed_amount_to_invoice(self):
@@ -1030,6 +1169,37 @@ class SaleOrderLine(models.Model):
 
             line.untaxed_amount_to_invoice = amount_to_invoice
 
+    @api.depends('state', 'product_uom_qty', 'qty_delivered', 'qty_to_invoice', 'qty_invoiced')
+    def _compute_invoice_status(self):
+        """
+        Compute the invoice status of a SO line. Possible statuses:
+        - no: if the SO is not in status 'sale', we consider that there is nothing to
+          invoice. This is also the default value if the conditions of no other status is met.
+        - to invoice: we refer to the quantity to invoice of the line. Refer to method
+          `_compute_qty_to_invoice()` for more information on how this quantity is calculated.
+        - upselling: this is possible only for a product invoiced on ordered quantities for which
+          we delivered more than expected. The could arise if, for example, a project took more
+          time than expected but we decided not to invoice the extra cost to the client. This
+          occurs only in state 'sale', the upselling opportunity is removed from the list.
+        - invoiced: the quantity invoiced is larger or equal to the quantity ordered.
+        """
+        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        for line in self:
+            if line.state != 'sale':
+                line.invoice_status = 'no'
+            elif line.is_downpayment and line.untaxed_amount_to_invoice == 0:
+                line.invoice_status = 'invoiced'
+            elif not float_is_zero(line.qty_to_invoice, precision_digits=precision):
+                line.invoice_status = 'to invoice'
+            elif line.state == 'sale' and line.product_id.invoice_policy == 'order' and\
+                    line.product_uom_qty >= 0.0 and\
+                    float_compare(line.qty_delivered, line.product_uom_qty, precision_digits=precision) == 1:
+                line.invoice_status = 'upselling'
+            elif float_compare(line.qty_invoiced, line.product_uom_qty, precision_digits=precision) >= 0:
+                line.invoice_status = 'invoiced'
+            else:
+                line.invoice_status = 'no'
+
     @api.depends('discount', 'price_total', 'product_uom_qty', 'qty_delivered', 'qty_invoiced_posted')
     def _compute_amount_to_invoice(self):
         for line in self:
@@ -1042,41 +1212,30 @@ class SaleOrderLine(models.Model):
             else:
                 line.amount_to_invoice = 0.0
 
-    @api.depends('order_id.partner_id', 'product_id')
-    def _compute_analytic_distribution(self):
-        for line in self:
-            if not line.display_type:
-                distribution = line.env['account.analytic.distribution.model']._get_distribution({
-                    "product_id": line.product_id.id,
-                    "product_categ_id": line.product_id.categ_id.id,
-                    "partner_id": line.order_id.partner_id.id,
-                    "partner_category_id": line.order_id.partner_id.category_id.ids,
-                    "company_id": line.company_id.id,
-                })
-                line.analytic_distribution = distribution or line.analytic_distribution
+    # ------------------------------------------------------------
+    # ONCHANGE METHODS 
+    # ------------------------------------------------------------
 
-    @api.depends('product_id', 'state', 'qty_invoiced', 'qty_delivered')
-    def _compute_product_updatable(self):
-        self.product_updatable = True
-        for line in self:
-            if (
-                line.is_downpayment
-                or line.state == 'cancel'
-                or line.state == 'sale' and (
-                    line.order_id.locked
-                    or line.qty_invoiced > 0
-                    or line.qty_delivered > 0
-                )
-            ):
-                line.product_updatable = False
+    @api.onchange('product_id')
+    def _onchange_product_id_warning(self):
+        if not self.product_id:
+            return
 
-    @api.depends('state')
-    def _compute_product_uom_readonly(self):
-        for line in self:
-            # line.ids checks whether it's a new record not yet saved
-            line.product_uom_readonly = line.ids and line.state in ['sale', 'cancel']
+        product = self.product_id
+        if product.sale_line_warn != 'no-message':
+            if product.sale_line_warn == 'block':
+                self.product_id = False
 
-    #=== CONSTRAINT METHODS ===#
+            return {
+                'warning': {
+                    'title': _("Warning for %s", product.name),
+                    'message': product.sale_line_warn_msg,
+                }
+            }    
+
+    # ------------------------------------------------------------
+    # VALIDATION METHODS 
+    # ------------------------------------------------------------
 
     @api.constrains('combo_item_id')
     def _check_combo_item_id(self):
@@ -1096,26 +1255,32 @@ class SaleOrderLine(models.Model):
                     "A sale order line's product must match its combo item's product."
                 ))
 
-    #=== ONCHANGE METHODS ===#
+    def _check_line_unlink(self):
+        """ Check whether given lines can be deleted or not.
 
-    @api.onchange('product_id')
-    def _onchange_product_id_warning(self):
-        if not self.product_id:
-            return
+        * Lines cannot be deleted if the order is confirmed.
+        * Down payment lines who have not yet been invoiced bypass that exception.
+        * Sections and Notes can always be deleted.
 
-        product = self.product_id
-        if product.sale_line_warn != 'no-message':
-            if product.sale_line_warn == 'block':
-                self.product_id = False
-
-            return {
-                'warning': {
-                    'title': _("Warning for %s", product.name),
-                    'message': product.sale_line_warn_msg,
-                }
-            }
-
-    #=== CRUD METHODS ===#
+        :returns: Sales Order Lines that cannot be deleted
+        :rtype: `sale.order.line` recordset
+        """
+        return self.filtered(
+            lambda line:
+                line.state == 'sale'
+                and (line.invoice_lines or not line.is_downpayment)
+                and not line.display_type
+        )
+    
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_confirmed(self):
+        if self._check_line_unlink():
+            raise UserError(_("Once a sales order is confirmed, you can't remove one of its lines (we need to track if something gets invoiced or delivered).\n\
+                Set the quantity to 0 instead."))
+    
+    # ------------------------------------------------------------
+    # CORE METHODS 
+    # ------------------------------------------------------------
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -1188,17 +1353,6 @@ class SaleOrderLine(models.Model):
 
         return super().write(values)
 
-    def _get_protected_fields(self):
-        """ Give the fields that should not be modified on a locked SO.
-
-        :returns: list of field names
-        :rtype: list
-        """
-        return [
-            'product_id', 'name', 'price_unit', 'product_uom_id', 'product_uom_qty',
-            'tax_ids', 'analytic_distribution', 'discount'
-        ]
-
     def _update_line_quantity(self, values):
         orders = self.mapped('order_id')
         for order in orders:
@@ -1220,128 +1374,6 @@ class SaleOrderLine(models.Model):
             msg += Markup("</ul>")
             order.message_post(body=msg)
 
-    def _check_line_unlink(self):
-        """ Check whether given lines can be deleted or not.
-
-        * Lines cannot be deleted if the order is confirmed.
-        * Down payment lines who have not yet been invoiced bypass that exception.
-        * Sections and Notes can always be deleted.
-
-        :returns: Sales Order Lines that cannot be deleted
-        :rtype: `sale.order.line` recordset
-        """
-        return self.filtered(
-            lambda line:
-                line.state == 'sale'
-                and (line.invoice_lines or not line.is_downpayment)
-                and not line.display_type
-        )
-
-    @api.ondelete(at_uninstall=False)
-    def _unlink_except_confirmed(self):
-        if self._check_line_unlink():
-            raise UserError(_("Once a sales order is confirmed, you can't remove one of its lines (we need to track if something gets invoiced or delivered).\n\
-                Set the quantity to 0 instead."))
-
-    #=== ACTION METHODS ===#
-
-    @api.readonly
-    def action_add_from_catalog(self):
-        order = self.env['sale.order'].browse(self.env.context.get('order_id'))
-        return order.with_context(child_field='order_line').action_add_from_catalog()
-
-    #=== BUSINESS METHODS ===#
-
-    def _expected_date(self):
-        self.ensure_one()
-        if self.state == 'sale' and self.order_id.date_order:
-            order_date = self.order_id.date_order
-        else:
-            order_date = fields.Datetime.now()
-        return order_date + timedelta(days=self.customer_lead or 0.0)
-
-    def compute_uom_qty(self, new_qty, stock_move, rounding=True):
-        return self.product_uom_id._compute_quantity(new_qty, stock_move.product_uom, rounding)
-
-    def _get_invoice_line_sequence(self, new=0, old=0):
-        """
-        Method intended to be overridden in third-party module if we want to prevent the resequencing
-        of invoice lines.
-
-        :param int new:   the new line sequence
-        :param int old:   the old line sequence
-
-        :return:          the sequence of the SO line, by default the new one.
-        """
-        return new or old
-
-    def _prepare_invoice_line(self, **optional_values):
-        """Prepare the values to create the new invoice line for a sales order line.
-
-        :param optional_values: any parameter that should be added to the returned invoice line
-        :rtype: dict
-        """
-        self.ensure_one()
-
-        if self.product_id.type == 'combo':
-            # If the quantity to invoice is a whole number, format it as an integer (with no decimal point)
-            qty_to_invoice = int(self.qty_to_invoice) if self.qty_to_invoice == int(self.qty_to_invoice) else self.qty_to_invoice
-            return {
-                'display_type': 'line_section',
-                'sequence': self.sequence,
-                'name': f'{self.product_id.name} x {qty_to_invoice}',
-            }
-        res = {
-            'display_type': self.display_type or 'product',
-            'sequence': self.sequence,
-            'name': self.env['account.move.line']._get_journal_items_full_name(self.name, self.product_id.display_name),
-            'product_id': self.product_id.id,
-            'product_uom_id': self.product_uom_id.id,
-            'quantity': self.qty_to_invoice,
-            'discount': self.discount,
-            'price_unit': self.price_unit,
-            'tax_ids': [Command.set(self.tax_ids.ids)],
-            'sale_line_ids': [Command.link(self.id)],
-            'is_downpayment': self.is_downpayment,
-        }
-        self._set_analytic_distribution(res, **optional_values)
-        downpayment_lines = self.invoice_lines.filtered('is_downpayment')
-        if self.is_downpayment and downpayment_lines:
-            res['account_id'] = downpayment_lines.account_id[:1].id
-        if optional_values:
-            res.update(optional_values)
-        if self.display_type:
-            res['account_id'] = False
-        return res
-
-    def _set_analytic_distribution(self, inv_line_vals, **optional_values):
-        if self.analytic_distribution and not self.display_type:
-            inv_line_vals['analytic_distribution'] = self.analytic_distribution
-
-    def _prepare_procurement_values(self, group_id=False):
-        """ Prepare specific key for moves or other components that will be created from a stock rule
-        coming from a sale order line. This method could be override in order to add other custom key that could
-        be used in move/po creation.
-        """
-        return {}
-
-    def _validate_analytic_distribution(self):
-        for line in self.filtered(lambda l: not l.display_type and l.state in ['draft', 'sent']):
-            line._validate_distribution(**{
-                'product': line.product_id.id,
-                'business_domain': 'sale_order',
-                'company_id': line.company_id.id,
-            })
-
-    def _get_downpayment_line_price_unit(self, invoices):
-        return sum(
-            l.price_unit if l.move_id.move_type == 'out_invoice' else -l.price_unit
-            for l in self.invoice_lines
-            if l.move_id.state == 'posted' and l.move_id not in invoices  # don't recompute with the final invoice
-        )
-
-    #=== CORE METHODS OVERRIDES ===#
-
     def _get_partner_display(self):
         self.ensure_one()
         commercial_partner = self.sudo().order_partner_id.commercial_partner_id
@@ -1353,86 +1385,16 @@ class SaleOrderLine(models.Model):
             for so_line in self
         }
 
-    #=== HOOKS ===#
+    # ------------------------------------------------------------
+    # HOOKS
+    # ------------------------------------------------------------
 
-    def _is_delivery(self):
-        self.ensure_one()
-        return False
+    def compute_uom_qty(self, new_qty, stock_move, rounding=True):
+        return self.product_uom_id._compute_quantity(new_qty, stock_move.product_uom, rounding)
 
-    def _is_not_sellable_line(self):
-        # True if the line is a computed line (reward, delivery, ...) that user cannot add manually
-        return False
-
-    def _get_product_catalog_lines_data(self, **kwargs):
-        """ Return information about sale order lines in `self`.
-
-        If `self` is empty, this method returns only the default value(s) needed for the product
-        catalog. In this case, the quantity that equals 0.
-
-        Otherwise, it returns a quantity and a price based on the product of the SOL(s) and whether
-        the product is read-only or not.
-
-        A product is considered read-only if the order is considered read-only (see
-        ``SaleOrder._is_readonly`` for more details) or if `self` contains multiple records
-        or if it has sale_line_warn == "block".
-
-        Note: This method cannot be called with multiple records that have different products linked.
-
-        :raise odoo.exceptions.ValueError: ``len(self.product_id) != 1``
-        :rtype: dict
-        :return: A dict with the following structure:
-            {
-                'quantity': float,
-                'price': float,
-                'readOnly': bool,
-                'warning': String
-            }
-        """
-        if len(self) == 1:
-            res = {
-                'quantity': self.product_uom_qty,
-                'price': self.price_unit,
-                'readOnly': (
-                    self.order_id._is_readonly()
-                    or self.product_id.sale_line_warn == 'block'
-                    or bool(self.combo_item_id)
-                ),
-            }
-            if self.product_id.sale_line_warn != 'no-message' and self.product_id.sale_line_warn_msg:
-                res['warning'] = self.product_id.sale_line_warn_msg
-            return res
-        elif self:
-            self.product_id.ensure_one()
-            order_line = self[0]
-            order = order_line.order_id
-            res = {
-                'readOnly': True,
-                'price': order.pricelist_id._get_product_price(
-                    product=order_line.product_id,
-                    quantity=1.0,
-                    currency=order.currency_id,
-                    date=order.date_order,
-                    **kwargs,
-                ),
-                'quantity': sum(
-                    self.mapped(
-                        lambda line: line.product_uom_id._compute_quantity(
-                            qty=line.product_uom_qty,
-                            to_unit=line.product_id.uom_id,
-                        )
-                    )
-                )
-            }
-            if self.product_id.sale_line_warn != 'no-message' and self.product_id.sale_line_warn_msg:
-                res['warning'] = self.product_id.sale_line_warn_msg
-            return res
-        else:
-            return {
-                'quantity': 0,
-                # price will be computed in batch with pricelist utils so not given here
-            }
-
-    #=== TOOLING ===#
+    # ------------------------------------------------------------
+    # TOOLS
+    # ------------------------------------------------------------
 
     def _convert_to_sol_currency(self, amount, currency):
         """Convert the given amount from the given currency to the SO(L) currency.
@@ -1456,42 +1418,6 @@ class SaleOrderLine(models.Model):
                 round=False,
             )
         return amount
-
-    def has_valued_move_ids(self):
-        return self.move_ids
-
-    def _get_linked_line(self):
-        """ Return the linked line of this line, if any.
-
-        This method relies on either `linked_line_id` or `linked_virtual_id` to retrieve the linked
-        line, depending on whether the linked line is saved in the DB.
-        """
-        self.ensure_one()
-        return self.linked_line_id or (
-            self.linked_virtual_id and self.order_id.order_line.filtered(
-                lambda line: line.virtual_id == self.linked_virtual_id
-            ).ensure_one()
-        ) or self.env['sale.order.line']
-
-    def _get_linked_lines(self):
-        """ Return the linked lines of this line, if any.
-
-        This method relies on either `linked_line_id` or `linked_virtual_id` to retrieve the linked
-        lines, depending on whether this line is saved in the DB.
-
-        Note: we can't rely on `linked_line_ids` as it will only be populated when both this line
-        and its linked lines are saved in the DB, which we can't ensure.
-        """
-        self.ensure_one()
-        return (
-            self._origin and self.order_id.order_line.filtered(
-                lambda line: line.linked_line_id._origin == self._origin
-            )
-        ) or (
-            self.virtual_id and self.order_id.order_line.filtered(
-                lambda line: line.linked_virtual_id == self.virtual_id
-            )
-        ) or self.env['sale.order.line']
 
     def _sellable_lines_domain(self):
         discount_products_ids = self.env.companies.sale_discount_product_id.ids

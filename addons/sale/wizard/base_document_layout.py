@@ -4,7 +4,16 @@ from odoo import models
 
 
 class BaseDocumentLayout(models.TransientModel):
+    """ Extends the 'base.document.layout' model to customize document layout previews for sales orders.
+
+    This module provides a preview template for sales order quotations and ensures the correct
+    rendering of document layouts based on the context of the active sales order.
+    """
     _inherit = 'base.document.layout'
+
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
 
     def _get_preview_template(self):
         if (

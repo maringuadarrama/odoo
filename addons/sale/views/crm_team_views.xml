@@ -106,10 +106,10 @@
                     </a>
                     <field class="col-auto text-truncate" name="quotations_amount" widget="monetary"/>
                 </div>
-                <div class="row" name="orders_to_invoice" t-if="record.sales_to_invoice_count.raw_value">
+                <div class="row" name="orders_to_invoice" t-if="record.count_sales_to_invoice.raw_value">
                     <a class="col-8" name="%(action_orders_to_invoice_salesteams)d" type="action">
-                        <field name="sales_to_invoice_count" class="me-1"/>
-                        <t t-if="record.sales_to_invoice_count.raw_value == 1">Order to Invoice</t>
+                        <field name="count_sales_to_invoice" class="me-1"/>
+                        <t t-if="record.count_sales_to_invoice.raw_value == 1">Order to Invoice</t>
                         <t t-else="">Orders to Invoice</t>
                     </a>
                 </div>

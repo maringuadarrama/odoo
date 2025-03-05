@@ -4,6 +4,9 @@ from odoo import _, api, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
+    """ Extends the 'res.config.settings' model to customize settings for sales orders.
+
+    """
     _inherit = 'res.config.settings'
 
     # Defaults
