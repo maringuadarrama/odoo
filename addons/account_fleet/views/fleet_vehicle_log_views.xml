@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <record id='fleet_vehicle_log_services_view_form' model='ir.ui.view'>
-        <field name="name">fleet.vehicle.log.services.form.inherit.account</field>
-        <field name="model">fleet.vehicle.log.services</field>
-        <field name="inherit_id" ref="fleet.fleet_vehicle_log_services_view_form"/>
+    <record id='view_form_fleet_vehicle_log' model='ir.ui.view'>
+        <field name="name">fleet.vehicle.log.form</field>
+        <field name="model">fleet.vehicle.log</field>
+        <field name="inherit_id" ref="fleet.view_form_fleet_vehicle_log"/>
         <field name="priority" eval="1" />
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
                 <div class="oe_button_box" name="button_box">
-                    <button
-                        name="action_open_account_move"
-                        type="object"
-                        class="oe_stat_button"
+                    <button name="action_open_account_move"
+                        type="object" class="oe_stat_button"
                         icon="fa-pencil-square-o"
                         invisible="not account_move_line_id">
                         <div class="o_field_widget o_stat_info">
