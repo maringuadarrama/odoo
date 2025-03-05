@@ -274,14 +274,14 @@
                     context="{'validate_analytic': True, 'check_document_layout': True}"/>
                 <button name="action_quotation_send" id="send_proforma_primary" type="object" string="Send PRO-FORMA Invoice" class="btn-primary"
                     groups="sale.group_proforma_sales"
-                    invisible="state != 'draft' or invoice_count &gt;= 1" context="{'proforma': True, 'validate_analytic': True}"/>
+                    invisible="state != 'draft' or count_invoice &gt;= 1" context="{'proforma': True, 'validate_analytic': True}"/>
                 <button name="action_confirm" id="action_confirm" data-hotkey="q"
                     string="Confirm" class="btn-primary" type="object" context="{'validate_analytic': True}"
                     invisible="state != 'sent'"/>
                 <button name="action_confirm" data-hotkey="q"
                     string="Confirm" type="object" context="{'validate_analytic': True}"
                     invisible="state != 'draft'"/>
-                <button name="action_quotation_send" id="send_proforma" type="object" string="Send PRO-FORMA Invoice" groups="sale.group_proforma_sales" invisible="state == 'draft' or invoice_count &gt;= 1" context="{'proforma': True, 'validate_analytic': True}"/>
+                <button name="action_quotation_send" id="send_proforma" type="object" string="Send PRO-FORMA Invoice" groups="sale.group_proforma_sales" invisible="state == 'draft' or count_invoice &gt;= 1" context="{'proforma': True, 'validate_analytic': True}"/>
                 <button name="action_quotation_send" id="send_by_email" string="Send by Email" type="object" invisible="state not in ('sent', 'sale')" data-hotkey="g" context="{'validate_analytic': True, 'check_document_layout': True}"/>
 
                 <!-- allow to unlock locked orders even if setting is not enabled (e.g. orders synchronized from connectors) -->
@@ -332,8 +332,8 @@
                         type="object"
                         class="oe_stat_button"
                         icon="fa-pencil-square-o"
-                        invisible="invoice_count == 0">
-                        <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                        invisible="count_invoice == 0">
+                        <field name="count_invoice" widget="statinfo" string="Invoices"/>
                     </button>
                 </div>
                 <div class="badge rounded-pill text-bg-secondary float-end fs-6 border-0"
@@ -523,7 +523,6 @@
                                     <create name="add_product_control" string="Add a product"/>
                                     <create name="add_section_control" string="Add a section" context="{'default_display_type': 'line_section'}"/>
                                     <create name="add_note_control" string="Add a note" context="{'default_display_type': 'line_note'}"/>
-                                    <button name="action_add_from_catalog" string="Catalog" type="object" class="px-4 btn-link" context="{'order_id': parent.id}"/>
                                 </control>
 
                                 <field name="sequence" widget="handle" />
@@ -683,11 +682,6 @@
                                     <create name="add_product_control" string="Add product"/>
                                     <create name="add_section_control" string="Add section" context="{'default_display_type': 'line_section'}"/>
                                     <create name="add_note_control" string="Add note" context="{'default_display_type': 'line_note'}"/>
-                                    <button name="action_add_from_catalog"
-                                            context="{'order_id': parent.id}"
-                                            string="Catalog"
-                                            type="object"
-                                            class="btn-secondary"/>
                                 </control>
                                 <templates>
                                     <t t-name="card" class="row g-0 ps-0 pe-0">
@@ -788,7 +782,7 @@
                                         invisible="not show_update_fpos or state in ['sale', 'cancel']"/>
                                 </div>
                                 <field name="partner_invoice_id" groups="!account.group_delivery_invoice_address" invisible="1"/>
-                                <field name="journal_id" groups="base.group_no_one" readonly="invoice_count != 0 and state == 'sale'"/>
+                                <field name="journal_id" groups="base.group_no_one" readonly="count_invoice != 0 and state == 'sale'"/>
                                 <field name="invoice_status" invisible="state != 'sale'" groups="base.group_no_one"/>
                                 <!-- test_event_configurator -->
                                 <field name="invoice_status" invisible="1" groups="!base.group_no_one"/>

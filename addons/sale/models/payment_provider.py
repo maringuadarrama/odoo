@@ -4,8 +4,18 @@ from odoo import fields, models
 
 
 class PaymentProvider(models.Model):
+    """Extends the 'payment.provider' model to add sales order reference configuration.
+
+    This module introduces a selection field to define the communication type (e.g., based on document ref or partner)
+    that will appear on sales orders. This helps customize the payment communication displayed to customers.
+    """
     _inherit = 'payment.provider'
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+    
+    # Selection
     so_reference_type = fields.Selection(string='Communication',
         selection=[
             ('so_name', 'Based on Document Reference'),

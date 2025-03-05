@@ -6,44 +6,96 @@ from odoo.tools import float_compare, float_is_zero
 
 
 class AccountMoveLine(models.Model):
+    """Extends the 'account.move.line' model to integrate sales-related functionalities.
+
+    This module adds fields and methods to link account move lines to sale order lines,
+    enabling the reinvoicing of expenses and tracking of downpayments. It also provides
+    tools for managing the creation of sale order lines from account move lines and
+    ensures proper synchronization between accounting and sales operations.
+    """
     _inherit = 'account.move.line'
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+    
+    # Boolean
     is_downpayment = fields.Boolean()
+
+    # Many2many
     sale_line_ids = fields.Many2many(
         'sale.order.line',
         'sale_order_line_invoice_rel',
         'invoice_line_id', 'order_line_id',
         string='Sales Order Lines', readonly=True, copy=False)
 
-    def _copy_data_extend_business_fields(self, values):
-        # OVERRIDE to copy the 'sale_line_ids' field as well.
-        super(AccountMoveLine, self)._copy_data_extend_business_fields(values)
-        values['sale_line_ids'] = [(6, None, self.sale_line_ids.ids)]
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
 
-    def _prepare_analytic_lines(self):
-        """ Note: This method is called only on the move.line that having an analytic distribution, and
-            so that should create analytic entries.
+    def _sale_determine_order(self):
+        """ Get the mapping of move.line with the sale.order record on which its analytic entries should be reinvoiced
+            :return a dict where key is the move line id, and value is sale.order record (or None).
         """
-        values_list = super(AccountMoveLine, self)._prepare_analytic_lines()
+        return {}
 
-        # filter the move lines that can be reinvoiced: a cost (negative amount) analytic line without SO line but with a product can be reinvoiced
-        move_to_reinvoice = self.env['account.move.line']
-        if len(values_list) > 0:
-            for index, move_line in enumerate(self):
-                values = values_list[index]
-                if 'so_line' not in values:
-                    if move_line._sale_can_be_reinvoice():
-                        move_to_reinvoice |= move_line
+    def _sale_prepare_sale_line_values(self, order, price):
+        """ Generate the sale.line creation value from the current move line """
+        self.ensure_one()
+        last_so_line = self.env['sale.order.line'].search([('order_id', '=', order.id)], order='sequence desc', limit=1)
+        last_sequence = last_so_line.sequence + 1 if last_so_line else 100
 
-        # insert the sale line in the create values of the analytic entries
-        if move_to_reinvoice.filtered(lambda aml: not aml.move_id.reversed_entry_id and aml.product_id):  # only if the move line is not a reversal one
-            map_sale_line_per_move = move_to_reinvoice._sale_create_reinvoice_sale_line()
-            for values in values_list:
-                sale_line = map_sale_line_per_move.get(values.get('move_line_id'))
-                if sale_line:
-                    values['so_line'] = sale_line.id
+        fpos = order.fiscal_position_id or order.fiscal_position_id._get_fiscal_position(order.partner_id)
+        product_taxes = self.product_id.taxes_id._filter_taxes_by_company(order.company_id)
+        taxes = fpos.map_tax(product_taxes)
 
-        return values_list
+        return {
+            'order_id': order.id,
+            'name': self.name,
+            'sequence': last_sequence,
+            'price_unit': price,
+            'tax_ids': [x.id for x in taxes],
+            'discount': 0.0,
+            'product_id': self.product_id.id,
+            'product_uom_id': self.product_uom_id.id,
+            'product_uom_qty': self.quantity,
+            'is_expense': True,
+        }
+
+    def _sale_get_invoice_price(self, order):
+        """ Based on the current move line, compute the price to reinvoice the analytic line that is going to be created (so the
+            price of the sale line).
+        """
+        self.ensure_one()
+        unit_amount = self.quantity
+        amount = (self.credit or 0.0) - (self.debit or 0.0)
+
+        if self.product_id.expense_policy == 'sales_price':
+            return order.pricelist_id._get_product_price(
+                self.product_id,
+                1.0,
+                uom=self.product_uom_id,
+                date=order.date_order,
+            )
+
+        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit')
+        if float_is_zero(unit_amount, precision_digits=uom_precision_digits):
+            return 0.0
+
+        # Prevent unnecessary currency conversion that could be impacted by exchange rate
+        # fluctuations
+        if self.company_id.currency_id and amount and self.company_id.currency_id == order.currency_id:
+            return self.company_id.currency_id.round(abs(amount / unit_amount))
+
+        price_unit = abs(amount / unit_amount)
+        currency_id = self.company_id.currency_id
+        if currency_id and currency_id != order.currency_id:
+            price_unit = currency_id._convert(price_unit, order.currency_id, order.company_id, order.date_order or fields.Date.today())
+        return 
+
+    def _get_downpayment_lines(self):
+        # OVERRIDE
+        return self.sale_line_ids.filtered('is_downpayment').invoice_lines.filtered(lambda line: line.move_id._is_downpayment())
 
     def _sale_can_be_reinvoice(self):
         """ determine if the generated analytic line should be reinvoiced or not.
@@ -54,6 +106,43 @@ class AccountMoveLine(models.Model):
             return False
         uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit')
         return float_compare(self.credit or 0.0, self.debit or 0.0, precision_digits=uom_precision_digits) != 1 and self.product_id.expense_policy not in [False, 'no']
+
+    def _get_move_lines_to_reinvoice(self, values_list):
+        """ Filter the move lines that can be reinvoiced: a cost (negative amount) analytic line without SO line but with a product can be reinvoiced
+        """
+        move_to_reinvoice = self.env['account.move.line']
+        if len(values_list) > 0:
+            for index, move_line in enumerate(self):
+                values = values_list[index]
+                if 'so_line' not in values:
+                    if move_line._sale_can_be_reinvoice():
+                        move_to_reinvoice |= move_line
+        return move_to_reinvoice
+
+    # ------------------------------------------------------------
+    # HOOKS
+    # ------------------------------------------------------------
+
+    def _copy_data_extend_business_fields(self, values):
+        # OVERRIDE to copy the 'sale_line_ids' field as well.
+        super(AccountMoveLine, self)._copy_data_extend_business_fields(values)
+        values['sale_line_ids'] = [(6, None, self.sale_line_ids.ids)]
+
+    # ------------------------------------------------------------
+    # BUSINESS LOGIC METHODS
+    # ------------------------------------------------------------
+
+    # Refactor of odoo core's fuctionality made in _prepare_analytic_lines() method
+    def _preprocess_analytic_lines(self, analytic_line_vals):
+        """ Insert the sale line in the create values of the analytic entries.
+        """
+        move_to_reinvoice = self._get_move_lines_to_reinvoice(analytic_line_vals)
+        if move_to_reinvoice.filtered(lambda aml: not aml.move_id.reversed_entry_id and aml.product_id):  # only if the move line is not a reversal one
+            map_sale_line_per_move = move_to_reinvoice._sale_create_reinvoice_sale_line()
+            for values in analytic_line_vals:
+                sale_line = map_sale_line_per_move.get(values.get('move_line_id'))
+                if sale_line:
+                    values['so_line'] = sale_line.id
 
     def _sale_create_reinvoice_sale_line(self):
 
@@ -140,68 +229,3 @@ class AccountMoveLine(models.Model):
             elif isinstance(unknown_sale_line, models.BaseModel):  # already record of sale.order.line
                 result[move_line_id] = unknown_sale_line
         return result
-
-    def _sale_determine_order(self):
-        """ Get the mapping of move.line with the sale.order record on which its analytic entries should be reinvoiced
-            :return a dict where key is the move line id, and value is sale.order record (or None).
-        """
-        return {}
-
-    def _sale_prepare_sale_line_values(self, order, price):
-        """ Generate the sale.line creation value from the current move line """
-        self.ensure_one()
-        last_so_line = self.env['sale.order.line'].search([('order_id', '=', order.id)], order='sequence desc', limit=1)
-        last_sequence = last_so_line.sequence + 1 if last_so_line else 100
-
-        fpos = order.fiscal_position_id or order.fiscal_position_id._get_fiscal_position(order.partner_id)
-        product_taxes = self.product_id.taxes_id._filter_taxes_by_company(order.company_id)
-        taxes = fpos.map_tax(product_taxes)
-
-        return {
-            'order_id': order.id,
-            'name': self.name,
-            'sequence': last_sequence,
-            'price_unit': price,
-            'tax_ids': [x.id for x in taxes],
-            'discount': 0.0,
-            'product_id': self.product_id.id,
-            'product_uom_id': self.product_uom_id.id,
-            'product_uom_qty': self.quantity,
-            'is_expense': True,
-        }
-
-    def _sale_get_invoice_price(self, order):
-        """ Based on the current move line, compute the price to reinvoice the analytic line that is going to be created (so the
-            price of the sale line).
-        """
-        self.ensure_one()
-
-        unit_amount = self.quantity
-        amount = (self.credit or 0.0) - (self.debit or 0.0)
-
-        if self.product_id.expense_policy == 'sales_price':
-            return order.pricelist_id._get_product_price(
-                self.product_id,
-                1.0,
-                uom=self.product_uom_id,
-                date=order.date_order,
-            )
-
-        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit')
-        if float_is_zero(unit_amount, precision_digits=uom_precision_digits):
-            return 0.0
-
-        # Prevent unnecessary currency conversion that could be impacted by exchange rate
-        # fluctuations
-        if self.company_id.currency_id and amount and self.company_id.currency_id == order.currency_id:
-            return self.company_id.currency_id.round(abs(amount / unit_amount))
-
-        price_unit = abs(amount / unit_amount)
-        currency_id = self.company_id.currency_id
-        if currency_id and currency_id != order.currency_id:
-            price_unit = currency_id._convert(price_unit, order.currency_id, order.company_id, order.date_order or fields.Date.today())
-        return price_unit
-
-    def _get_downpayment_lines(self):
-        # OVERRIDE
-        return self.sale_line_ids.filtered('is_downpayment').invoice_lines.filtered(lambda line: line.move_id._is_downpayment())

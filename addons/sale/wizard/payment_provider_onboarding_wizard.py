@@ -10,17 +10,31 @@ class SalePaymentProviderOnboardingWizard(models.TransientModel):
     _inherit = ['payment.provider.onboarding.wizard']
     _description = 'Sale Payment provider onboarding wizard'
 
-    def _get_default_payment_method(self):
-        return self.env.company.sale_onboarding_payment_method or 'digital_signature'
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
 
     payment_method = fields.Selection(selection_add=[
         ('digital_signature', "Electronic signature"),
         ('stripe', "Credit & Debit card (via Stripe)"),
         ('paypal', "PayPal"),
         ('manual', "Custom payment instructions"),
-    ], default=_get_default_payment_method)
+    ], default=lambda self: self._get_default_payment_method())
+
+    # ------------------------------------------------------------
+    # DEFAULT METHODS
+    # ------------------------------------------------------------
+
+    def _get_default_payment_method(self):
+        return self.env.company.sale_onboarding_payment_method or 'digital_signature'
+
+    # ------------------------------------------------------------
+    # BUSINESS LOGIC METHODS
+    # ------------------------------------------------------------
 
     def add_payment_methods(self):
+        """ Inherit to add new payment providers, configure them and mark the
+        onboarding step as done."""
         self.env.company.sale_onboarding_payment_method = self.payment_method
         if self.payment_method == 'digital_signature':
             self.env.company.portal_confirmation_sign = True
