@@ -1,5 +1,5 @@
-import { registry } from "@web/core/registry";
-import { Interaction } from "@web/public/interaction";
+import {registry} from "@web/core/registry";
+import {Interaction} from "@web/public/interaction";
 
 export class PortalPrepayment extends Interaction {
     static selector = ".o_portal_sale_sidebar";
@@ -11,17 +11,17 @@ export class PortalPrepayment extends Interaction {
     dynamicContent = {
         _amountPrepaymentButton: {
             "t-on-click": () => this.reloadAmount(true),
-            "t-att-class": () => ({ "active": this.isPartialPayment }),
+            "t-att-class": () => ({active: this.isPartialPayment}),
         },
         _amountTotalButton: {
             "t-on-click": () => this.reloadAmount(false),
-            "t-att-class": () => ({ "active": !this.isPartialPayment }),
+            "t-att-class": () => ({active: !this.isPartialPayment}),
         },
         "span[id='o_sale_portal_use_amount_prepayment']": {
-            "t-att-class": () => ({ "d-none": !this.isPartialPayment }),
+            "t-att-class": () => ({"d-none": !this.isPartialPayment}),
         },
         "span[id='o_sale_portal_use_amount_total']": {
-            "t-att-class": () => ({ "d-none": this.isPartialPayment }),
+            "t-att-class": () => ({"d-none": this.isPartialPayment}),
         },
     };
 
@@ -36,8 +36,8 @@ export class PortalPrepayment extends Interaction {
         }
 
         const params = new URLSearchParams(window.location.search);
-        this.isPartialPayment = params.has('downpayment') ? params.get('downpayment') === 'true' : true;
-        this.showPaymentModal = params.get('showPaymentModal') === 'true';
+        this.isPartialPayment = params.has("downpayment") ? params.get("downpayment") === "true" : true;
+        this.showPaymentModal = params.get("showPaymentModal") === "true";
     }
 
     start() {
@@ -55,6 +55,4 @@ export class PortalPrepayment extends Interaction {
     }
 }
 
-registry
-    .category("public.interactions")
-    .add("sale.portal_prepayment", PortalPrepayment);
+registry.category("public.interactions").add("sale.portal_prepayment", PortalPrepayment);

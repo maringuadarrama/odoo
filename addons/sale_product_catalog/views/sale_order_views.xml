@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
     <!-- VIEWS -->
@@ -9,11 +9,13 @@
         <field name="inherit_id" ref="sale.view_order_form" />
         <field name="arch" type="xml">
             <xpath expr="//notebook/page/field[@name='order_line']/kanban/control" position="inside">
-                <button name="action_add_from_catalog"
-                        context="{'order_id': parent.id}"
-                        string="Catalog"
-                        type="object"
-                        class="btn-secondary"/>
+                <button
+                    name="action_add_from_catalog"
+                    context="{'order_id': parent.id}"
+                    string="Catalog"
+                    type="object"
+                    class="btn-secondary"
+                />
             </xpath>
         </field>
     </record>

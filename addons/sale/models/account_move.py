@@ -11,27 +11,34 @@ class AccountMove(models.Model):
     and managing downpayments. It also provides tools for computing sales team assignments, handling invoice payments,
     and reconciling transactions with sales orders.
     """
-    _name = 'account.move'
-    _inherit = ['account.move', 'utm.mixin']
+
+    _name = "account.move"
+    _inherit = ["account.move", "utm.mixin"]
 
     # ------------------------------------------------------------
     # FIELDS
     # ------------------------------------------------------------
 
     # Integer
-    count_sale_order = fields.Integer(compute="_compute_count_sale_order", string='Sale Order Count')
+    count_sale_order = fields.Integer(compute="_compute_count_sale_order", string="Sale Order Count")
 
     # Many2one
     team_id = fields.Many2one(
-        'crm.team', string='Sales Team', default=lambda self: self._get_invoice_default_sale_team(),
-        compute='_compute_team_id', store=True, readonly=False,
-        ondelete="set null", tracking=True,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+        "crm.team",
+        string="Sales Team",
+        default=lambda self: self._get_invoice_default_sale_team(),
+        compute="_compute_team_id",
+        store=True,
+        readonly=False,
+        ondelete="set null",
+        tracking=True,
+        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+    )
 
     # UTMs - enforcing the fact that we want to 'set null' when relation is unlinked
-    campaign_id = fields.Many2one(ondelete='set null')
-    medium_id = fields.Many2one(ondelete='set null')
-    source_id = fields.Many2one(ondelete='set null')
+    campaign_id = fields.Many2one(ondelete="set null")
+    medium_id = fields.Many2one(ondelete="set null")
+    source_id = fields.Many2one(ondelete="set null")
 
     # ------------------------------------------------------------
     # DEFAULT METHODS
@@ -39,16 +46,20 @@ class AccountMove(models.Model):
 
     @api.model
     def _get_invoice_default_sale_team(self):
-        return self.env['crm.team']._get_default_team_id()
+        return self.env["crm.team"]._get_default_team_id()
 
     # ------------------------------------------------------------
     # HELPERS
     # ------------------------------------------------------------
-    
+
     def _is_downpayment(self):
         # OVERRIDE
         self.ensure_one()
-        return self.line_ids.sale_line_ids and all(sale_line.is_downpayment for sale_line in self.line_ids.sale_line_ids) or False
+        return (
+            self.line_ids.sale_line_ids
+            and all(sale_line.is_downpayment for sale_line in self.line_ids.sale_line_ids)
+            or False
+        )
 
     def _get_sale_order_invoiced_amount(self, order):
         """
@@ -58,7 +69,7 @@ class AccountMove(models.Model):
         """
         order_amount = 0
         for invoice in self:
-            prices = sum(invoice.line_ids.filtered(lambda x: order in x.sale_line_ids.order_id).mapped('price_total'))
+            prices = sum(invoice.line_ids.filtered(lambda x: order in x.sale_line_ids.order_id).mapped("price_total"))
             order_amount += invoice.currency_id._convert(
                 prices * -invoice.direction_sign,
                 order.currency_id,
@@ -79,10 +90,7 @@ class AccountMove(models.Model):
         for order in self.line_ids.sale_line_ids.order_id:
             order_amount = min(self._get_sale_order_invoiced_amount(order), order.amount_to_invoice)
             order_amount_company = order.currency_id._convert(
-                max(order_amount, 0),
-                self.company_id.currency_id,
-                self.company_id,
-                fields.Date.context_today(self)
+                max(order_amount, 0), self.company_id.currency_id, self.company_id, fields.Date.context_today(self)
             )
             exclude_amount += order_amount_company
         return exclude_amount
@@ -93,13 +101,13 @@ class AccountMove(models.Model):
 
     def _invoice_paid_hook(self):
         # OVERRIDE
-        res = super(AccountMove, self)._invoice_paid_hook()
+        res = super()._invoice_paid_hook()
         todo = set()
         for invoice in self.filtered(lambda move: move.is_invoice()):
             for line in invoice.invoice_line_ids:
                 for sale_line in line.sale_line_ids:
                     todo.add((sale_line.order_id, invoice.name))
-        for (order, name) in todo:
+        for order, name in todo:
             order.message_post(body=_("Invoice %s paid", name))
         return res
 
@@ -108,7 +116,7 @@ class AccountMove(models.Model):
         # Make sure the send invoice CRON is called when an invoice becomes ready to be sent by mail.
         res = super()._action_invoice_ready_to_be_sent()
 
-        send_invoice_cron = self.env.ref('sale.send_invoice_cron', raise_if_not_found=False)
+        send_invoice_cron = self.env.ref("sale.send_invoice_cron", raise_if_not_found=False)
         if send_invoice_cron:
             send_invoice_cron._trigger()
 
@@ -118,20 +126,21 @@ class AccountMove(models.Model):
     # COMPUTE METHODS
     # ------------------------------------------------------------
 
-    @api.depends('invoice_user_id')
+    @api.depends("invoice_user_id")
     def _compute_team_id(self):
         sale_moves = self.filtered(lambda move: move.is_sale_document(include_receipts=True))
-        for ((user_id, company_id), moves) in groupby(
-            sale_moves,
-            key=lambda m: (m.invoice_user_id.id, m.company_id.id)
-        ):
-            self.env['account.move'].concat(*moves).team_id = self.env['crm.team'].with_context(
-                allowed_company_ids=[company_id],
-            )._get_default_team_id(
-                user_id=user_id,
+        for (user_id, company_id), moves in groupby(sale_moves, key=lambda m: (m.invoice_user_id.id, m.company_id.id)):
+            self.env["account.move"].concat(*moves).team_id = (
+                self.env["crm.team"]
+                .with_context(
+                    allowed_company_ids=[company_id],
+                )
+                ._get_default_team_id(
+                    user_id=user_id,
+                )
             )
 
-    @api.depends('line_ids.sale_line_ids')
+    @api.depends("line_ids.sale_line_ids")
     def _compute_origin_so_count(self):
         for move in self:
             move.count_sale_order = len(move.line_ids.sale_line_ids.order_id)
@@ -141,8 +150,10 @@ class AccountMove(models.Model):
     # ------------------------------------------------------------
 
     def unlink(self):
-        downpayment_lines = self.mapped('line_ids.sale_line_ids').filtered(lambda line: line.is_downpayment and line.invoice_lines <= self.mapped('line_ids'))
-        res = super(AccountMove, self).unlink()
+        downpayment_lines = self.mapped("line_ids.sale_line_ids").filtered(
+            lambda line: line.is_downpayment and line.invoice_lines <= self.mapped("line_ids")
+        )
+        res = super().unlink()
         if downpayment_lines:
             downpayment_lines.unlink()
         return res
@@ -153,7 +164,7 @@ class AccountMove(models.Model):
 
     def action_post(self):
         # inherit of the function from account.move to validate a new tax and the priceunit of a downpayment
-        res = super(AccountMove, self).action_post()
+        res = super().action_post()
 
         # We cannot change lines content on locked SO, changes on invoices are not forwarded to the SO if the SO is locked
         dp_lines = self.line_ids.sale_line_ids.filtered(lambda l: l.is_downpayment and not l.display_type)
@@ -170,30 +181,32 @@ class AccountMove(models.Model):
     def button_draft(self):
         res = super().button_draft()
 
-        self.line_ids.filtered('is_downpayment').sale_line_ids.filtered(
-            lambda sol: not sol.display_type)._compute_name()
+        self.line_ids.filtered("is_downpayment").sale_line_ids.filtered(
+            lambda sol: not sol.display_type
+        )._compute_name()
 
         return res
 
     def button_cancel(self):
         res = super().button_cancel()
 
-        self.line_ids.filtered('is_downpayment').sale_line_ids.filtered(
-            lambda sol: not sol.display_type)._compute_name()
+        self.line_ids.filtered("is_downpayment").sale_line_ids.filtered(
+            lambda sol: not sol.display_type
+        )._compute_name()
 
         return res
 
     def action_view_source_sale_orders(self):
         self.ensure_one()
         source_orders = self.line_ids.sale_line_ids.order_id
-        result = self.env['ir.actions.act_window']._for_xml_id('sale.action_orders')
+        result = self.env["ir.actions.act_window"]._for_xml_id("sale.action_orders")
         if len(source_orders) > 1:
-            result['domain'] = [('id', 'in', source_orders.ids)]
+            result["domain"] = [("id", "in", source_orders.ids)]
         elif len(source_orders) == 1:
-            result['views'] = [(self.env.ref('sale.view_order_form', False).id, 'form')]
-            result['res_id'] = source_orders.id
+            result["views"] = [(self.env.ref("sale.view_order_form", False).id, "form")]
+            result["res_id"] = source_orders.id
         else:
-            result = {'type': 'ir.actions.act_window_close'}
+            result = {"type": "ir.actions.act_window_close"}
         return result
 
     # ------------------------------------------------------------
@@ -205,11 +218,13 @@ class AccountMove(models.Model):
         if not default_values_list:
             default_values_list = [{} for move in self]
         for move, default_values in zip(self, default_values_list):
-            default_values.update({
-                'campaign_id': move.campaign_id.id,
-                'medium_id': move.medium_id.id,
-                'source_id': move.source_id.id,
-            })
+            default_values.update(
+                {
+                    "campaign_id": move.campaign_id.id,
+                    "medium_id": move.medium_id.id,
+                    "source_id": move.source_id.id,
+                }
+            )
         return super()._reverse_moves(default_values_list=default_values_list, cancel=cancel)
 
     def _post(self, soft=True):
@@ -219,8 +234,10 @@ class AccountMove(models.Model):
         posted = super()._post(soft)
 
         for invoice in posted.filtered(lambda move: move.is_invoice()):
-            payments = invoice.mapped('transaction_ids.payment_id').filtered(lambda x: x.state == 'in_process')
-            move_lines = payments.move_id.line_ids.filtered(lambda line: line.account_type in ('asset_receivable', 'liability_payable') and not line.reconciled)
+            payments = invoice.mapped("transaction_ids.payment_id").filtered(lambda x: x.state == "in_process")
+            move_lines = payments.move_id.line_ids.filtered(
+                lambda line: line.account_type in ("asset_receivable", "liability_payable") and not line.reconciled
+            )
             for line in move_lines:
                 invoice.js_assign_outstanding_line(line.id)
         return posted

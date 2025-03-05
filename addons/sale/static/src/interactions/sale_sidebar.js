@@ -1,5 +1,5 @@
-import { Sidebar } from "@portal/interactions/sidebar";
-import { registry } from "@web/core/registry";
+import {Sidebar} from "@portal/interactions/sidebar";
+import {registry} from "@web/core/registry";
 
 export class SaleSidebar extends Sidebar {
     static selector = ".o_portal_sale_sidebar";
@@ -21,6 +21,4 @@ export class SaleSidebar extends Sidebar {
     }
 }
 
-registry
-    .category("public.interactions")
-    .add("sale.sale_sidebar", SaleSidebar);
+registry.category("public.interactions").add("sale.sale_sidebar", SaleSidebar);
