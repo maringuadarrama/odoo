@@ -25,7 +25,7 @@ class PurchaseOrder(models.Model):
 
     def _prepare_group_vals(self):
         res = super()._prepare_group_vals()
-        sale_orders = self.order_line.sale_order_id
+        sale_orders = self.order_line_ids.sale_order_id
         if len(sale_orders) == 1:
             res['sale_id'] = sale_orders.id
         return res

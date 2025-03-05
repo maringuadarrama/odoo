@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import _, api, fields, models
@@ -7,6 +6,7 @@ from odoo.osv.expression import AND
 
 class ProductReplenish(models.TransientModel):
     _inherit = 'product.replenish'
+
 
     @api.model
     def default_get(self, fields):
@@ -33,13 +33,6 @@ class ProductReplenish(models.TransientModel):
         for rec in self:
             if 'buy' in rec.route_id.rule_ids.mapped('action'):
                 rec.date_planned = rec._get_date_planned(rec.route_id, supplier=rec.supplier_id, show_vendor=rec.show_vendor)
-
-    def _prepare_run_values(self):
-        res = super()._prepare_run_values()
-        if self.supplier_id:
-            res['supplierinfo_id'] = self.supplier_id
-            res['group_id'].partner_id = self.supplier_id.partner_id
-        return res
 
     def action_stock_replenishment_info(self):
         self.ensure_one()
@@ -90,3 +83,10 @@ class ProductReplenish(models.TransientModel):
         if not product_tmpl_id.seller_ids:
             domain = AND([domain, [('id', '!=', self.env.ref('purchase_stock.route_warehouse0_buy', raise_if_not_found=False).id)]])
         return domain
+
+    def _prepare_run_values(self):
+        res = super()._prepare_run_values()
+        if self.supplier_id:
+            res['supplierinfo_id'] = self.supplier_id
+            res['group_id'].partner_id = self.supplier_id.partner_id
+        return res
