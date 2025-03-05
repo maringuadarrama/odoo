@@ -15,11 +15,11 @@ PRICE_CONTEXT_KEYS = ["pricelist", "quantity", "uom", "date"]
 
 class ProductTemplate(models.Model):
     _name = "product.template"
-    _description = "Product"
     _inherit = ["mail.thread", "mail.activity.mixin", "image.mixin"]
-    _order = "is_favorite desc, name"
+    _description = "Product"
     _check_company_auto = True
     _check_company_domain = models.check_company_domain_parent_of
+    _order = "is_favorite desc, name"
 
 
     def default_get(self, fields_list):

@@ -12,11 +12,11 @@ from odoo.tools.misc import unique
 
 class ProductProduct(models.Model):
     _name = "product.product"
-    _description = "Product Variant"
     _inherits = {"product.template": "product_tmpl_id"}
     _inherit = ["mail.thread", "mail.activity.mixin"]
-    _order = "default_code, name, id"
+    _description = "Product Variant"
     _check_company_domain = models.check_company_domain_parent_of
+    _order = "default_code, name, id"
 
 
     product_tmpl_id = fields.Many2one(

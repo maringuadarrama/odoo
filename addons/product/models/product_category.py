@@ -8,10 +8,10 @@ class ProductCategory(models.Model):
     _name = "product.category"
     _inherit = ["mail.thread"]
     _description = "Product Category"
+    _order = "complete_name"
     _parent_name = "parent_id"
     _parent_store = True
     _rec_name = "complete_name"
-    _order = "complete_name"
 
 
     name = fields.Char(

@@ -10,9 +10,9 @@ class ProductTemplateAttributeLine(models.Model):
     Used as a configuration model to generate the appropriate product.template.attribute.value"""
     _name = "product.template.attribute.line"
     _description = "Product Template Attribute Line"
+    _order = "sequence, attribute_id, id"
     _rec_name = "attribute_id"
     _rec_names_search = ["attribute_id", "value_ids"]
-    _order = "sequence, attribute_id, id"
 
 
     active = fields.Boolean(default=True)

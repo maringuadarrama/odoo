@@ -10,8 +10,8 @@ class ProductAttributeValue(models.Model):
     # if you change this _order, keep it in sync with the method
     # "_sort_key_variant" in "product.template"
     _name = "product.attribute.value"
-    _order = "attribute_id, sequence, id"
     _description = "Attribute Value"
+    _order = "attribute_id, sequence, id"
 
 
     attribute_id = fields.Many2one(

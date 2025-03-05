@@ -8,8 +8,8 @@ from odoo.tools import format_amount, format_datetime, formatLang
 class ProductPricelistItem(models.Model):
     _name = "product.pricelist.item"
     _description = "Pricelist Rule"
-    _order = "applied_on, min_quantity desc, categ_id desc, id desc"
     _check_company_auto = True
+    _order = "applied_on, min_quantity desc, categ_id desc, id desc"
 
 
     pricelist_id = fields.Many2one(
