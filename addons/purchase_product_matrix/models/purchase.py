@@ -146,7 +146,7 @@ class PurchaseOrder(models.Model):
         matrixes = []
         if self.report_grids:
             grid_configured_templates = self.order_line.filtered('is_configurable_product').product_template_id
-            # TODO is configurable product and product_variant_count > 1
+            # TODO is configurable product and count_product_variant > 1
             # configurable products are only configured through the matrix in purchase, so no need to check product_add_mode.
             for template in grid_configured_templates:
                 if len(self.order_line.filtered(lambda line: line.product_template_id == template)) > 1:

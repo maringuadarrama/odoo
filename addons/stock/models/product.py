@@ -724,8 +724,8 @@ class ProductProduct(models.Model):
         products_with_routes += self.search([('id', 'in', (self - products_with_routes).ids), ('categ_id.total_route_ids', '!=', False)])
         return products_with_routes
 
-    def _trigger_uom_warning(self):
-        res = super()._trigger_uom_warning()
+    def _check_uom_used(self):
+        res = super()._check_uom_used()
         if res:
             return res
         moves = self.env['stock.move'].sudo().search_count(
@@ -817,12 +817,12 @@ class ProductTemplate(models.Model):
     def _compute_has_available_route_ids(self):
         self.has_available_route_ids = self.env['stock.route'].search_count([('product_selectable', '=', True)])
 
-    @api.depends('product_variant_count', 'tracking')
+    @api.depends('count_product_variant', 'tracking')
     def _compute_show_qty_update_button(self):
         for product in self:
             product.show_qty_update_button = (
                 product._should_open_product_quants()
-                or product.product_variant_count > 1
+                or product.count_product_variant > 1
                 or product.tracking != 'none'
             )
 
@@ -1092,7 +1092,7 @@ class ProductTemplate(models.Model):
             'default_product_tmpl_id': self.id,
             'search_default_group_by_location': True,
         }
-        if self.product_variant_count == 1:
+        if self.count_product_variant == 1:
             action['context'].update({
                 'default_product_id': self.product_variant_id.id,
             })
