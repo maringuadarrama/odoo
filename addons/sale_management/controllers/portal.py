@@ -3,10 +3,10 @@
 from odoo.exceptions import AccessError, MissingError
 from odoo.http import request, route
 
-from odoo.addons.sale.controllers import portal
+from odoo.addons.sale.controllers.customer_portal import CustomerPortal
 
 
-class CustomerPortal(portal.CustomerPortal):
+class CustomerPortal(CustomerPortal):
 
     @route(['/my/orders/<int:order_id>/update_line_dict'], type='jsonrpc', auth="public", website=True)
     def portal_quote_option_update(self, order_id, line_id, access_token=None, remove=False, unlink=False, input_quantity=False, **kwargs):

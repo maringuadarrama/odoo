@@ -19,7 +19,7 @@ from odoo.tools.translate import _
 
 from odoo.addons.payment.controllers import portal as payment_portal
 from odoo.addons.portal.controllers.portal import _build_url_w_params
-from odoo.addons.sale.controllers import portal as sale_portal
+from odoo.addons.sale.controllers.customer_portal import CustomerPortal
 from odoo.addons.web_editor.tools import get_video_thumbnail
 from odoo.addons.website.controllers.main import QueryURL
 from odoo.addons.website.models.ir_http import sitemap_qs2dom
@@ -1364,7 +1364,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
             'submit_button_label': _("Pay now"),
         }
         payment_form_values = {
-            **sale_portal.CustomerPortal._get_payment_values(
+            **CustomerPortal._get_payment_values(
                 self, order, website_id=request.website.id
             ),
             'display_submit_button': False,  # The submit button is re-added outside the form.
@@ -1451,7 +1451,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
         if not order_sudo.amount_total and not tx_sudo:
             if order_sudo.state != 'sale':
                 # Only confirm the order if it wasn't already confirmed.
-                order_sudo._validate_order()
+                order_sudo._action_confirm_and_send()
 
             # clean context and session, then redirect to the portal page
             request.website.sale_reset()

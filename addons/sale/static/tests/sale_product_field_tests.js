@@ -1,13 +1,6 @@
-import {
-    addRow,
-    editInput,
-    getFixture,
-    nextTick,
-    patchWithCleanup,
-    triggerHotkey
-} from "@web/../tests/helpers/utils";
-import { makeView, setupViewRegistries } from "@web/../tests/views/helpers";
-import { browser } from "@web/core/browser/browser";
+import {addRow, editInput, getFixture, nextTick, patchWithCleanup, triggerHotkey} from "@web/../tests/helpers/utils";
+import {makeView, setupViewRegistries} from "@web/../tests/views/helpers";
+import {browser} from "@web/core/browser/browser";
 
 let serverData;
 let target;
@@ -17,9 +10,9 @@ QUnit.module("Fields", (hooks) => {
         target = getFixture();
         serverData = {
             models: {
-                'sale.order': {
+                "sale.order": {
                     fields: {
-                        display_name: { string: "Displayed name", type: "char" },
+                        display_name: {string: "Displayed name", type: "char"},
                         order_line: {
                             string: "order lines",
                             type: "one2many",
@@ -36,7 +29,7 @@ QUnit.module("Fields", (hooks) => {
                     ],
                     onchanges: {},
                 },
-                'sale.order.line': {
+                "sale.order.line": {
                     fields: {
                         order_id: {
                             string: "Order Reference",
@@ -57,36 +50,32 @@ QUnit.module("Fields", (hooks) => {
                         name: {
                             string: "Description",
                             type: "char",
-                        }
+                        },
                     },
                     records: [],
                 },
-                'product.template': {
+                "product.template": {
                     fields: {
-                        display_name: { string: "Partner Type", type: "char" },
-                        name: { string: "Partner Type", type: "char" },
+                        display_name: {string: "Partner Type", type: "char"},
+                        name: {string: "Partner Type", type: "char"},
                     },
-                    records: [
-                        { id: 12, display_name: "desk" },
-                    ],
-                    methods:  {
+                    records: [{id: 12, display_name: "desk"}],
+                    methods: {
                         get_single_product_variant() {
-                            return Promise.resolve({product_id: 14, product_name: 'desk'});
-                        }
-                    }
-                },
-                'product.product': {
-                    fields: {
-                        display_name: { string: "Partner Type", type: "char" },
-                        name: { string: "Partner Type", type: "char" },
+                            return Promise.resolve({product_id: 14, product_name: "desk"});
+                        },
                     },
-                    records: [
-                        { id: 14, display_name: "desk" },
-                    ],
+                },
+                "product.product": {
+                    fields: {
+                        display_name: {string: "Partner Type", type: "char"},
+                        name: {string: "Partner Type", type: "char"},
+                    },
+                    records: [{id: 14, display_name: "desk"}],
                 },
                 user: {
                     fields: {
-                        name: { string: "Name", type: "char" },
+                        name: {string: "Name", type: "char"},
                         partner_ids: {
                             string: "one2many partners field",
                             type: "one2many",
@@ -94,8 +83,7 @@ QUnit.module("Fields", (hooks) => {
                             relation_field: "user_id",
                         },
                     },
-                    records: [
-                    ],
+                    records: [],
                 },
             },
         };
@@ -110,7 +98,6 @@ QUnit.module("Fields", (hooks) => {
     QUnit.module("Sale product field");
 
     QUnit.test("pressing tab with incomplete text will create a product", async function (assert) {
-
         await makeView({
             type: "form",
             resModel: "sale.order",
@@ -129,7 +116,7 @@ QUnit.module("Fields", (hooks) => {
                 </form>`,
             mockRPC(route, args) {
                 assert.step(args.method);
-            }
+            },
         });
 
         // add a line and enter new product name
@@ -146,5 +133,4 @@ QUnit.module("Fields", (hooks) => {
             "get_single_product_variant",
         ]);
     });
-
 });

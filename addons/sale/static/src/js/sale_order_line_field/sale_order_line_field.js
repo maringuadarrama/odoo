@@ -2,19 +2,19 @@ import {
     ProductLabelSectionAndNoteListRender,
     productLabelSectionAndNoteOne2Many,
     ProductLabelSectionAndNoteOne2Many,
-} from '@account/components/product_label_section_and_note_field/product_label_section_and_note_field';
+} from "@account/components/product_label_section_and_note_field/product_label_section_and_note_field";
 import {
     listSectionAndNoteText,
     ListSectionAndNoteText,
     sectionAndNoteFieldOne2Many,
     sectionAndNoteText,
     SectionAndNoteText,
-} from '@account/components/section_and_note_fields_backend/section_and_note_fields_backend';
-import { registry } from '@web/core/registry';
-import { CharField } from '@web/views/fields/char/char_field';
+} from "@account/components/section_and_note_fields_backend/section_and_note_fields_backend";
+import {registry} from "@web/core/registry";
+import {CharField} from "@web/views/fields/char/char_field";
 
 export class SaleOrderLineListRenderer extends ProductLabelSectionAndNoteListRender {
-    static recordRowTemplate = 'sale.ListRenderer.RecordRow';
+    static recordRowTemplate = "sale.ListRenderer.RecordRow";
 
     /**
      * Product description widget logic
@@ -22,7 +22,7 @@ export class SaleOrderLineListRenderer extends ProductLabelSectionAndNoteListRen
     getCellTitle(column, record) {
         // When using this list renderer, we don't want the product_id cell to have a tooltip with
         // its label.
-        if (column.name === 'product_id' || column.name === 'product_template_id') {
+        if (column.name === "product_id" || column.name === "product_template_id") {
             return;
         }
         super.getCellTitle(column, record);
@@ -30,12 +30,12 @@ export class SaleOrderLineListRenderer extends ProductLabelSectionAndNoteListRen
 
     getActiveColumns(list) {
         let activeColumns = super.getActiveColumns(list);
-        let productTmplCol = activeColumns.find((col) => col.name === 'product_template_id');
-        let productCol = activeColumns.find((col) => col.name === 'product_id');
+        let productTmplCol = activeColumns.find((col) => col.name === "product_template_id");
+        let productCol = activeColumns.find((col) => col.name === "product_id");
 
         if (productCol && productTmplCol) {
             // Hide the template column if the variant one is enabled.
-            activeColumns = activeColumns.filter((col) => col.name != 'product_template_id')
+            activeColumns = activeColumns.filter((col) => col.name != "product_template_id");
         }
 
         return activeColumns;
@@ -54,34 +54,34 @@ export class SaleOrderLineListRenderer extends ProductLabelSectionAndNoteListRen
      * @param record The record to check
      * @return {Boolean} Whether the record is a section, a note, or a combo.
      */
-    isSectionOrNote(record=null) {
+    isSectionOrNote(record = null) {
         return super.isSectionOrNote(record) || this.isCombo(record);
     }
 
     getRowClass(record) {
         let classNames = super.getRowClass(record);
         if (this.isCombo(record) || this.isComboItem(record)) {
-            classNames = classNames.replace('o_row_draggable', '');
+            classNames = classNames.replace("o_row_draggable", "");
         }
-        return `${classNames} ${this.isCombo(record) ? 'o_is_line_section' : ''}`;
+        return `${classNames} ${this.isCombo(record) ? "o_is_line_section" : ""}`;
     }
 
     isCellReadonly(column, record) {
-        return super.isCellReadonly(column, record) || (
-            this.isComboItem(record)
-                && ![this.titleField, 'tax_ids', 'qty_delivered'].includes(column.name)
+        return (
+            super.isCellReadonly(column, record) ||
+            (this.isComboItem(record) && ![this.titleField, "tax_ids", "qty_delivered"].includes(column.name))
         );
     }
 
     async onDeleteRecord(record) {
         if (this.isCombo(record)) {
-            await record.update({ selected_combo_items: JSON.stringify([]) });
+            await record.update({selected_combo_items: JSON.stringify([])});
         }
         await super.onDeleteRecord(record);
     }
 
     isCombo(record) {
-        return record.data.product_type === 'combo';
+        return record.data.product_type === "combo";
     }
 
     isComboItem(record) {
@@ -101,17 +101,17 @@ export const saleOrderLineOne2Many = {
     additionalClasses: sectionAndNoteFieldOne2Many.additionalClasses,
 };
 
-registry.category('fields').add('sol_o2m', saleOrderLineOne2Many);
+registry.category("fields").add("sol_o2m", saleOrderLineOne2Many);
 
 export class SaleOrderLineText extends SectionAndNoteText {
     get componentToUse() {
-        return this.props.record.data.product_type === 'combo' ? CharField : super.componentToUse;
+        return this.props.record.data.product_type === "combo" ? CharField : super.componentToUse;
     }
 }
 
 export class ListSaleOrderLineText extends ListSectionAndNoteText {
     get componentToUse() {
-        return this.props.record.data.product_type === 'combo' ? CharField : super.componentToUse;
+        return this.props.record.data.product_type === "combo" ? CharField : super.componentToUse;
     }
 }
 
@@ -125,5 +125,5 @@ export const listSaleOrderLineText = {
     component: ListSaleOrderLineText,
 };
 
-registry.category('fields').add('sol_text', saleOrderLineText);
-registry.category('fields').add('list.sol_text', listSaleOrderLineText);
+registry.category("fields").add("sol_text", saleOrderLineText);
+registry.category("fields").add("list.sol_text", listSaleOrderLineText);

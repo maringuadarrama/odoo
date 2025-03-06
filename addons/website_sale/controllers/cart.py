@@ -9,7 +9,7 @@ from odoo.tools import consteq
 
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment.controllers.portal import PaymentPortal
-from odoo.addons.sale.controllers.portal import CustomerPortal
+from odoo.addons.sale.controllers.customer_portal import CustomerPortal
 from odoo.addons.website_sale.controllers.main import WebsiteSale
 
 

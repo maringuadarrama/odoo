@@ -2,17 +2,19 @@
 <templates xml:space="preserve">
     <t t-name="sale.ProductConfiguratorDialog">
         <Dialog size="size" title="title" contentClass="'o_sale_product_configurator_dialog'">
-            <ProductList t-if="this.state.products.length" products="this.state.products"/>
+            <ProductList t-if="this.state.products.length" products="this.state.products" />
             <ProductList
                 t-if="this.state.optionalProducts.length"
                 products="this.state.optionalProducts"
-                areProductsOptional="true"/>
+                areProductsOptional="true"
+            />
             <t t-set-slot="footer">
                 <button
                     name="sale_product_configurator_confirm_button"
                     class="btn btn-primary"
                     t-on-click="onConfirm"
-                    t-att-disabled="!isPossibleConfiguration()">
+                    t-att-disabled="!isPossibleConfiguration()"
+                >
                     Confirm
                 </button>
                 <button
