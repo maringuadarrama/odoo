@@ -4,10 +4,11 @@ from datetime import datetime, time
 from dateutil.relativedelta import relativedelta
 from pytz import UTC
 
-from odoo import api, fields, models, _
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT, get_lang
 from odoo.tools.float_utils import float_compare, float_round
+from odoo.tools.translate import _
 
 
 class PurchaseOrderLine(models.Model):
@@ -61,8 +62,6 @@ class PurchaseOrderLine(models.Model):
         help="Technical field for UX purpose.",
     )
     is_downpayment = fields.Boolean()
-
-    # Followinf fiwlds are product_id related
     product_id = fields.Many2one(
         comodel_name="product.product",
         string="Product",
@@ -151,7 +150,6 @@ class PurchaseOrderLine(models.Model):
         string="Total",
         compute="_compute_amount", store=True,
     )
-
     qty_received_method = fields.Selection(
         [("manual", "Manual")],
         string="Received Qty Method",
@@ -173,7 +171,6 @@ class PurchaseOrderLine(models.Model):
         compute_sudo=True,
         inverse="_inverse_qty_received",
     )
-
     invoice_line_ids = fields.One2many(
         comodel_name="account.move.line",
         inverse_name="purchase_line_id",
@@ -194,6 +191,10 @@ class PurchaseOrderLine(models.Model):
         readonly=True,
     )
 
+
+    # ------------------------------------------------------------
+    # CONSTRAINT METHODS
+    # ------------------------------------------------------------
 
     _accountable_required_fields = models.Constraint(
         """
