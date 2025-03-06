@@ -7,11 +7,13 @@ from markupsafe import escape, Markup
 from pytz import timezone
 from werkzeug.urls import url_encode
 
-from odoo import api, Command, fields, models, _
+from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
+from odoo.fields import Command
 from odoo.osv import expression
 from odoo.tools import format_amount, format_date, format_list, formatLang, groupby, SQL
 from odoo.tools.float_utils import float_is_zero, float_repr
+from odoo.tools.translate import _
 
 
 class PurchaseOrder(models.Model):
@@ -688,7 +690,7 @@ class PurchaseOrder(models.Model):
             ],
         }
 
-    def action_view_invoice(self, invoices=False):
+    def action_open_invoice(self, invoices=False):
         """This function returns an action that display existing vendor bills of
         given purchase order ids. When only one found, show the vendor bill
         immediately."""
@@ -791,7 +793,7 @@ class PurchaseOrder(models.Model):
         # is actually negative or not
         moves.filtered(lambda m: m.currency_id.round(m.amount_total) < 0).action_switch_move_type()
 
-        return self.action_view_invoice(moves)
+        return self.action_open_invoice(moves)
 
     def action_merge(self):
         all_origin = []
