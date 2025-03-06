@@ -48,7 +48,7 @@
         "views/product_supplierinfo_views.xml",
         "views/product_template_attribute_line_views.xml",
         "views/product_template_views.xml",
-        "views/product_views.xml",
+        "views/product_product_views.xml",
         "views/res_country_group_views.xml",
         "views/res_partner_views.xml",
         "views/uom_views.xml",
