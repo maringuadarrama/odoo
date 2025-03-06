@@ -133,7 +133,7 @@ class ProductTemplate(models.Model):
     uom_ids = fields.Many2many(
         comodel_name="uom.uom",
         string="Packagings",
-        domain=[("id", "!=", uom_id)],
+        domain="[('id', '!=', uom_id)]",
         help="Additional packagings for this product which can be used for sales",
     )
     volume = fields.Float(
