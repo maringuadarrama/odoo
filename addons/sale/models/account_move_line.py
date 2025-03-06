@@ -123,12 +123,11 @@ class AccountMoveLine(models.Model):
     def _get_move_lines_to_reinvoice(self, values_list):
         """Filter the move lines that can be reinvoiced: a cost (negative amount) analytic line without SO line but with a product can be reinvoiced"""
         move_to_reinvoice = self.env["account.move.line"]
-        if len(values_list) > 0:
-            for index, move_line in enumerate(self):
-                values = values_list[index]
-                if "so_line" not in values:
-                    if move_line._sale_can_be_reinvoice():
-                        move_to_reinvoice |= move_line
+        for index, values in enumerate(values_list):
+            move_line = self[index]
+            if "so_line" not in values:
+                if move_line._sale_can_be_reinvoice():
+                    move_to_reinvoice |= move_line
         return move_to_reinvoice
 
     # ------------------------------------------------------------
