@@ -66,10 +66,10 @@ class TestSaleMatrixUi(TestMatrixCommon):
         self.env['sale.order.line'].search([('product_id', 'in', self.matrix_template.product_variant_ids.ids)]).order_id.action_confirm()
 
         self.env.flush_all()
-        self.assertEqual(round(self.matrix_template.sales_count, 2), 56.8)
+        self.assertEqual(round(self.matrix_template.count_sales, 2), 56.8)
         for variant in self.matrix_template.product_variant_ids:
             # 5 and 9.2 because of no variant attributes
-            self.assertIn(round(variant.sales_count, 2), [5, 9.2])
+            self.assertIn(round(variant.count_sales, 2), [5, 9.2])
 
         # Ensure no duplicate line has been created on the SO.
         # NB: the *2 is because the no_variant attribute doesn't create a variant

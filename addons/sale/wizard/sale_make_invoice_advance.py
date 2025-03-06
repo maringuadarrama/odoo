@@ -120,7 +120,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
     def create_invoices(self):
         self._check_amount_is_positive()
         invoices = self._create_invoices(self.sale_order_ids)
-        return self.sale_order_ids.action_view_invoice(invoices=invoices)
+        return self.sale_order_ids.action_open_invoice(invoices=invoices)
 
     def view_draft_invoices(self):
         return {

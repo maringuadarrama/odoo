@@ -287,7 +287,7 @@
                 <!-- allow to unlock locked orders even if setting is not enabled (e.g. orders synchronized from connectors) -->
                 <button name="action_unlock" type="object" string="Unlock"
                         invisible="not locked" groups="sales_team.group_sale_manager"/>
-                <button name="action_preview_sale_order" string="Preview" type="object" class="btn-secondary"/>
+                <button name="action_open_sale_order_preview" string="Preview" type="object" class="btn-secondary"/>
                 <button
                     name="action_cancel"
                     type="object"
@@ -328,7 +328,7 @@
             </div>
             <sheet>
                 <div class="oe_button_box" name="button_box">
-                    <button name="action_view_invoice"
+                    <button name="action_open_invoice"
                         type="object"
                         class="oe_stat_button"
                         icon="fa-pencil-square-o"

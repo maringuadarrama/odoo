@@ -150,8 +150,8 @@ class SaleOrder(models.Model):
                     or order.partner_id.user_id.id
                 )
 
-    def _default_team_id(self):
-        return super()._default_team_id() or self.website_id.salesteam_id.id
+    def _get_default_team_id(self):
+        return super()._get_default_team_id() or self.website_id.salesteam_id.id
 
     #=== CRUD METHODS ===#
 
@@ -175,8 +175,8 @@ class SaleOrder(models.Model):
 
     #=== ACTION METHODS ===#
 
-    def action_preview_sale_order(self):
-        action = super().action_preview_sale_order()
+    def action_open_sale_order_preview(self):
+        action = super().action_open_sale_order_preview()
         if action['url'].startswith('/'):
             # URL should always be relative, safety check
             action['url'] = f'/@{action["url"]}'

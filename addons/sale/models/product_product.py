@@ -8,25 +8,29 @@ from odoo.tools import float_round
 
 
 class ProductProduct(models.Model):
-    _inherit = 'product.product'
+    _inherit = "product.product"
 
-    sales_count = fields.Float(compute='_compute_sales_count', string='Sold', digits='Product Unit')
 
+    count_sales = fields.Float(
+        string="Sold",
+        digits="Product Unit",
+        compute="_compute_count_sales",
+    )
     # Catalog related fields
     product_catalog_product_is_in_sale_order = fields.Boolean(
         compute='_compute_product_is_in_sale_order',
         search='_search_product_is_in_sale_order',
     )
 
-    def _compute_sales_count(self):
+
+    def _compute_count_sales(self):
         r = {}
-        self.sales_count = 0
+        self.count_sales = 0
         if not self.env.user.has_group('sales_team.group_sale_salesman'):
             return r
+
         date_from = fields.Date.today() - timedelta(days=365)
-
         done_states = self.env['sale.report']._get_done_states()
-
         domain = [
             ('state', 'in', done_states),
             ('product_id', 'in', self.ids),
@@ -36,18 +40,10 @@ class ProductProduct(models.Model):
             r[product.id] = product_uom_qty
         for product in self:
             if not product.id:
-                product.sales_count = 0.0
+                product.count_sales = 0.0
                 continue
-            product.sales_count = float_round(r.get(product.id, 0), precision_rounding=product.uom_id.rounding)
+            product.count_sales = float_round(r.get(product.id, 0), precision_rounding=product.uom_id.rounding)
         return r
-
-    @api.onchange('type')
-    def _onchange_type(self):
-        if self._origin and self.sales_count > 0:
-            return {'warning': {
-                'title': _("Warning"),
-                'message': _("You cannot change the product's type because it is already used in sales orders.")
-            }}
 
     @api.depends_context('order_id')
     def _compute_product_is_in_sale_order(self):
@@ -64,6 +60,14 @@ class ProductProduct(models.Model):
         data = {product.id: count for product, count in read_group_data}
         for product in self:
             product.product_catalog_product_is_in_sale_order = bool(data.get(product.id, 0))
+
+    @api.onchange('type')
+    def _onchange_type(self):
+        if self._origin and self.count_sales > 0:
+            return {'warning': {
+                'title': _("Warning"),
+                'message': _("You cannot change the product's type because it is already used in sales orders.")
+            }}
 
     def _search_product_is_in_sale_order(self, operator, value):
         if operator not in ['=', '!='] or not isinstance(value, bool):
@@ -121,14 +125,3 @@ class ProductProduct(models.Model):
             [('product_id', 'in', self.ids)], limit=1
         )
         return bool(so_lines)
-
-
-class ProductAttributeCustomValue(models.Model):
-    _inherit = "product.attribute.custom.value"
-
-    sale_order_line_id = fields.Many2one('sale.order.line', string="Sales Order Line", ondelete='cascade')
-
-    _sol_custom_value_unique = models.Constraint(
-        'unique(custom_product_template_attribute_value_id, sale_order_line_id)',
-        'Only one Custom Value is allowed per Attribute Value per Sales Order Line.',
-    )

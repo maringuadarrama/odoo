@@ -16,7 +16,7 @@ class ProjectProject(models.Model):
 
     def _domain_sale_line_id(self):
         domain = expression.AND([
-            self.env['sale.order.line']._sellable_lines_domain(),
+            self.env['sale.order.line']._get_sellable_lines_domain(),
             self.env['sale.order.line']._domain_sale_line_service(),
             [
                 ('order_partner_id', '=?', unquote("partner_id")),
@@ -34,8 +34,8 @@ class ProjectProject(models.Model):
             "It can be modified on each task and timesheet entry individually if necessary.")
     sale_order_id = fields.Many2one(related='sale_line_id.order_id', export_string_translation=False)
     has_any_so_to_invoice = fields.Boolean('Has SO to Invoice', compute='_compute_has_any_so_to_invoice', export_string_translation=False)
-    sale_order_line_count = fields.Integer(compute='_compute_sale_order_count', groups='sales_team.group_sale_salesman', export_string_translation=False)
-    sale_order_count = fields.Integer(compute='_compute_sale_order_count', groups='sales_team.group_sale_salesman', export_string_translation=False)
+    sale_order_line_count = fields.Integer(compute='_compute_count_sale_order', groups='sales_team.group_sale_salesman', export_string_translation=False)
+    count_sale_order = fields.Integer(compute='_compute_count_sale_order', groups='sales_team.group_sale_salesman', export_string_translation=False)
     has_any_so_with_nothing_to_invoice = fields.Boolean('Has a SO with an invoice status of No', compute='_compute_has_any_so_with_nothing_to_invoice', export_string_translation=False)
     invoice_count = fields.Integer(compute='_compute_invoice_count', groups='account.group_account_readonly', export_string_translation=False)
     vendor_bill_count = fields.Integer(related='account_id.vendor_bill_count', groups='account.group_account_readonly', compute_sudo=False, export_string_translation=False)
@@ -118,14 +118,14 @@ class ProjectProject(models.Model):
         (self - project_to_invoice).has_any_so_to_invoice = False
 
     @api.depends('sale_order_id', 'task_ids.sale_order_id')
-    def _compute_sale_order_count(self):
+    def _compute_count_sale_order(self):
         sale_order_items_per_project_id = self._fetch_sale_order_items_per_project_id({'project.task': [('is_closed', '=', False)]})
         for project in self:
             sale_order_lines = sale_order_items_per_project_id.get(project.id, self.env['sale.order.line'])
             project.sale_order_line_count = len(sale_order_lines)
 
             # Use sudo to avoid AccessErrors when the SOLs belong to different companies.
-            project.sale_order_count = len(sale_order_lines.sudo().order_id)
+            project.count_sale_order = len(sale_order_lines.sudo().order_id)
 
     def _compute_invoice_count(self):
         data = self.env['account.move.line']._read_group(
@@ -772,13 +772,13 @@ class ProjectProject(models.Model):
             buttons.append({
                 'icon': 'dollar',
                 'text': self.env._('Sales Orders'),
-                'number': self.sale_order_count,
+                'number': self.count_sale_order,
                 'action_type': 'object',
                 'action': 'action_view_sos',
                 'additional_context': json.dumps({
                     'create_for_project_id': self.id,
                 }),
-                'show': self.display_sales_stat_buttons and self.sale_order_count > 0,
+                'show': self.display_sales_stat_buttons and self.count_sale_order > 0,
                 'sequence': 27,
             })
         if self.env.user.has_group('sales_team.group_sale_salesman_all_leads'):

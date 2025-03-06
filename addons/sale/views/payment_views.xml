@@ -20,8 +20,8 @@
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
                 <button name="action_view_sales_orders" type="object"
                         class="oe_stat_button" icon="fa-money"
-                        invisible="sale_order_ids_nbr == 0">
-                    <field name="sale_order_ids_nbr" widget="statinfo" string="Sales Order(s)"/>
+                        invisible="count_sale_order_ids == 0">
+                    <field name="count_sale_order_ids" widget="statinfo" string="Sales Order(s)"/>
                 </button>
             </xpath>
         </field>

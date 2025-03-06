@@ -793,7 +793,7 @@ class TestSaleProject(HttpCase, TestSaleProjectCommon):
         (sale_order_a + sale_order_b).action_confirm()
 
         for company in [company_a, company_b]:
-            self.assertEqual(multi_company_project.with_company(company).sale_order_count, 2, "Expected all sale orders to be counted by project")
+            self.assertEqual(multi_company_project.with_company(company).count_sale_order, 2, "Expected all sale orders to be counted by project")
             self.assertEqual(
                 multi_company_project.with_company(company).sale_order_line_count,
                 len(sale_order_a.order_line) + len(sale_order_b.order_line),  # expect 4

@@ -123,5 +123,5 @@ class SaleOrderLine(models.Model):
         coupons_to_unlink.sudo().unlink()
         return res
 
-    def _sellable_lines_domain(self):
-        return super()._sellable_lines_domain() + [('reward_id', '=', False)]
+    def _get_sellable_lines_domain(self):
+        return super()._get_sellable_lines_domain() + [('reward_id', '=', False)]

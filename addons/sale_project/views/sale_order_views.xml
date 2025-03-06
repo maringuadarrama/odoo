@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="priority">10</field>
         <field name="arch" type="xml">
-            <xpath expr="//button[@name='action_view_invoice']" position="before">
+            <xpath expr="//button[@name='action_open_invoice']" position="before">
                 <field name="show_task_button" invisible="1"/>
                 <field name="show_project_button" invisible="1"/>
                 <field name="show_create_project_button" invisible="1"/>

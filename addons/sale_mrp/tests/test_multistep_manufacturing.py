@@ -151,7 +151,7 @@ class TestMultistepManufacturing(TestMrpCommon):
         ])
 
         self.assertEqual(self.sale_order.mrp_production_count, 1)
-        self.assertEqual(mo.sale_order_count, 1)
+        self.assertEqual(mo.count_sale_order, 1)
 
         self.assertEqual(self.sale_order.action_view_mrp_production()['res_id'], mo.id)
         self.assertEqual(mo.action_view_sale_orders()['res_id'], self.sale_order.id)

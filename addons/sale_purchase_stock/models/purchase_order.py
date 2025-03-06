@@ -11,8 +11,8 @@ class PurchaseOrder(models.Model):
         "order_line_ids.move_dest_ids.group_id.sale_id",
         "order_line_ids.move_ids.move_dest_ids.group_id.sale_id"
     )
-    def _compute_sale_order_count(self):
-        super()._compute_sale_order_count()
+    def _compute_count_sale_order(self):
+        super()._compute_count_sale_order()
 
     def _get_sale_orders(self):
         linked_so = (

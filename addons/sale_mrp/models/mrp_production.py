@@ -7,16 +7,16 @@ from odoo import api, fields, models, _
 class MrpProduction(models.Model):
     _inherit = 'mrp.production'
 
-    sale_order_count = fields.Integer(
+    count_sale_order = fields.Integer(
         "Count of Source SO",
-        compute='_compute_sale_order_count',
+        compute='_compute_count_sale_order',
         groups='sales_team.group_sale_salesman')
     sale_line_id = fields.Many2one('sale.order.line', 'Origin sale order line')
 
     @api.depends('procurement_group_id.mrp_production_ids.move_dest_ids.group_id.sale_id')
-    def _compute_sale_order_count(self):
+    def _compute_count_sale_order(self):
         for production in self:
-            production.sale_order_count = len(production.procurement_group_id.mrp_production_ids.move_dest_ids.group_id.sale_id | production.sale_line_id.order_id)
+            production.count_sale_order = len(production.procurement_group_id.mrp_production_ids.move_dest_ids.group_id.sale_id | production.sale_line_id.order_id)
 
     def action_view_sale_orders(self):
         self.ensure_one()

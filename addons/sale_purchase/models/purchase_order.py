@@ -7,17 +7,17 @@ class PurchaseOrder(models.Model):
     _inherit = "purchase.order"
 
 
-    sale_order_count = fields.Integer(
+    count_sale_order = fields.Integer(
         string="Number of Source Sale",
-        compute='_compute_sale_order_count',
+        compute='_compute_count_sale_order',
         groups='sales_team.group_sale_salesman'
     )
 
 
     @api.depends('order_line_ids.sale_order_id')
-    def _compute_sale_order_count(self):
+    def _compute_count_sale_order(self):
         for purchase in self:
-            purchase.sale_order_count = len(purchase._get_sale_orders())
+            purchase.count_sale_order = len(purchase._get_sale_orders())
 
     def action_view_sale_orders(self):
         self.ensure_one()

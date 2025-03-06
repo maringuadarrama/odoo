@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <data>
-               <xpath expr="//button[@name='action_view_invoice']" position="before">
+               <xpath expr="//button[@name='action_open_invoice']" position="before">
                    <button type="action"
                        name="%(sale_expense.hr_expense_action_from_sale_order)d"
                        class="oe_stat_button"
