@@ -5,8 +5,7 @@ class AccountChartTemplate(models.AbstractModel):
     """Extends the 'account.chart.template' model to include specific property accounts for downpayments.
 
     This module adds support for defining a default account for downpayments at the product category level,
-    ensuring proper accounting treatment for downpayment transactions in sales operations.
-    """
+    ensuring proper accounting treatment for downpayment transactions in sales operations."""
     _inherit = "account.chart.template"
 
 

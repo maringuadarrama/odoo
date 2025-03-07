@@ -1,8 +1,7 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import SQL
+from odoo.tools.translate import _
 
 
 class CrmTeam(models.Model):
@@ -10,9 +9,9 @@ class CrmTeam(models.Model):
 
     This module enhances the CRM team model by adding fields and methods to track sales-related data,
     such as the number of quotations, sales to invoice, invoiced amounts, and sales targets. It also
-    provides tools for analyzing sales performance and managing invoicing targets.
-    """
+    provides tools for analyzing sales performance and managing invoicing targets."""
     _inherit = "crm.team"
+
 
     # ------------------------------------------------------------
     # FIELDS
@@ -70,7 +69,7 @@ class CrmTeam(models.Model):
                 WHEN 0 THEN 1.0
                 ELSE currency_rate
                 END
-            ) as amount_total
+            ) AS amount_total
             FROM
                 sale_order
             WHERE
@@ -155,6 +154,7 @@ class CrmTeam(models.Model):
     def action_primary_channel_button(self):
         if self._in_sale_scope():
             return self.env["ir.actions.actions"]._for_xml_id("sale.action_order_report_so_salesteam")
+
         return super().action_primary_channel_button()
 
 

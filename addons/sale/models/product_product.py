@@ -1,37 +1,110 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import timedelta
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_round
+from odoo.tools.translate import _
 
 
 class ProductProduct(models.Model):
     _inherit = "product.product"
 
+
     # ------------------------------------------------------------
     # FIELDS
     # ------------------------------------------------------------
 
-    # Float
-    count_sales = fields.Float(compute="_compute_count_sales", string="Sold", digits="Product Unit")
+    count_sales = fields.Float(
+        string="Sold",
+        digits="Product Unit",
+        compute="_compute_count_sales",
+    )
+
 
     # ------------------------------------------------------------
-    # HELPERS METHODS
+    # COMPUTE METHODS
     # ------------------------------------------------------------
 
-    def _get_backend_root_menu_ids(self):
-        return super()._get_backend_root_menu_ids() + [self.env.ref("sale.sale_menu_root").id]
+    def _compute_count_sales(self):
+        r = {}
+        self.count_sales = 0
+        if not self.env.user.has_group("sales_team.group_sale_salesman"):
+            return r
 
-    def _get_invoice_policy(self):
-        return self.invoice_policy
+        date_from = fields.Date.today() - timedelta(days=365)
+        done_states = self.env["sale.report"]._get_done_states()
+        domain = [
+            ("state", "in", done_states),
+            ("product_id", "in", self.ids),
+            ("date", ">=", date_from),
+        ]
+        for product, product_uom_qty in self.env["sale.report"]._read_group(
+            domain,
+            ["product_id"],
+            ["product_uom_qty:sum"]
+        ):
+            r[product.id] = product_uom_qty
+        for product in self:
+            if not product.id:
+                product.count_sales = 0.0
+                continue
 
-    def _filter_to_unlink(self):
-        domain = [("product_id", "in", self.ids)]
-        lines = self.env["sale.order.line"]._read_group(domain, ["product_id"])
-        linked_product_ids = [product.id for [product] in lines]
-        return super(ProductProduct, self - self.browse(linked_product_ids))._filter_to_unlink()
+            product.count_sales = float_round(r.get(product.id, 0), precision_rounding=product.uom_id.rounding)
+        return r
+
+
+    # ------------------------------------------------------------
+    # ONCHANGE METHODS
+    # ------------------------------------------------------------
+
+    @api.onchange("type")
+    def _onchange_type(self):
+        if self._origin and self.count_sales > 0:
+            return {
+                "warning": {
+                    "title": _("Warning"),
+                    "message": _("You cannot change the product's type because it is already used in sales orders."),
+                }
+            }
+
+
+    # ------------------------------------------------------------
+    # ACTION METHODS
+    # ------------------------------------------------------------
+
+    @api.readonly
+    def action_view_sales(self):
+        action = self.env["ir.actions.actions"]._for_xml_id("sale.report_all_channels_sales_action")
+        action["domain"] = [("product_id", "in", self.ids)]
+        action["context"] = {
+            "pivot_measures": ["product_uom_qty"],
+            "active_id": self._context.get("active_id"),
+            "search_default_Sales": 1,
+            "active_model": "sale.report",
+            "search_default_filter_order_date": 1,
+        }
+        return action
+
+
+    # ------------------------------------------------------------
+    # SEARCH METHODS
+    # ------------------------------------------------------------
+
+    def _search_product_is_in_sale_order(self, operator, value):
+        if operator not in ["=", "!="] or not isinstance(value, bool):
+            raise UserError(_("Operation not supported"))
+        product_ids = (
+            self.env["sale.order.line"]
+            .search(
+                [
+                    ("order_id", "in", [self.env.context.get("order_id", "")]),
+                ]
+            )
+            .product_id.ids
+        )
+        return [("id", "in", product_ids)]
+
 
     # ------------------------------------------------------------
     # HOOKS
@@ -56,66 +129,23 @@ class ProductProduct(models.Model):
             so_lines.product_uom_id = to_uom_id
         return super()._update_uom(to_uom_id)
 
-    # ------------------------------------------------------------
-    # COMPUTE METHODS
-    # ------------------------------------------------------------
-
-    def _compute_count_sales(self):
-        r = {}
-        self.count_sales = 0
-        if not self.env.user.has_group("sales_team.group_sale_salesman"):
-            return r
-        date_from = fields.Date.today() - timedelta(days=365)
-
-        done_states = self.env["sale.report"]._get_done_states()
-
-        domain = [
-            ("state", "in", done_states),
-            ("product_id", "in", self.ids),
-            ("date", ">=", date_from),
-        ]
-        for product, product_uom_qty in self.env["sale.report"]._read_group(
-            domain, ["product_id"], ["product_uom_qty:sum"]
-        ):
-            r[product.id] = product_uom_qty
-        for product in self:
-            if not product.id:
-                product.count_sales = 0.0
-                continue
-            product.count_sales = float_round(r.get(product.id, 0), precision_rounding=product.uom_id.rounding)
-        return r
 
     # ------------------------------------------------------------
-    # SEARCH METHODS
+    # HELPERS METHODS
     # ------------------------------------------------------------
 
-    def _search_product_is_in_sale_order(self, operator, value):
-        if operator not in ["=", "!="] or not isinstance(value, bool):
-            raise UserError(_("Operation not supported"))
-        product_ids = (
-            self.env["sale.order.line"]
-            .search(
-                [
-                    ("order_id", "in", [self.env.context.get("order_id", "")]),
-                ]
-            )
-            .product_id.ids
-        )
-        return [("id", "in", product_ids)]
+    def _get_backend_root_menu_ids(self):
+        return super()._get_backend_root_menu_ids() + [self.env.ref("sale.sale_menu_root").id]
 
-    # ------------------------------------------------------------
-    # ONCHANGE METHODS
-    # ------------------------------------------------------------
+    def _get_invoice_policy(self):
+        return self.invoice_policy
 
-    @api.onchange("type")
-    def _onchange_type(self):
-        if self._origin and self.count_sales > 0:
-            return {
-                "warning": {
-                    "title": _("Warning"),
-                    "message": _("You cannot change the product's type because it is already used in sales orders."),
-                }
-            }
+    def _filter_to_unlink(self):
+        domain = [("product_id", "in", self.ids)]
+        lines = self.env["sale.order.line"]._read_group(domain, ["product_id"])
+        linked_product_ids = [product.id for [product] in lines]
+        return super(ProductProduct, self - self.browse(linked_product_ids))._filter_to_unlink()
+
 
     # ------------------------------------------------------------
     # VALIDATIONS METHODS
@@ -127,20 +157,3 @@ class ProductProduct(models.Model):
             return res
         so_lines = self.env["sale.order.line"].sudo().search_count([("product_id", "in", self.ids)], limit=1)
         return bool(so_lines)
-
-    # ------------------------------------------------------------
-    # ACTION METHODS
-    # ------------------------------------------------------------
-
-    @api.readonly
-    def action_view_sales(self):
-        action = self.env["ir.actions.actions"]._for_xml_id("sale.report_all_channels_sales_action")
-        action["domain"] = [("product_id", "in", self.ids)]
-        action["context"] = {
-            "pivot_measures": ["product_uom_qty"],
-            "active_id": self._context.get("active_id"),
-            "search_default_Sales": 1,
-            "active_model": "sale.report",
-            "search_default_filter_order_date": 1,
-        }
-        return action

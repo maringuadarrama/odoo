@@ -8,10 +8,9 @@ class AccountInvoiceReport(models.Model):
     """Extends the 'account.invoice.report' model to include sales team information.
 
     This module adds a Many2one field to link invoice reports to sales teams, enabling better
-    tracking and analysis of sales performance by team.
-    """
-
+    tracking and analysis of sales performance by team."""
     _inherit = "account.invoice.report"
+
 
     # ------------------------------------------------------------
     # FIELDS

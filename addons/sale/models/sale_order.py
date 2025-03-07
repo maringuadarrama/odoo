@@ -2,9 +2,10 @@ import json
 from datetime import timedelta
 from itertools import groupby
 
-from odoo import SUPERUSER_ID, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.fields import Command
+from odoo.orm.utils import SUPERUSER_ID
 from odoo.tools import (
     float_is_zero,
     format_amount,
@@ -35,15 +36,14 @@ class SaleOrder(models.Model):
     """Management the sales order process from quotation to confirmation and invoicing.
 
     Handles customer sales transactions, including pricing, payment terms, delivery methods,
-    and order lifecycle management.
-    """
-
+    and order lifecycle management."""
     _name = "sale.order"
     _inherit = ["portal.mixin", "mail.thread", "mail.activity.mixin", "mail.activity.mixin", "utm.mixin"]
     _description = "Sales Order"
+    _check_company_auto = True
     _mail_thread_customer = True
     _order = "date_order desc, id desc"
-    _check_company_auto = True
+
 
     # ------------------------------------------------------------
     # FIELDS
@@ -344,6 +344,7 @@ class SaleOrder(models.Model):
     amount_total = fields.Monetary(string="Total", store=True, compute="_compute_amounts", tracking=4)
     amount_to_invoice = fields.Monetary(string="Un-invoiced Balance", compute="_compute_amount_to_invoice")
     amount_invoiced = fields.Monetary(string="Already invoiced", compute="_compute_amount_invoiced")
+
 
     # ------------------------------------------------------------
     # SQL CONSTRAINTS

@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
             <xpath expr="//footer/div" position="inside">
                 <a
-                    t-if="record.invoiced_amount"
+                    t-if="record.amount_invoiced"
                     href="#"
                     title="Revenues"
                     role="button"
@@ -19,7 +19,7 @@
                 >
                     <span class="badge">
                         <field name="currency_id" invisible="True" />
-                        <field name="invoiced_amount" widget="monetary" options="{'currency_field': 'currency_id'}" />
+                        <field name="amount_invoiced" widget="monetary" options="{'currency_field': 'currency_id'}" />
                     </span>
                 </a>
                 <a
@@ -54,7 +54,7 @@
                     icon="fa-usd"
                     groups="sales_team.group_sale_salesman"
                 >
-                    <field name="invoiced_amount" widget="statinfo" string="Revenues" />
+                    <field name="amount_invoiced" widget="statinfo" string="Revenues" />
                 </button>
                 <button
                     name="action_redirect_to_quotations"

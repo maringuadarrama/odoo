@@ -1,11 +1,11 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from datetime import datetime
-
 from dateutil import relativedelta
 
-from odoo import SUPERUSER_ID, Command, _, api, fields, models
+from odoo import api, fields, models
+from odoo.fields import Command
+from odoo.orm.utils import SUPERUSER_ID
 from odoo.tools import str2bool
+from odoo.tools.translate import _
 
 
 class PaymentTransaction(models.Model):
@@ -13,19 +13,14 @@ class PaymentTransaction(models.Model):
 
     This module links payment transactions to sales orders, enabling automatic confirmation of orders,
     invoice generation, and communication handling based on payment status. It also supports downpayment
-    invoices and provides tools for managing transaction references and sending payment-related emails.
-    """
-
+    invoices and provides tools for managing transaction references and sending payment-related emails."""
     _inherit = "payment.transaction"
+
 
     # ------------------------------------------------------------
     # FIELDS
     # ------------------------------------------------------------
 
-    # Integer
-    sale_order_ids_nbr = fields.Integer(compute="_compute_sale_order_ids_nbr", string="# of Sales Orders")
-
-    # Many2many
     sale_order_ids = fields.Many2many(
         comodel_name="sale.order",
         relation="sale_order_transaction_rel",
@@ -35,15 +30,43 @@ class PaymentTransaction(models.Model):
         copy=False,
         readonly=True,
     )
+    count_sale_order = fields.Integer(
+        string="# of Sales Orders",
+        compute="_compute_count_sale_order",
+    )
+
 
     # ------------------------------------------------------------
     # COMPUTE METHODS
     # ------------------------------------------------------------
 
     @api.depends("sale_order_ids")
-    def _compute_sale_order_ids_nbr(self):
+    def _compute_count_sale_order(self):
         for trans in self:
-            trans.sale_order_ids_nbr = len(trans.sale_order_ids)
+            trans.count_sale_order = len(trans.sale_order_ids)
+
+
+    # ------------------------------------------------------------
+    # ACTION METHODS
+    # ------------------------------------------------------------
+
+    @api.readonly
+    def action_view_sales_orders(self):
+        action = {
+            "name": _("Sales Order(s)"),
+            "type": "ir.actions.act_window",
+            "res_model": "sale.order",
+            "target": "current",
+        }
+        sale_order_ids = self.sale_order_ids.ids
+        if len(sale_order_ids) == 1:
+            action["res_id"] = sale_order_ids[0]
+            action["view_mode"] = "form"
+        else:
+            action["view_mode"] = "list,form"
+            action["domain"] = [("id", "in", sale_order_ids)]
+        return action
+
 
     # ------------------------------------------------------------
     # HOOKS
@@ -100,8 +123,7 @@ class PaymentTransaction(models.Model):
         :param dict values: The transaction values used to compute the reference prefix. It should
                             have the structure {'sale_order_ids': [(X2M command), ...], ...}.
         :return: The computed reference prefix if order ids are found, the one of `super` otherwise
-        :rtype: str
-        """
+        :rtype: str"""
         command_list = values.get("sale_order_ids")
         if command_list:
             # Extract sales order id(s) from the X2M commands
@@ -109,6 +131,7 @@ class PaymentTransaction(models.Model):
             orders = self.env["sale.order"].browse(order_ids).exists()
             if len(orders) == len(order_ids):  # All ids are valid
                 return separator.join(orders.mapped("name"))
+
         return super()._compute_reference_prefix(provider_code, separator, **values)
 
     # ------------------------------------------------------------
@@ -116,9 +139,7 @@ class PaymentTransaction(models.Model):
     # ------------------------------------------------------------
 
     def _cron_send_invoice(self):
-        """
-        Cron to send invoice that where not ready to be send directly after posting
-        """
+        """Cron to send invoice that where not ready to be send directly after posting"""
         if not self.env["ir.config_parameter"].sudo().get_param("sale.automatic_invoice"):
             return
 
@@ -145,27 +166,6 @@ class PaymentTransaction(models.Model):
         )._send_invoice()
 
     # ------------------------------------------------------------
-    # ACTION METHODS
-    # ------------------------------------------------------------
-
-    @api.readonly
-    def action_view_sales_orders(self):
-        action = {
-            "name": _("Sales Order(s)"),
-            "type": "ir.actions.act_window",
-            "res_model": "sale.order",
-            "target": "current",
-        }
-        sale_order_ids = self.sale_order_ids.ids
-        if len(sale_order_ids) == 1:
-            action["res_id"] = sale_order_ids[0]
-            action["view_mode"] = "form"
-        else:
-            action["view_mode"] = "list,form"
-            action["domain"] = [("id", "in", sale_order_ids)]
-        return action
-
-    # ------------------------------------------------------------
     # BUSINESS LOGIC METHODS
     # ------------------------------------------------------------
 
@@ -175,8 +175,7 @@ class PaymentTransaction(models.Model):
         Note: self.ensure_one()
 
         :param str message: The message to be logged
-        :return: None
-        """
+        :return: None"""
         super()._log_message_on_linked_documents(message)
         author = self.env.user.partner_id if self.env.uid == SUPERUSER_ID else self.partner_id
         for order in self.sale_order_ids or self.source_transaction_id.sale_order_ids:
@@ -185,15 +184,12 @@ class PaymentTransaction(models.Model):
     def _invoice_sale_orders(self):
         for tx in self.filtered(lambda tx: tx.sale_order_ids):
             tx = tx.with_company(tx.company_id)
-
             confirmed_orders = tx.sale_order_ids.filtered(lambda so: so.state == "sale")
             if confirmed_orders:
                 # Filter orders between those fully paid and those partially paid.
                 fully_paid_orders = confirmed_orders.filtered(lambda so: so._is_paid())
-
                 # Create a down payment invoice for partially paid orders
                 downpayment_invoices = (confirmed_orders - fully_paid_orders)._generate_downpayment_invoices()
-
                 # For fully paid orders create a final invoice.
                 fully_paid_orders._force_lines_to_invoice_policy_order()
                 final_invoices = fully_paid_orders.with_context(raise_if_nothing_to_invoice=False)._create_invoices(
@@ -216,8 +212,7 @@ class PaymentTransaction(models.Model):
         Grouped payments (paying multiple sales orders in one transaction) are not supported.
 
         :return: The confirmed sales orders.
-        :rtype: a `sale.order` recordset
-        """
+        :rtype: a `sale.order` recordset"""
         confirmed_orders = self.env["sale.order"]
         for tx in self:
             # We only support the flow where exactly one quotation is linked to a transaction.
@@ -233,8 +228,7 @@ class PaymentTransaction(models.Model):
 
         In particular, for pending transactions, we send the quotation by email; for authorized
         transactions, we confirm the quotation; for confirmed transactions, we automatically confirm
-        the quotation and generate invoices.
-        """
+        the quotation and generate invoices."""
         for pending_tx in self.filtered(lambda tx: tx.state == "pending"):
             super(PaymentTransaction, pending_tx)._post_process()
             sales_orders = pending_tx.sale_order_ids.filtered(lambda so: so.state in ["draft", "sent"])
@@ -248,6 +242,7 @@ class PaymentTransaction(models.Model):
 
             if pending_tx.operation == "validation":
                 continue
+
             # Send the payment status email.
             # The transactions are manually cached while in a sudoed environment to prevent an
             # AccessError: In some circumstances, sending the mail would generate the report assets
@@ -265,6 +260,7 @@ class PaymentTransaction(models.Model):
             confirmed_orders = authorized_tx._check_amount_and_confirm_order()
             if authorized_tx.operation == "validation":
                 continue
+
             if remaining_orders := (authorized_tx.sale_order_ids - confirmed_orders):
                 remaining_orders._send_payment_succeeded_for_order_mail()
 
@@ -276,6 +272,7 @@ class PaymentTransaction(models.Model):
             confirmed_orders = done_tx._check_amount_and_confirm_order()
             if done_tx.operation == "validation":
                 continue
+
             (done_tx.sale_order_ids - confirmed_orders)._send_payment_succeeded_for_order_mail()
 
             auto_invoice = str2bool(self.env["ir.config_parameter"].sudo().get_param("sale.automatic_invoice"))
@@ -283,6 +280,7 @@ class PaymentTransaction(models.Model):
                 # Invoice the sales orders of confirmed transactions instead of only confirmed
                 # orders to create the invoice even if only a partial payment was made.
                 done_tx._invoice_sale_orders()
+
             super(PaymentTransaction, done_tx)._post_process()  # Post the invoices.
             if auto_invoice:
                 self._send_invoice()

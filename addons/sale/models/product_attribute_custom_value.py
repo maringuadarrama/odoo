@@ -5,16 +5,20 @@ class ProductAttributeCustomValue(models.Model):
     """Inherits the 'product.attribute.custom.value' model to link custom attribute values to sales order lines.
 
     This module adds a Many2one field to associate custom attribute values with specific sales order lines,
-    ensuring that only one custom value is allowed per attribute value per sales order line.
-    """
-
+    ensuring that only one custom value is allowed per attribute value per sales order line."""
     _inherit = "product.attribute.custom.value"
+
 
     # ------------------------------------------------------------
     # FIELDS
     # ------------------------------------------------------------
 
-    sale_order_line_id = fields.Many2one("sale.order.line", string="Sales Order Line", ondelete="cascade")
+    sale_order_line_id = fields.Many2one(
+        comodel_name="sale.order.line",
+        string="Sales Order Line",
+        ondelete="cascade",
+    )
+
 
     # -----------------------------------------------------------
     # SQL CONSTRAINTS

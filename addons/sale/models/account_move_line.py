@@ -1,8 +1,7 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
-from odoo import _, fields, models
+from odoo import fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
+from odoo.tools.translate import _
 
 
 class AccountMoveLine(models.Model):

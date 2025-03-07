@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import api, fields, models
 
 from odoo.addons.sale.models.sale_order import SALE_ORDER_STATE
@@ -10,14 +8,13 @@ class SaleReport(models.Model):
 
     Handles sales data, including order details, product information, and customer data,
     to generate comprehensive sales reports. It supports filtering and grouping by various fields such
-    as sales team, product category, and customer country.
-    """
-
+    as sales team, product category, and customer country."""
     _name = "sale.report"
     _description = "Sales Analysis Report"
     _auto = False
-    _rec_name = "date"
     _order = "date desc"
+    _rec_name = "date"
+
 
     # ------------------------------------------------------------
     # FIELDS
@@ -211,8 +208,7 @@ class SaleReport(models.Model):
         """Hook to return additional fields SQL specification for select part of the table query.
 
         :returns: mapping field -> SQL computation of field, will be converted to '_ AS _field' in the final table definition
-        :rtype: dict
-        """
+        :rtype: dict"""
         return {}
 
     def _from_sale(self):
