@@ -49,92 +49,168 @@ class SaleOrder(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
-    # Char
+    company_id = fields.Many2one(
+        comodel_name="res.company",
+        required=True,
+        default=lambda self: self.env.company,
+        index=True,
+    )
+    country_code = fields.Char(
+        related="company_id.account_fiscal_country_id.code",
+        string="Country code",
+    )
+    company_price_include = fields.Selection(
+        related="company_id.account_price_include"
+    )
+    tax_calculation_rounding_method = fields.Selection(
+        related="company_id.tax_calculation_rounding_method",
+        depends=["company_id"]
+    )
+    terms_type = fields.Selection(
+        related="company_id.terms_type"
+    )
+    partner_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Customer",
+        required=True,
+        change_default=True,
+        check_company=True,
+        tracking=1,
+        index=True,
+    )
+    partner_invoice_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Invoice Address",
+        required=True,
+        compute="_compute_partner_invoice_id", store=True, precompute=True,
+        readonly=False,
+        check_company=True,
+        index="btree_not_null",
+    )
+    partner_shipping_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Delivery Address",
+        required=True,
+        compute="_compute_partner_shipping_id", store=True, precompute=True,
+        readonly=False,
+        check_company=True,
+        index="btree_not_null",
+    )
+    fiscal_position_id = fields.Many2one(
+        comodel_name="account.fiscal.position",
+        string="Fiscal Position",
+        compute="_compute_fiscal_position_id", store=True, precompute=True,
+        readonly=False,
+        check_company=True,
+        help="Fiscal positions are used to adapt taxes and accounts for particular customers or sales orders/invoices."
+        "The default value comes from the customer.",
+    )
+    tax_country_id = fields.Many2one(
+        comodel_name="res.country",
+        compute="_compute_tax_country_id",
+        compute_sudo=True,
+    ) 
+    payment_term_id = fields.Many2one(
+        comodel_name="account.payment.term",
+        string="Payment Terms",
+        compute="_compute_payment_term_id", store=True, precompute=True,
+        readonly=False,
+        check_company=True,  # Unrequired company
+        domain="[('company_id', 'in', (False, company_id))]",
+    )
+    pricelist_id = fields.Many2one(
+        comodel_name="product.pricelist",
+        string="Pricelist",
+        compute="_compute_pricelist_id", store=True, precompute=True,
+        readonly=False,
+        check_company=True,  # Unrequired company
+        domain="[('company_id', 'in', (False, company_id))]",
+        tracking=1,
+        help="If you change the pricelist, only newly added lines will be affected.",
+    )
+    currency_id = fields.Many2one(
+        comodel_name="res.currency",
+        compute="_compute_currency_id", store=True, precompute=True,
+        ondelete="restrict",
+    )
+    currency_rate = fields.Float(
+        string="Currency Rate",
+        digits=0,
+        compute="_compute_currency_rate", store=True, precompute=True,
+    )
+    user_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Salesperson",
+        compute="_compute_user_id", store=True, precompute=True,
+        readonly=False,
+        domain=lambda self: "[('group_ids', '=', {}), ('share', '=', False), ('company_ids', '=', company_id)]".format(
+            self.env.ref("sales_team.group_sale_salesman").id
+        ),
+        tracking=2,
+        index=True,
+    )
+    team_id = fields.Many2one(
+        comodel_name="crm.team",
+        string="Sales Team",
+        compute="_compute_team_id", store=True, precompute=True,
+        readonly=False,
+        ondelete="set null",
+        change_default=True,
+        check_company=True,  # Unrequired company
+        domain="[('company_id', 'in', (False, company_id))]",
+        tracking=True,
+    )
+    journal_id = fields.Many2one(
+        comodel_name="account.journal",
+        string="Invoicing Journal",
+        compute="_compute_journal_id", store=True, precompute=True,
+        readonly=False,
+        check_company=True,
+        domain=[("type", "=", "sale")],
+        help="If set, the SO will invoice in this journal; "
+        "otherwise the sales journal with the lowest sequence is used.",
+    )
     name = fields.Char(
         string="Order Reference",
         required=True,
-        copy=False,
-        readonly=False,
-        index="trigram",
         default=lambda self: _("New"),
-    )
-    client_order_ref = fields.Char(string="Customer Reference", copy=False)
-    origin = fields.Char(
-        string="Source Document", help="Reference of the document that generated this sales order request"
-    )
-    reference = fields.Char(string="Payment Ref.", help="The payment communication of this sale order.", copy=False)
-    signed_by = fields.Char(string="Signed By", copy=False)
-    country_code = fields.Char(related="company_id.account_fiscal_country_id.code", string="Country code")
-    type_name = fields.Char(string="Type Name", compute="_compute_type_name")
-
-    # Integer
-    count_invoice = fields.Integer(string="Invoice Count", compute="_compute_invoices")
-
-    # Float
-    prepayment_percent = fields.Float(
-        string="Prepayment percentage",
-        compute="_compute_prepayment_percent",
-        store=True,
         readonly=False,
-        precompute=True,
-        help="The percentage of the amount needed that must be paid by the customer to confirm the order.",
+        copy=False,
+        index="trigram",
     )
-    currency_rate = fields.Float(
-        string="Currency Rate", compute="_compute_currency_rate", digits=0, store=True, precompute=True
+    state = fields.Selection(
+        selection=SALE_ORDER_STATE,
+        string="Status",
+        default="draft",
+        readonly=True,
+        copy=False,
+        tracking=3,
+        index=True,
     )
-    amount_paid = fields.Float(
-        string="Payment Transactions Amount",
-        help="Sum of transactions made in through the online payment form that are in the state"
-        " 'done' or 'authorized' and linked to this order.",
-        compute="_compute_amount_paid",
-        compute_sudo=True,
+    locked = fields.Boolean(
+        default=False,
+        copy=False,
+        tracking=True,
+        help="Locked orders cannot be modified.",
     )
-    amount_undiscounted = fields.Float(
-        string="Amount Before Discount", compute="_compute_amount_undiscounted", digits=0
+    create_date = fields.Datetime(
+        string="Creation Date",
+        readonly=True,
+        index=True,
     )
-
-    # Boolean
-    require_signature = fields.Boolean(
-        string="Online signature",
-        compute="_compute_require_signature",
-        store=True,
-        readonly=False,
-        precompute=True,
-        help="Request a online signature from the customer to confirm the order.",
+    date_order = fields.Datetime(
+        string="Order Date",
+        required=True,
+        default=fields.Datetime.now,
+        copy=False,
+        help="Creation date of draft/sent orders,\nConfirmation date of confirmed orders.",
     )
-    require_payment = fields.Boolean(
-        string="Online payment",
-        compute="_compute_require_payment",
-        store=True,
-        readonly=False,
-        precompute=True,
-        help="Request a online payment from the customer to confirm the order.",
-    )
-    locked = fields.Boolean(help="Locked orders cannot be modified.", default=False, copy=False, tracking=True)
-    has_archived_products = fields.Boolean(compute="_compute_has_archived_products")
-    is_expired = fields.Boolean(string="Is Expired", compute="_compute_is_expired")
-    show_update_fpos = fields.Boolean(
-        string="Has Fiscal Position Changed", store=False
-    )  # True if the fiscal position was changed
-    has_active_pricelist = fields.Boolean(compute="_compute_has_active_pricelist")
-    show_update_pricelist = fields.Boolean(
-        string="Has Pricelist Changed", store=False
-    )  # True if the pricelist was changed
-
-    # Date
     validity_date = fields.Date(
         string="Expiration",
-        help="Validity of the order, after that you will not able to sign & pay the quotation.",
-        compute="_compute_validity_date",
-        store=True,
+        compute="_compute_validity_date", store=True, precompute=True,
         readonly=False,
         copy=False,
-        precompute=True,
-    )
-
-    # Datetime
-    create_date = fields.Datetime(  # Override of default create_date field from ORM
-        string="Creation Date", index=True, readonly=True
+        help="Validity of the order, after that you will not able to sign & pay the quotation.",
     )
     commitment_date = fields.Datetime(
         string="Delivery Date",
@@ -143,174 +219,74 @@ class SaleOrder(models.Model):
         "If set, the delivery order will be scheduled based on "
         "this date rather than product lead times.",
     )
-    date_order = fields.Datetime(
-        string="Order Date",
-        required=True,
-        copy=False,
-        help="Creation date of draft/sent orders,\nConfirmation date of confirmed orders.",
-        default=fields.Datetime.now,
-    )
-    signed_on = fields.Datetime(string="Signed On", copy=False)
     expected_date = fields.Datetime(
         string="Expected Date",
         compute="_compute_expected_date",
         store=False,  # Note: can not be stored since depends on today()
         help="Delivery date you can promise to the customer, computed from the minimum lead time of the order lines.",
     )
+    origin = fields.Char(
+        string="Source Document",
+        help="Reference of the document that generated this sales order request"
+    )
+    client_order_ref = fields.Char(
+        string="Customer Reference",
+        copy=False,
+    )
+    reference = fields.Char(
+        string="Payment Ref.",
+        copy=False,
+        help="The payment communication of this sale order.",
+    )
+    note = fields.Html(
+        string="Terms and conditions",
+        compute="_compute_note", store=True, readonly=False, precompute=True
+    )
 
-    # Binary
-    tax_totals = fields.Binary(compute="_compute_tax_totals", exportable=False)
-
-    # Image
+    # Signature block
+    require_signature = fields.Boolean(
+        string="Online signature",
+        compute="_compute_require_signature", store=True, precompute=True,
+        readonly=False,
+        help="Request a online signature from the customer to confirm the order.",
+    )
+    signed_on = fields.Datetime(string="Signed On", copy=False)
+    signed_by = fields.Char(string="Signed By", copy=False)
     signature = fields.Image(string="Signature", copy=False, attachment=True, max_width=1024, max_height=1024)
 
-    # Selection
-    state = fields.Selection(
-        selection=SALE_ORDER_STATE, string="Status", readonly=True, copy=False, index=True, tracking=3, default="draft"
+    #Payment block
+    require_payment = fields.Boolean(
+        string="Online payment",
+        compute="_compute_require_payment", store=True, precompute=True,
+        readonly=False,
+        help="Request a online payment from the customer to confirm the order.",
     )
-    invoice_status = fields.Selection(
-        selection=INVOICE_STATUS, string="Invoice Status", compute="_compute_invoice_status", store=True
-    )
-    company_price_include = fields.Selection(related="company_id.account_price_include")
-
-    tax_calculation_rounding_method = fields.Selection(
-        related="company_id.tax_calculation_rounding_method", depends=["company_id"]
-    )
-    terms_type = fields.Selection(related="company_id.terms_type")
-
-    # Html
-    note = fields.Html(
-        string="Terms and conditions", compute="_compute_note", store=True, readonly=False, precompute=True
+    prepayment_percent = fields.Float(
+        string="Prepayment percentage",
+        compute="_compute_prepayment_percent", store=True, precompute=True,
+        readonly=False,
+        help="The percentage of the amount needed that must be paid by the customer to confirm the order.",
     )
 
-    # Text
-    partner_credit_warning = fields.Text(compute="_compute_partner_credit_warning")
-
-    # Many2one
-    company_id = fields.Many2one(
-        comodel_name="res.company", required=True, index=True, default=lambda self: self.env.company
-    )
-    partner_id = fields.Many2one(
-        comodel_name="res.partner",
-        string="Customer",
-        required=True,
-        change_default=True,
-        index=True,
-        tracking=1,
-        check_company=True,
-    )
-    journal_id = fields.Many2one(
-        "account.journal",
-        string="Invoicing Journal",
-        compute="_compute_journal_id",
-        store=True,
-        readonly=False,
-        precompute=True,
-        domain=[("type", "=", "sale")],
-        check_company=True,
-        help="If set, the SO will invoice in this journal; "
-        "otherwise the sales journal with the lowest sequence is used.",
-    )
-    partner_invoice_id = fields.Many2one(
-        comodel_name="res.partner",
-        string="Invoice Address",
-        compute="_compute_partner_invoice_id",
-        store=True,
-        readonly=False,
-        required=True,
-        precompute=True,
-        check_company=True,
-        index="btree_not_null",
-    )
-    partner_shipping_id = fields.Many2one(
-        comodel_name="res.partner",
-        string="Delivery Address",
-        compute="_compute_partner_shipping_id",
-        store=True,
-        readonly=False,
-        required=True,
-        precompute=True,
-        check_company=True,
-        index="btree_not_null",
-    )
-    fiscal_position_id = fields.Many2one(
-        comodel_name="account.fiscal.position",
-        string="Fiscal Position",
-        compute="_compute_fiscal_position_id",
-        store=True,
-        readonly=False,
-        precompute=True,
-        check_company=True,
-        help="Fiscal positions are used to adapt taxes and accounts for particular customers or sales orders/invoices."
-        "The default value comes from the customer.",
-    )
-    payment_term_id = fields.Many2one(
-        comodel_name="account.payment.term",
-        string="Payment Terms",
-        compute="_compute_payment_term_id",
-        store=True,
-        readonly=False,
-        precompute=True,
-        check_company=True,  # Unrequired company
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
-    )
-    pricelist_id = fields.Many2one(
-        comodel_name="product.pricelist",
-        string="Pricelist",
-        compute="_compute_pricelist_id",
-        store=True,
-        readonly=False,
-        precompute=True,
-        check_company=True,  # Unrequired company
-        tracking=1,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
-        help="If you change the pricelist, only newly added lines will be affected.",
-    )
-    currency_id = fields.Many2one(
-        comodel_name="res.currency", compute="_compute_currency_id", store=True, precompute=True, ondelete="restrict"
-    )
-    user_id = fields.Many2one(
-        comodel_name="res.users",
-        string="Salesperson",
-        compute="_compute_user_id",
-        store=True,
-        readonly=False,
-        precompute=True,
-        index=True,
-        tracking=2,
-        domain=lambda self: "[('group_ids', '=', {}), ('share', '=', False), ('company_ids', '=', company_id)]".format(
-            self.env.ref("sales_team.group_sale_salesman").id
-        ),
-    )
-    team_id = fields.Many2one(
-        comodel_name="crm.team",
-        string="Sales Team",
-        compute="_compute_team_id",
-        store=True,
-        readonly=False,
-        precompute=True,
-        ondelete="set null",
-        change_default=True,
-        check_company=True,  # Unrequired company
-        tracking=True,
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
-    )
-    campaign_id = fields.Many2one(ondelete="set null")
-    medium_id = fields.Many2one(ondelete="set null")
-    source_id = fields.Many2one(ondelete="set null")
-    tax_country_id = fields.Many2one(
-        comodel_name="res.country",
-        compute="_compute_tax_country_id",
-        # Avoid access error on fiscal position when reading a sale order with company != user.company_ids
-        compute_sudo=True,
-    )  # used to filter available taxes depending on the fiscal country and position
-
-    # One2many
+    # Order line block
     order_line = fields.One2many(
-        comodel_name="sale.order.line", inverse_name="order_id", string="Order Lines", copy=True, auto_join=True
+        comodel_name="sale.order.line",
+        inverse_name="order_id",
+        string="Order Lines",
+        copy=True,
+        auto_join=True,
     )
+    amount_untaxed = fields.Monetary(string="Untaxed Amount", store=True, compute="_compute_amounts", tracking=5)
+    amount_tax = fields.Monetary(string="Taxes", store=True, compute="_compute_amounts")
+    amount_total = fields.Monetary(string="Total", store=True, compute="_compute_amounts", tracking=4)
+    amount_undiscounted = fields.Float(
+        string="Amount Before Discount", compute="_compute_amount_undiscounted", digits=0
+    )
+    amount_invoiced = fields.Monetary(string="Already invoiced", compute="_compute_amount_invoiced")
+    amount_to_invoice = fields.Monetary(string="Un-invoiced Balance", compute="_compute_amount_to_invoice")
+    tax_totals = fields.Binary(compute="_compute_tax_totals", exportable=False)
 
-    # Many2many
+    # Invoice block
     invoice_ids = fields.Many2many(
         comodel_name="account.move",
         string="Invoices",
@@ -318,6 +294,17 @@ class SaleOrder(models.Model):
         search="_search_invoice_ids",
         copy=False,
     )
+    count_invoice = fields.Integer(
+        string="Invoice Count",
+        compute="_compute_invoices",
+    )
+    invoice_status = fields.Selection(
+        selection=INVOICE_STATUS,
+        string="Invoice Status",
+        compute="_compute_invoice_status", store=True,
+    )
+
+    # Transaction block
     transaction_ids = fields.Many2many(
         comodel_name="payment.transaction",
         relation="sale_order_transaction_rel",
@@ -334,16 +321,39 @@ class SaleOrder(models.Model):
         copy=False,
         compute_sudo=True,
     )
-    tag_ids = fields.Many2many(
-        comodel_name="crm.tag", relation="sale_order_tag_rel", column1="order_id", column2="tag_id", string="Tags"
+    amount_paid = fields.Float(
+        string="Payment Transactions Amount",
+        compute="_compute_amount_paid",
+        compute_sudo=True,
+        help="Sum of transactions made in through the online payment form that are in the state"
+        " 'done' or 'authorized' and linked to this order.",
     )
 
-    # Monetary
-    amount_untaxed = fields.Monetary(string="Untaxed Amount", store=True, compute="_compute_amounts", tracking=5)
-    amount_tax = fields.Monetary(string="Taxes", store=True, compute="_compute_amounts")
-    amount_total = fields.Monetary(string="Total", store=True, compute="_compute_amounts", tracking=4)
-    amount_to_invoice = fields.Monetary(string="Un-invoiced Balance", compute="_compute_amount_to_invoice")
-    amount_invoiced = fields.Monetary(string="Already invoiced", compute="_compute_amount_invoiced")
+    # UTMs - enforcing the fact that we want to "set null" when relation is unlinked
+    campaign_id = fields.Many2one(ondelete="set null")
+    medium_id = fields.Many2one(ondelete="set null")
+    source_id = fields.Many2one(ondelete="set null")
+
+    tag_ids = fields.Many2many(
+        comodel_name="crm.tag",
+        relation="sale_order_tag_rel",
+        column1="order_id",
+        column2="tag_id",
+        string="Tags",
+    )
+
+    type_name = fields.Char(string="Type Name", compute="_compute_type_name")
+    partner_credit_warning = fields.Text(compute="_compute_partner_credit_warning")
+    is_expired = fields.Boolean(string="Is Expired", compute="_compute_is_expired")
+    has_archived_products = fields.Boolean(compute="_compute_has_archived_products")
+    has_active_pricelist = fields.Boolean(compute="_compute_has_active_pricelist")
+    show_update_fpos = fields.Boolean(
+        string="Has Fiscal Position Changed", store=False
+    )  # True if the fiscal position was changed
+    show_update_pricelist = fields.Boolean(
+        string="Has Pricelist Changed", store=False
+    )  # True if the pricelist was changed
+
 
 
     # ------------------------------------------------------------
@@ -363,8 +373,10 @@ class SaleOrder(models.Model):
         if operator == "in" and value:
             self.env.cr.execute(
                 """
-                SELECT array_agg(so.id)
-                    FROM sale_order so
+                SELECT
+                    array_agg(so.id)
+                FROM
+                    sale_order so
                     JOIN sale_order_line sol ON sol.order_id = so.id
                     JOIN sale_order_line_invoice_rel soli_rel ON soli_rel.order_line_id = sol.id
                     JOIN account_move_line aml ON aml.id = soli_rel.invoice_line_id
@@ -372,11 +384,12 @@ class SaleOrder(models.Model):
                 WHERE
                     am.move_type in ('out_invoice', 'out_refund') AND
                     am.id = ANY(%s)
-            """,
+                 """,
                 (list(value),),
             )
             so_ids = self.env.cr.fetchone()[0] or []
             return [("id", "in", so_ids)]
+
         elif operator == "=" and not value:
             # special case for [('invoice_ids', '=', False)], i.e. "Invoices is not set"
             #
@@ -393,6 +406,7 @@ class SaleOrder(models.Model):
                 [("order_line.invoice_lines.move_id.move_type", "in", ("out_invoice", "out_refund"))]
             )
             return [("id", "not in", order_ids)]
+
         return [
             ("order_line.invoice_lines.move_id.move_type", "in", ("out_invoice", "out_refund")),
             ("order_line.invoice_lines.move_id", operator, value),
@@ -405,15 +419,14 @@ class SaleOrder(models.Model):
     def _action_confirm(self):
         """Implementation of additional mechanism of Sales Order confirmation.
         This method should be extended when the confirmation should generated
-        other documents. In this method, the SO are in 'sale' state (not yet 'done').
-        """
+        other documents. In this method, the SO are in 'sale' state (not yet 'done')."""
+        pass
 
     def _prepare_analytic_account_data(self, prefix=None):
         """Prepare SO analytic account creation values.
 
         :return: `account.analytic.account` creation values
-        :rtype: dict
-        """
+        :rtype: dict"""
         self.ensure_one()
         name = self.name
         if prefix:
@@ -432,8 +445,7 @@ class SaleOrder(models.Model):
 
         :param dict optional_values: any parameter that should be added to the returned down payment section
         :return: `account.move.line` creation values
-        :rtype: dict
-        """
+        :rtype: dict"""
         self.ensure_one()
         context = {"lang": self.partner_id.lang}
         down_payments_section_line = {
@@ -456,18 +468,14 @@ class SaleOrder(models.Model):
         Note: self can contain multiple records.
 
         :return: Sales Order confirmation values
-        :rtype: dict
-        """
+        :rtype: dict"""
         return {"state": "sale", "date_order": fields.Datetime.now()}
 
     def _prepare_invoice(self):
-        """
-        Prepare the dict of values to create the new invoice for a sales order. This method may be
+        """Prepare the dict of values to create the new invoice for a sales order. This method may be
         overridden to implement custom invoice generation (making sure to call super() to establish
-        a clean extension chain).
-        """
+        a clean extension chain)."""
         self.ensure_one()
-
         txs_to_be_linked = self.transaction_ids.sudo().filtered(
             lambda tx: (
                 tx.state in ("pending", "authorized")
@@ -475,7 +483,6 @@ class SaleOrder(models.Model):
                 and not (tx.payment_id and tx.payment_id.is_reconciled)
             )
         )
-
         values = {
             "ref": self.client_order_ref or "",
             "move_type": "out_invoice",
@@ -526,21 +533,21 @@ class SaleOrder(models.Model):
         Otherwise, we return the quotation email template.
 
         :return: The correct mail template based on the current status
-        :rtype: record of `mail.template` or `None` if not found
-        """
+        :rtype: record of `mail.template` or `None` if not found"""
         self.ensure_one()
         if self.env.context.get("proforma"):
             return self.env.ref("sale.email_template_proforma", raise_if_not_found=False)
+
         elif self.state != "sale":
             return self.env.ref("sale.email_template_edi_sale", raise_if_not_found=False)
+
         else:
             return self._get_confirmation_template()
 
     def _get_confirmation_template(self):
         """Get the mail template sent on SO confirmation (or for confirmed SO's).
 
-        :return: `mail.template` record or None if default template wasn't found
-        """
+        :return: `mail.template` record or None if default template wasn't found"""
         self.ensure_one()
         default_confirmation_template_id = (
             self.env["ir.config_parameter"].sudo().get_param("sale.default_confirmation_template")
@@ -551,12 +558,12 @@ class SaleOrder(models.Model):
         )
         if default_confirmation_template:
             return default_confirmation_template
+
         else:
             return self.env.ref("sale.mail_template_sale_confirmation", raise_if_not_found=False)
 
     def _get_product_documents(self):
         self.ensure_one()
-
         documents = (
             self.order_line.product_id.product_document_ids | self.order_line.product_template_id.product_document_ids
         )
@@ -581,20 +588,22 @@ class SaleOrder(models.Model):
         invoiceable_line_ids = []
         pending_section = None
         precision = self.env["decimal.precision"].precision_get("Product Unit")
-
         for line in self.order_line:
             if line.display_type == "line_section":
                 # Only invoice the section if one of its lines is invoiceable
                 pending_section = line
                 continue
+
             if line.display_type != "line_note" and float_is_zero(line.qty_to_invoice, precision_digits=precision):
                 continue
+
             if line.qty_to_invoice > 0 or (line.qty_to_invoice < 0 and final) or line.display_type == "line_note":
                 if line.is_downpayment:
                     # Keep down payment lines separately, to put them together
                     # at the end of the invoice, in a specific dedicated section.
                     down_payment_line_ids.append(line.id)
                     continue
+
                 if pending_section:
                     invoiceable_line_ids.append(pending_section.id)
                     pending_section = None
@@ -614,6 +623,7 @@ class SaleOrder(models.Model):
             self.env.cr.precommit.data.pop(f"mail.tracking.{self._name}", {})
             self.env.flush_all()
             return
+
         return super()._track_finalize()
 
     def message_post(self, **kwargs):
@@ -635,6 +645,7 @@ class SaleOrder(models.Model):
             for group in [g for g in groups if g[0] in ("portal_customer", "portal", "follower", "customer")]:
                 group[2]["has_button_access"] = False
             return groups
+
         local_msg_vals = dict(msg_vals or {})
 
         # portal customers have full access (existence not granted, depending on partner_id)
@@ -705,8 +716,10 @@ class SaleOrder(models.Model):
         self.ensure_one()
         if "state" in init_values and self.state == "sale":
             return self.env.ref("sale.mt_order_confirmed")
+
         elif "state" in init_values and self.state == "sent":
             return self.env.ref("sale.mt_order_sent")
+
         return super()._track_subtype(init_values)
 
     def _force_lines_to_invoice_policy_order(self):
@@ -714,8 +727,7 @@ class SaleOrder(models.Model):
         was set to "Ordered quantities", independently of the product configuration.
 
         This is needed for the automatic invoice logic, as we want to automatically
-        invoice the full SO when it's paid.
-        """
+        invoice the full SO when it's paid."""
         for line in self.order_line:
             if line.state == "sale":
                 # No need to set 0 as it is already the standard logic in the compute method.
@@ -733,10 +745,13 @@ class SaleOrder(models.Model):
         def show_line(line):
             if not line.is_downpayment:
                 return True
+
             elif line.display_type and down_payment_lines:
                 return True  # Only show the down payment section if down payments were posted
+
             elif line in down_payment_lines:
                 return True  # Only show posted down payments
+
             else:
                 return False
 
@@ -748,8 +763,7 @@ class SaleOrder(models.Model):
         Note: self.ensure_one()
 
         :return: The minimum amount needed to confirm automatically the quotation.
-        :rtype: float
-        """
+        :rtype: float"""
         self.ensure_one()
         if self.prepayment_percent == 1.0 or not self.require_payment:
             return self.amount_total
@@ -762,8 +776,7 @@ class SaleOrder(models.Model):
         Note: self.ensure_one()
 
         :return: Whether `self.amount_paid` is higher than the prepayment required amount.
-        :rtype: bool
-        """
+        :rtype: bool"""
         self.ensure_one()
         amount_comparison = self.currency_id.compare_amounts(
             self._get_prepayment_required_amount(),
@@ -774,7 +787,6 @@ class SaleOrder(models.Model):
     def _get_default_payment_link_values(self):
         self.ensure_one()
         amount_max = self.amount_total - self.amount_paid
-
         # Always default to the minimum value needed to confirm the order:
         # - order is not confirmed yet
         # - can be confirmed online
@@ -807,8 +819,7 @@ class SaleOrder(models.Model):
         Note: self.ensure_one()
 
         :return: Whether the sale order has to be signed.
-        :rtype: bool
-        """
+        :rtype: bool"""
         self.ensure_one()
         return (
             self.state in ["draft", "sent"] and not self.is_expired and self.require_signature and not self.signature
@@ -826,8 +837,7 @@ class SaleOrder(models.Model):
         Note: self.ensure_one()
 
         :return: Whether the sale order has to be paid.
-        :rtype: bool
-        """
+        :rtype: bool"""
         self.ensure_one()
         return (
             self.state in ["draft", "sent"]
@@ -872,8 +882,7 @@ class SaleOrder(models.Model):
         locked.
 
         :return: Whether the sale order is read-only or not.
-        :rtype: bool
-        """
+        :rtype: bool"""
         self.ensure_one()
         return self.state == "cancel" or self.locked
 
@@ -884,14 +893,12 @@ class SaleOrder(models.Model):
         higher than `self.amount_total`.
 
         :return: Whether the sale order is paid or not.
-        :rtype: bool
-        """
+        :rtype: bool"""
         self.ensure_one()
         return self.currency_id.compare_amounts(self.amount_paid, self.amount_total) >= 0
 
     def _get_lang(self):
         self.ensure_one()
-
         if self.partner_id.lang and not self.partner_id.is_public:
             return self.partner_id.lang
 
@@ -916,6 +923,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
         if self.state not in {"draft", "sent"}:
             return _("Some orders are not in a state requiring confirmation.")
+
         if any(not line.display_type and not line.is_downpayment and not line.product_id for line in self.order_line):
             return _("A line on these orders missing a product, you cannot confirm it.")
 
@@ -976,6 +984,7 @@ class SaleOrder(models.Model):
     def _compute_display_name(self):
         if not self._context.get("sale_show_partner_name"):
             return super()._compute_display_name()
+
         for order in self:
             name = order.name
             if order.partner_id.name:
@@ -987,6 +996,7 @@ class SaleOrder(models.Model):
         use_invoice_terms = self.env["ir.config_parameter"].sudo().get_param("account.use_invoice_terms")
         if not use_invoice_terms:
             return
+
         for order in self:
             order = order.with_company(order.company_id)
             if order.terms_type == "html" and self.env.company.invoice_terms_html:
@@ -1087,18 +1097,17 @@ class SaleOrder(models.Model):
 
     @api.depends("state", "order_line.invoice_status")
     def _compute_invoice_status(self):
-        """
-        Compute the invoice status of a SO. Possible statuses:
+        """Compute the invoice status of a SO. Possible statuses:
         - no: if the SO is not in status 'sale' or 'done', we consider that there is nothing to
           invoice. This is also the default value if the conditions of no other status is met.
         - to invoice: if any SO line is 'to invoice', the whole SO is 'to invoice'
         - invoiced: if all SO lines are invoiced, the SO is invoiced.
-        - upselling: if all SO lines are invoiced or upselling, the status is upselling.
-        """
+        - upselling: if all SO lines are invoiced or upselling, the status is upselling."""
         confirmed_orders = self.filtered(lambda so: so.state == "sale")
         (self - confirmed_orders).invoice_status = "no"
         if not confirmed_orders:
             return
+
         lines_domain = [("is_downpayment", "=", False), ("display_type", "=", False)]
         line_invoice_status_all = [
             (order.id, invoice_status)
@@ -1158,9 +1167,11 @@ class SaleOrder(models.Model):
         for order in self:
             if order.state != "draft":
                 continue
+
             if not order.partner_id:
                 order.pricelist_id = False
                 continue
+
             order = order.with_company(order.company_id)
             order.pricelist_id = order.partner_id.property_product_pricelist
 
@@ -1208,6 +1219,7 @@ class SaleOrder(models.Model):
             if not order.partner_id:
                 order.fiscal_position_id = False
                 continue
+
             fpos_id_before = order.fiscal_position_id.id
             key = (order.company_id.id, order.partner_id.id, order.partner_shipping_id.id)
             if key not in cache:
@@ -1270,6 +1282,7 @@ class SaleOrder(models.Model):
             if order.state == "cancel":
                 order.expected_date = False
                 continue
+
             dates_list = order.order_line.filtered(
                 lambda line: not line.display_type and not line._is_delivery()
             ).mapped(lambda line: line and line._expected_date())
@@ -1322,6 +1335,7 @@ class SaleOrder(models.Model):
         self.show_update_pricelist = True
         if self.env.context.get("sale_onchange_first_call"):
             return
+
         if self.order_line and self.state == "draft":
             return {
                 "warning": {
@@ -1358,7 +1372,6 @@ class SaleOrder(models.Model):
             return
 
         partner = self.partner_id
-
         # If partner has no warning, check its company
         if partner.sale_warn == "no-message" and partner.parent_id:
             partner = partner.parent_id
@@ -1611,8 +1624,7 @@ class SaleOrder(models.Model):
     def action_quotation_sent(self):
         """Mark the given draft quotation(s) as sent.
 
-        :raise: UserError if any given SO is not in draft state.
-        """
+        :raise: UserError if any given SO is not in draft state."""
         if any(order.state != "draft" for order in self):
             raise UserError(_("Only draft orders can be marked as sent directly."))
 
@@ -1628,8 +1640,7 @@ class SaleOrder(models.Model):
 
         :return: True
         :rtype: bool
-        :raise: UserError if trying to confirm cancelled SO's
-        """
+        :raise: UserError if trying to confirm cancelled SO's"""
         for order in self:
             error_msg = order._confirmation_error_message()
             if error_msg:
@@ -1640,6 +1651,7 @@ class SaleOrder(models.Model):
         for order in self:
             if order.partner_id in order.message_partner_ids:
                 continue
+
             order.message_subscribe([order.partner_id.id])
 
         self.write(self._prepare_confirmation_values())
@@ -1661,18 +1673,15 @@ class SaleOrder(models.Model):
         return True
 
     def _action_confirm_and_send(self):
-        """
-        Confirm the sale order and send a confirmation email.
+        """Confirm the sale order and send a confirmation email.
 
-        :return: None
-        """
+        :return: None"""
         self.with_context(send_email=True).action_confirm()
 
     def _send_order_confirmation_mail(self):
         """Send a mail to the SO customer to inform them that their order has been confirmed.
 
-        :return: None
-        """
+        :return: None"""
         for order in self:
             mail_template = order._get_confirmation_template()
             order._send_order_notification_mail(mail_template)
@@ -1680,8 +1689,7 @@ class SaleOrder(models.Model):
     def _send_payment_succeeded_for_order_mail(self):
         """Send a mail to the SO customer to inform them that a payment has been initiated.
 
-        :return: None
-        """
+        :return: None"""
         mail_template = self.env.ref("sale.mail_template_sale_payment_executed", raise_if_not_found=False)
         for order in self:
             order._send_order_notification_mail(mail_template)
@@ -1692,8 +1700,7 @@ class SaleOrder(models.Model):
         Note: self.ensure_one()
 
         :param mail.template mail_template: the template used to generate the mail
-        :return: None
-        """
+        :return: None"""
         self.ensure_one()
 
         if not mail_template:
@@ -1719,6 +1726,7 @@ class SaleOrder(models.Model):
         """Cancel sales order and related draft invoices."""
         if any(order.locked for order in self):
             raise UserError(_("You cannot cancel a locked order. Please unlock it first."))
+
         return self._action_cancel()
 
     def _action_cancel(self):
@@ -1737,9 +1745,7 @@ class SaleOrder(models.Model):
 
     def action_update_taxes(self):
         self.ensure_one()
-
         self._recompute_taxes()
-
         if self.partner_id:
             self.message_post(
                 body=_(
@@ -1750,9 +1756,7 @@ class SaleOrder(models.Model):
 
     def action_update_prices(self):
         self.ensure_one()
-
         self._recompute_prices()
-
         if self.pricelist_id:
             message = _(
                 "Product prices have been recomputed according to pricelist %s.", self.pricelist_id._get_html_link()
@@ -1777,7 +1781,6 @@ class SaleOrder(models.Model):
             action["res_id"] = invoices.id
         else:
             action = {"type": "ir.actions.act_window_close"}
-
         context = {
             "default_move_type": "out_invoice",
         }
@@ -1801,14 +1804,12 @@ class SaleOrder(models.Model):
         """Capture all transactions linked to this sale order."""
         self.ensure_one()
         payment_utils.check_rights_on_recordset(self)
-
         # In sudo mode to bypass the checks on the rights on the transactions.
         return self.transaction_ids.sudo().action_capture()
 
     def payment_action_void(self):
         """Void all transactions linked to this sale order."""
         payment_utils.check_rights_on_recordset(self)
-
         # In sudo mode to bypass the checks on the rights on the transactions.
         self.authorized_transaction_ids.sudo().action_void()
 
@@ -1831,8 +1832,7 @@ class SaleOrder(models.Model):
         :param date: unused parameter
         :returns: created invoices
         :rtype: `account.move` recordset
-        :raises: UserError if one of the orders has no invoiceable lines.
-        """
+        :raises: UserError if one of the orders has no invoiceable lines."""
         if not self.env["account.move"].has_access("create"):
             try:
                 self.check_access("write")
@@ -2018,10 +2018,8 @@ class SaleOrder(models.Model):
         """Generate invoices as down payments for sale order.
 
         :return: The generated down payment invoices.
-        :rtype: recordset of `account.move`
-        """
+        :rtype: recordset of `account.move`"""
         generated_invoices = self.env["account.move"]
-
         for order in self:
             downpayment_wizard = order.env["sale.advance.payment.inv"].create(
                 {
@@ -2031,7 +2029,6 @@ class SaleOrder(models.Model):
                 }
             )
             generated_invoices |= downpayment_wizard._create_invoices(order)
-
         return generated_invoices
 
     # ------------------------------------------------------------

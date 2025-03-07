@@ -16,7 +16,10 @@ class AccountInvoiceReport(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
-    team_id = fields.Many2one(comodel_name="crm.team", string="Sales Team")
+    team_id = fields.Many2one(
+        comodel_name="crm.team",
+        string="Sales Team",
+    )
 
     # ------------------------------------------------------------
     # BUSINESS LOGIC METHODS
