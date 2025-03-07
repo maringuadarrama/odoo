@@ -12,79 +12,44 @@ class CrmTeam(models.Model):
     such as the number of quotations, sales to invoice, invoiced amounts, and sales targets. It also
     provides tools for analyzing sales performance and managing invoicing targets.
     """
-
     _inherit = "crm.team"
 
     # ------------------------------------------------------------
     # FIELDS
     # ------------------------------------------------------------
 
-    # Integer
+    invoiced_target = fields.Float(
+        string="Invoicing Target",
+        help="Revenue Target for the current month (untaxed total of paid invoices)."
+    )
+    amount_quotations = fields.Float(
+        string="Amount of quotations to invoice",
+        compute="_compute_quotations_to_invoice",
+        readonly=True,
+    )
     count_quotations = fields.Integer(
-        compute="_compute_quotations_to_invoice", string="Number of quotations to invoice", readonly=True
+        string="Number of quotations to invoice",
+        compute="_compute_quotations_to_invoice",
+        readonly=True,
+    )
+    count_sale_order = fields.Integer(
+        string="# Sale Orders",
+        compute="_compute_count_sale_order",
     )
     count_sales_to_invoice = fields.Integer(
-        compute="_compute_sales_to_invoice", string="Number of sales to invoice", readonly=True
+        string="Number of sales to invoice",
+        compute="_compute_sales_to_invoice",
+        readonly=True,
     )
-    count_sale_order = fields.Integer(compute="_compute_count_sale_order", string="# Sale Orders")
-
-    # Float
-    invoiced = fields.Float(
-        compute="_compute_invoiced",
+    amount_invoiced = fields.Float(
         string="Invoiced This Month",
+        compute="_compute_sales_invoiced",
         readonly=True,
         help="Invoice revenue for the current month. This is the amount the sales "
         "channel has invoiced this month. It is used to compute the progression ratio "
         "of the current and target revenue on the kanban view.",
     )
-    invoiced_target = fields.Float(
-        string="Invoicing Target", help="Revenue Target for the current month (untaxed total of paid invoices)."
-    )
-    amount_quotations = fields.Float(
-        compute="_compute_quotations_to_invoice", string="Amount of quotations to invoice", readonly=True
-    )
 
-    # ------------------------------------------------------------
-    # HELPERS
-    # ------------------------------------------------------------
-
-    def _in_sale_scope(self):
-        return self.env.context.get("in_sales_app")
-
-    def _graph_get_model(self):
-        if self._in_sale_scope():
-            return "sale.report"
-        return super()._graph_get_model()
-
-    def _graph_date_column(self):
-        if self._in_sale_scope():
-            return SQL("date")
-        return super()._graph_date_column()
-
-    def _graph_get_table(self, GraphModel):
-        if self._in_sale_scope():
-            # For a team not shared between company, we make sure the amounts are expressed
-            # in the currency of the team company and not converted to the current company currency,
-            # as the amounts of the sale report are converted in the currency
-            # of the current company (for multi-company reporting, see #83550)
-            GraphModel = GraphModel.with_company(self.company_id)
-            return SQL(f"({GraphModel._table_query}) AS {GraphModel._table}")
-        return super()._graph_get_table(GraphModel)
-
-    def _graph_y_query(self):
-        if self._in_sale_scope():
-            return SQL("SUM(price_subtotal)")
-        return super()._graph_y_query()
-
-    def _extra_sql_conditions(self):
-        if self._in_sale_scope():
-            return SQL("state = 'sale'")
-        return super()._extra_sql_conditions()
-
-    def _graph_title_and_key(self):
-        if self._in_sale_scope():
-            return ["", _("Sales: Untaxed Total")]  # no more title
-        return super()._graph_title_and_key()
 
     # ------------------------------------------------------------
     # COMPUTE METHODS
@@ -106,10 +71,13 @@ class CrmTeam(models.Model):
                 ELSE currency_rate
                 END
             ) as amount_total
-            FROM sale_order
-            WHERE %s
-            GROUP BY team_id
-        """,
+            FROM
+                sale_order
+            WHERE
+                %s
+            GROUP BY
+                team_id
+            """,
             query.where_clause or SQL("TRUE"),
         )
         self.env.cr.execute(select_sql)
@@ -124,48 +92,6 @@ class CrmTeam(models.Model):
         remaining.amount_quotations = 0
         remaining.count_quotations = 0
 
-    def _compute_sales_to_invoice(self):
-        sale_order_data = self.env["sale.order"]._read_group(
-            [
-                ("team_id", "in", self.ids),
-                ("invoice_status", "=", "to invoice"),
-            ],
-            ["team_id"],
-            ["__count"],
-        )
-        data_map = {team.id: count for team, count in sale_order_data}
-        for team in self:
-            team.count_sales_to_invoice = data_map.get(team.id, 0.0)
-
-    def _compute_invoiced(self):
-        if self.ids:
-            today = fields.Date.today()
-            data_map = dict(
-                self.env.execute_query(
-                    SQL(
-                        """ SELECT
-                        move.team_id AS team_id,
-                        SUM(move.amount_untaxed_signed) AS amount_untaxed_signed
-                    FROM account_move move
-                    WHERE move.move_type IN ('out_invoice', 'out_refund', 'out_receipt')
-                    AND move.payment_state IN ('in_payment', 'paid', 'reversed')
-                    AND move.state = 'posted'
-                    AND move.team_id IN %s
-                    AND move.date BETWEEN %s AND %s
-                    GROUP BY move.team_id
-                """,
-                        tuple(self.ids),
-                        fields.Date.to_string(today.replace(day=1)),
-                        fields.Date.to_string(today),
-                    )
-                )
-            )
-        else:
-            data_map = {}
-
-        for team in self:
-            team.invoiced = data_map.get(team._origin.id, 0.0)
-
     def _compute_count_sale_order(self):
         sale_order_data = self.env["sale.order"]._read_group(
             [
@@ -179,6 +105,59 @@ class CrmTeam(models.Model):
         for team in self:
             team.count_sale_order = data_map.get(team.id, 0)
 
+    def _compute_sales_to_invoice(self):
+        sale_order_data = self.env["sale.order"]._read_group(
+            [
+                ("team_id", "in", self.ids),
+                ("invoice_status", "=", "to invoice"),
+            ],
+            ["team_id"],
+            ["__count"],
+        )
+        data_map = {team.id: count for team, count in sale_order_data}
+        for team in self:
+            team.count_sales_to_invoice = data_map.get(team.id, 0.0)
+
+    def _compute_sales_invoiced(self):
+        if self.ids:
+            today = fields.Date.today()
+            data_map = dict(
+                self.env.execute_query(SQL(
+                    """
+                    SELECT
+                        move.team_id AS team_id,
+                        SUM(move.amount_untaxed_signed) AS amount_untaxed_signed
+                    FROM
+                        account_move move
+                    WHERE
+                        move.move_type IN ('out_invoice', 'out_refund', 'out_receipt')
+                        AND move.payment_state IN ('in_payment', 'paid', 'reversed')
+                        AND move.state = 'posted'
+                        AND move.team_id IN %s
+                        AND move.date BETWEEN %s AND %s
+                    GROUP BY
+                        move.team_id
+                    """,
+                    tuple(self.ids),
+                    fields.Date.to_string(today.replace(day=1)),
+                    fields.Date.to_string(today),
+                ))
+            )
+        else:
+            data_map = {}
+        for team in self:
+            team.amount_invoiced = data_map.get(team._origin.id, 0.0)
+
+    # ------------------------------------------------------------
+    # ACTION METHODS
+    # ------------------------------------------------------------
+
+    def action_primary_channel_button(self):
+        if self._in_sale_scope():
+            return self.env["ir.actions.actions"]._for_xml_id("sale.action_order_report_so_salesteam")
+        return super().action_primary_channel_button()
+
+
     # ------------------------------------------------------------
     # HOOKS
     # ------------------------------------------------------------
@@ -191,10 +170,6 @@ class CrmTeam(models.Model):
     def update_invoiced_target(self, value):
         return self.write({"invoiced_target": round(float(value or 0))})
 
-    # ------------------------------------------------------------
-    # VALIDATIONS METHODS
-    # ------------------------------------------------------------
-
     @api.ondelete(at_uninstall=False)
     def _unlink_except_used_for_sales(self):
         """If more than 5 active SOs, we consider this team to be actively used.
@@ -205,17 +180,55 @@ class CrmTeam(models.Model):
             if team.count_sale_order >= SO_COUNT_TRIGGER:
                 raise UserError(
                     _(
-                        "Team %(team_name)s has %(count_sale_order)s active sale orders. Consider cancelling them or archiving the team instead.",
+                        "Team %(team_name)s has %(count_sale_order)s active sale orders. "
+                        "Consider cancelling them or archiving the team instead.",
                         team_name=team.name,
                         count_sale_order=team.count_sale_order,
                     )
                 )
 
     # ------------------------------------------------------------
-    # ACTION METHODS
+    # HELPERS
     # ------------------------------------------------------------
 
-    def action_primary_channel_button(self):
+    def _graph_get_table(self, GraphModel):
         if self._in_sale_scope():
-            return self.env["ir.actions.actions"]._for_xml_id("sale.action_order_report_so_salesteam")
-        return super().action_primary_channel_button()
+            # For a team not shared between company, we make sure the amounts are expressed
+            # in the currency of the team company and not converted to the current company currency,
+            # as the amounts of the sale report are converted in the currency
+            # of the current company (for multi-company reporting, see #83550)
+            GraphModel = GraphModel.with_company(self.company_id)
+            return SQL(f"({GraphModel._table_query}) AS {GraphModel._table}")
+        return super()._graph_get_table(GraphModel)
+
+    def _graph_title_and_key(self):
+        if self._in_sale_scope():
+            return ["", _("Sales: Untaxed Total")]  # no more title
+        return super()._graph_title_and_key()
+
+    def _graph_get_model(self):
+        if self._in_sale_scope():
+            return "sale.report"
+        return super()._graph_get_model()
+
+    def _graph_date_column(self):
+        if self._in_sale_scope():
+            return SQL("date")
+        return super()._graph_date_column()
+
+    def _graph_y_query(self):
+        if self._in_sale_scope():
+            return SQL("SUM(price_subtotal)")
+        return super()._graph_y_query()
+
+    def _extra_sql_conditions(self):
+        if self._in_sale_scope():
+            return SQL("state = 'sale'")
+        return super()._extra_sql_conditions()
+
+    # ------------------------------------------------------------
+    # VALIDATIONS
+    # ------------------------------------------------------------
+
+    def _in_sale_scope(self):
+        return self.env.context.get("in_sales_app")

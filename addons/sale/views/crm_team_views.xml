@@ -131,10 +131,10 @@
                 <t groups="sales_team.group_sale_manager">
                     <div class="col-12 o_dashboard_bottom_block mt-2">
                         <field
-                            name="invoiced"
+                            name="amount_invoiced"
                             widget="sales_team_progressbar"
                             title="Invoicing"
-                            options="{'current_value': 'invoiced', 'max_value': 'invoiced_target', 'editable': true, 'edit_max_value': true, 'on_change': 'update_invoiced_target'}"
+                            options="{'current_value': 'amount_invoiced', 'max_value': 'invoiced_target', 'editable': true, 'edit_max_value': true, 'on_change': 'update_invoiced_target'}"
                         />
                     </div>
                 </t>

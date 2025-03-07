@@ -7,11 +7,11 @@ class AccountChartTemplate(models.AbstractModel):
     This module adds support for defining a default account for downpayments at the product category level,
     ensuring proper accounting treatment for downpayment transactions in sales operations.
     """
-
     _inherit = "account.chart.template"
 
+
     # ------------------------------------------------------------
-    # HELPERS
+    # HOOKS
     # ------------------------------------------------------------
 
     def _get_property_accounts(self, additional_properties):
