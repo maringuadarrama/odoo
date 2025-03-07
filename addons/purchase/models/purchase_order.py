@@ -690,7 +690,7 @@ class PurchaseOrder(models.Model):
             ],
         }
 
-    def action_open_invoice(self, invoices=False):
+    def action_view_invoice(self, invoices=False):
         """This function returns an action that display existing vendor bills of
         given purchase order ids. When only one found, show the vendor bill
         immediately."""
@@ -793,7 +793,7 @@ class PurchaseOrder(models.Model):
         # is actually negative or not
         moves.filtered(lambda m: m.currency_id.round(m.amount_total) < 0).action_switch_move_type()
 
-        return self.action_open_invoice(moves)
+        return self.action_view_invoice(moves)
 
     def action_merge(self):
         all_origin = []
