@@ -484,4 +484,65 @@ action = {
         </field>
         <field name="group_ids" eval="[(4, ref('group_product_pricelist'))]" />
     </record>
+
+    <!-- Precedence -->
+    <record id="product_template_only_form_view" model="ir.ui.view">
+        <field name="name">product.template.product.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view" />
+        <field name="mode">primary</field>
+        <field name="priority" eval="8" />
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="name">Product Template</attribute>
+            </xpath>
+            <field name="categ_id" position="after">
+                <field name="default_code" string="Reference"
+                    invisible="count_product_variant &gt; 1" />
+                <field name="valid_product_template_attribute_line_ids" invisible="1" />
+                <field name="barcode"
+                    invisible="count_product_variant &gt; 1
+                        or (count_product_variant == 0
+                        and valid_product_template_attribute_line_ids)
+                        or type in ['service', 'combo']" />
+            </field>
+            <button name="action_open_documents" position="before">
+                <button name="%(product.product_variant_action)d"
+                    type="action" class="oe_stat_button"
+                    icon="fa-sitemap"
+                    invisible="count_product_variant &lt;= 1"
+                    groups="product.group_product_variant">
+                    <field name="count_product_variant" string="Variants" widget="statinfo" />
+                </button>
+            </button>
+            <xpath expr="//page[@name='general_information']" position="after">
+                <page name="variants" string="Attributes &amp; Variants"
+                    invisible="type == 'combo'"
+                    groups="product.group_product_variant">
+                    <field name="attribute_line_ids" widget="one2many"
+                        context="{'show_attribute': False}">
+                        <list string="Variants" editable="bottom"
+                            decoration-info="value_count &lt;= 1">
+                            <field name="value_count" column_invisible="True" />
+                            <field name="sequence" widget="handle" />
+                            <field name="attribute_id" readonly="id" />
+                            <field name="value_ids" widget="many2many_tags"
+                                options="{'no_create_edit': True, 'color_field': 'color'}"
+                                context="{'default_attribute_id': attribute_id, 'show_attribute': False}" />
+                            <button name="action_open_attribute_values" string="Configure"
+                                type="object" class="float-end btn-secondary"
+                                groups="product.group_product_variant" />
+                        </list>
+                    </field>
+                    <p class="opacity-50 oe_edit_only">
+                        <strong>Warning</strong>: adding or deleting attributes will delete and
+                        recreate existing variants and lead to the loss of their possible
+                        customizations. </p>
+                </page>
+            </xpath>
+            <xpath expr="//group[@name='group_standard_price']" position="after">
+                <field name="product_properties" columns="2" />
+            </xpath>
+        </field>
+    </record>
 </odoo>

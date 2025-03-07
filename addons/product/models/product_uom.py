@@ -10,11 +10,10 @@ class ProductUom(models.Model):
     _description = "Link between products and their UoMs"
     _rec_name = "barcode"
 
-
     company_id = fields.Many2one(
         comodel_name="res.company",
         string="Company",
-        default=lambda self: self.env.company
+        default=lambda self: self.env.company,
     )
     product_id = fields.Many2one(
         comodel_name="product.product",
@@ -26,7 +25,7 @@ class ProductUom(models.Model):
         comodel_name="uom.uom",
         string="Unit",
         required=True,
-        ondelete="cascade"
+        ondelete="cascade",
     )
     barcode = fields.Char(
         required=True,
@@ -34,10 +33,8 @@ class ProductUom(models.Model):
         index="btree_not_null",
     )
 
-
     _barcode_uniq = models.Constraint(
-        "UNIQUE(barcode)",
-        "A barcode can only be assigned to one packaging."
+        "UNIQUE(barcode)", "A barcode can only be assigned to one packaging."
     )
 
     @api.constrains("barcode")
@@ -53,4 +50,6 @@ class ProductUom(models.Model):
             return super()._compute_display_name()
 
         for record in self:
-            record.display_name = f"{record.barcode} for: {record.product_id.display_name}"
+            record.display_name = (
+                f"{record.barcode} for: {record.product_id.display_name}"
+            )

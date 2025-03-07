@@ -9,11 +9,11 @@ class ProductSupplierinfo(models.Model):
     _order = "sequence, min_qty DESC, price, id"
     _rec_name = "partner_id"
 
-
     company_id = fields.Many2one(
         comodel_name="res.company",
         string="Company",
-        default=lambda self: self.env.company.id, index=1
+        default=lambda self: self.env.company.id,
+        index=1,
     )
     currency_id = fields.Many2one(
         comodel_name="res.currency",
@@ -24,7 +24,7 @@ class ProductSupplierinfo(models.Model):
     sequence = fields.Integer(
         string="Sequence",
         default=1,
-        help="Assigns the priority to the list of product vendor."
+        help="Assigns the priority to the list of product vendor.",
     )
     partner_id = fields.Many2one(
         comodel_name="res.partner",
@@ -47,27 +47,29 @@ class ProductSupplierinfo(models.Model):
     product_id = fields.Many2one(
         comodel_name="product.product",
         string="Product Variant",
-        compute="_compute_product_id", store=True,
+        compute="_compute_product_id",
+        store=True,
         readonly=False,
         check_company=True,
-        domain=[("product_tmpl_id", "=", product_tmpl_id)] if product_tmpl_id else [],
-        help="If not set, the vendor price will apply to all variants of this product."
+        domain='[("product_tmpl_id", "=", product_tmpl_id)] if product_tmpl_id else []',
+        help="If not set, the vendor price will apply to all variants of this product.",
     )
     product_uom_id = fields.Many2one(
         comodel_name="uom.uom",
         string="Unit",
-        compute="_compute_product_uom_id", store=True,
-        readonly=False
+        compute="_compute_product_uom_id",
+        store=True,
+        readonly=False,
     )
     product_name = fields.Char(
         string="Vendor Product Name",
         help="This vendor's product name will be used when printing a request for quotation. "
-             "Keep empty to use the internal one."
+        "Keep empty to use the internal one.",
     )
     product_code = fields.Char(
         string="Vendor Product Code",
         help="This vendor's product code will be used when printing a request for quotation. "
-             "Keep empty to use the internal one."
+        "Keep empty to use the internal one.",
     )
     min_qty = fields.Float(
         string="Quantity",
@@ -75,41 +77,31 @@ class ProductSupplierinfo(models.Model):
         required=True,
         default=0.0,
         help="The quantity to purchase from this vendor to benefit from the unit price. "
-             "If a vendor unit is set, quantity should be specified in this unit, "
-             "otherwise it should be specified in the default unit of the product.",
+        "If a vendor unit is set, quantity should be specified in this unit, "
+        "otherwise it should be specified in the default unit of the product.",
     )
     price = fields.Float(
         string="Unit Price",
         digits="Product Price",
         default=0.0,
-        help="The price to purchase a product"
+        help="The price to purchase a product",
     )
-    discount = fields.Float(
-        string="Discount (%)",
-        digits="Discount",
-        readonly=False
-    )
+    discount = fields.Float(string="Discount (%)", digits="Discount", readonly=False)
     price_discounted = fields.Float(
-        string="Discounted Price",
-        compute="_compute_price_discounted"
+        string="Discounted Price", compute="_compute_price_discounted"
     )
     date_start = fields.Date(
-        string="Start Date",
-        help="Start date for this vendor price"
+        string="Start Date", help="Start date for this vendor price"
     )
-    date_end = fields.Date(
-        string="End Date",
-        help="End date for this vendor price"
-    )
+    date_end = fields.Date(string="End Date", help="End date for this vendor price")
     delay = fields.Integer(
         string="Delivery Lead Time",
         required=True,
         default=1,
         help="Lead time in days between the confirmation of the purchase order and the receipt "
-             "of the products in your warehouse. Used by the scheduler for automatic computation "
-             "of the purchase order planning.",
+        "of the products in your warehouse. Used by the scheduler for automatic computation "
+        "of the purchase order planning.",
     )
-
 
     # ------------------------------------------------------------
     # CRUD METHODS
@@ -125,7 +117,6 @@ class ProductSupplierinfo(models.Model):
         self._sanitize_vals(vals)
         return super().write(vals)
 
-
     # ------------------------------------------------------------
     # COMPUTE METHODS
     # ------------------------------------------------------------
@@ -134,17 +125,27 @@ class ProductSupplierinfo(models.Model):
     def _compute_product_uom_id(self):
         for rec in self:
             if not rec.product_uom_id:
-                rec.product_uom_id = rec.product_id.uom_id if rec.product_id else rec.product_tmpl_id.uom_id
+                rec.product_uom_id = (
+                    rec.product_id.uom_id
+                    if rec.product_id
+                    else rec.product_tmpl_id.uom_id
+                )
 
     @api.depends("product_id", "product_tmpl_id")
     def _compute_price(self):
         for rec in self:
-            rec.price = rec.product_id.standard_price if rec.product_id else rec.product_tmpl_id.standard_price if rec.product_tmpl_id else 0.0
+            rec.price = (
+                rec.product_id.standard_price
+                if rec.product_id
+                else rec.product_tmpl_id.standard_price if rec.product_tmpl_id else 0.0
+            )
 
     @api.depends("discount", "price")
     def _compute_price_discounted(self):
         for rec in self:
-            rec.price_discounted = rec.product_uom_id._compute_price(rec.price, rec.product_id.uom_id) * (1 - rec.discount / 100)
+            rec.price_discounted = rec.product_uom_id._compute_price(
+                rec.price, rec.product_id.uom_id
+            ) * (1 - rec.discount / 100)
 
     @api.depends("product_id", "product_tmpl_id", "count_product_variant")
     def _compute_product_id(self):
@@ -154,7 +155,6 @@ class ProductSupplierinfo(models.Model):
             elif not rec.product_id and rec.count_product_variant == 1:
                 rec.product_id = rec.product_tmpl_id.product_variant_id
 
-
     # ------------------------------------------------------------
     # ONCHANGE METHODS
     # ------------------------------------------------------------
@@ -162,9 +162,11 @@ class ProductSupplierinfo(models.Model):
     @api.onchange("product_tmpl_id")
     def _onchange_product_tmpl_id(self):
         """Clear product variant if it no longer matches the product template."""
-        if self.product_id and self.product_id not in self.product_tmpl_id.product_variant_ids:
+        if (
+            self.product_id
+            and self.product_id not in self.product_tmpl_id.product_variant_ids
+        ):
             self.product_id = False
-
 
     # ------------------------------------------------------------
     # METHODS
@@ -172,16 +174,19 @@ class ProductSupplierinfo(models.Model):
 
     @api.model
     def get_import_templates(self):
-        return [{
-            "label": _("Import Template for Vendor Pricelists"),
-            "template": "/product/static/xls/product_supplierinfo.xls"
-        }]
+        return [
+            {
+                "label": _("Import Template for Vendor Pricelists"),
+                "template": "/product/static/xls/product_supplierinfo.xls",
+            }
+        ]
 
     def _get_filtered_supplier(self, company_id, product_id, params=False):
         return self.filtered(
-            lambda s:
-                (not s.company_id or s.company_id.id == company_id.id)
-                and (s.partner_id.active and (not s.product_id or s.product_id == product_id))
+            lambda s: (not s.company_id or s.company_id.id == company_id.id)
+            and (
+                s.partner_id.active and (not s.product_id or s.product_id == product_id)
+            )
         )
 
     def _sanitize_vals(self, vals):

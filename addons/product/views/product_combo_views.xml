@@ -5,10 +5,12 @@
         <field name="model">product.combo</field>
         <field name="arch" type="xml">
             <list string="Combo Choices">
-                <field name="currency_id" column_invisible="True" />
+                <field name="currency_id"
+                    column_invisible="True" />
                 <field name="sequence" widget="handle" />
                 <field name="name" />
-                <field name="base_price" widget="monetary" options="{'field_digits': True}" />
+                <field name="base_price" widget="monetary"
+                    options="{'field_digits': True}" />
                 <field name="count_combo_item" />
             </list>
         </field>
@@ -22,9 +24,8 @@
                 <div class="oe_title">
                     <label for="name" string="Combo Choice" />
                     <h1>
-                        <field name="name"
+                        <field name="name" widget="text"
                             placeholder="e.g. Burger Choice"
-                            widget="text"
                             class="text-break"
                             options="{'line_breaks': False}" />
                     </h1>
@@ -38,13 +39,12 @@
                 </group>
                 <field name="combo_item_ids">
                     <list editable="bottom">
-                        <field name="currency_id" column_invisible="True" />
+                        <field name="currency_id"
+                            column_invisible="True" />
                         <field name="product_id" />
-                        <field name="lst_price"
-                            widget="monetary"
+                        <field name="lst_price" widget="monetary"
                             options="{'field_digits': True}" />
-                        <field name="extra_price"
-                            widget="monetary"
+                        <field name="extra_price" widget="monetary"
                             options="{'field_digits': True}" />
                     </list>
                 </field>

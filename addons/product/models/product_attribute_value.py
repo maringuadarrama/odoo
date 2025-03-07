@@ -13,16 +13,17 @@ class ProductAttributeValue(models.Model):
     _order = "attribute_id, sequence, id"
     _description = "Attribute Value"
 
-
     attribute_id = fields.Many2one(
         comodel_name="product.attribute",
         string="Attribute",
-        help="The attribute cannot be changed once the value is used on at least one product.",
-        ondelete="cascade",
         required=True,
-        index=True
+        ondelete="cascade",
+        index=True,
+        help="The attribute cannot be changed once the value is used on at least one product.",
     )
-    display_type = fields.Selection(related="attribute_id.display_type")
+    display_type = fields.Selection(
+        related="attribute_id.display_type",
+    )
     name = fields.Char(
         string="Value",
         required=True,
@@ -37,12 +38,12 @@ class ProductAttributeValue(models.Model):
     default_extra_price = fields.Float()
     color = fields.Integer(
         string="Color Index",
-        default=lambda self: self._get_default_color()
+        default=lambda self: self._get_default_color(),
     )
     html_color = fields.Char(
         string="Color",
         help="Here you can set a specific HTML color index (e.g. #ff0000)"
-             " to display the color if the attribute type is 'Color'."
+        " to display the color if the attribute type is 'Color'.",
     )
     image = fields.Image(
         string="Image",
@@ -64,8 +65,9 @@ class ProductAttributeValue(models.Model):
         string="Used on Products",
         compute="_compute_is_used_on_products",
     )
-    default_extra_price_changed = fields.Boolean(compute="_compute_default_extra_price_changed")
-
+    default_extra_price_changed = fields.Boolean(
+        compute="_compute_default_extra_price_changed"
+    )
 
     # ------------------------------------------------------------
     # CRUD METHODS
@@ -74,15 +76,26 @@ class ProductAttributeValue(models.Model):
     def write(self, vals):
         if "attribute_id" in vals:
             for pav in self:
-                if pav.attribute_id.id != vals["attribute_id"] and pav.is_used_on_products:
-                    raise UserError(_(
-                        "You cannot change the attribute of the value %(value)s because it is used"
-                        " on the following products: %(products)s",
-                        value=pav.display_name,
-                        products=", ".join(pav.pav_attribute_line_ids.product_tmpl_id.mapped("display_name")),
-                    ))
+                if (
+                    pav.attribute_id.id != vals["attribute_id"]
+                    and pav.is_used_on_products
+                ):
+                    raise UserError(
+                        _(
+                            "You cannot change the attribute of the value %(value)s because it is used"
+                            " on the following products: %(products)s",
+                            value=pav.display_name,
+                            products=", ".join(
+                                pav.pav_attribute_line_ids.product_tmpl_id.mapped(
+                                    "display_name"
+                                )
+                            ),
+                        )
+                    )
 
-        invalidate = "sequence" in vals and any(record.sequence != vals["sequence"] for record in self)
+        invalidate = "sequence" in vals and any(
+            record.sequence != vals["sequence"] for record in self
+        )
         res = super().write(vals)
         if invalidate:
             # prefetched o2m have to be resequenced
@@ -94,9 +107,12 @@ class ProductAttributeValue(models.Model):
     def unlink(self):
         pavs_to_archive = self.env["product.attribute.value"]
         for pav in self:
-            linked_products = pav.env["product.template.attribute.value"].search(
-                [("product_attribute_value_id", "=", pav.id)]
-            ).with_context(active_test=False).ptav_product_variant_ids
+            linked_products = (
+                pav.env["product.template.attribute.value"]
+                .search([("product_attribute_value_id", "=", pav.id)])
+                .with_context(active_test=False)
+                .ptav_product_variant_ids
+            )
             active_linked_products = linked_products.filtered("active")
             if not active_linked_products and linked_products:
                 # If product attribute value found on non-active product variants
@@ -111,7 +127,6 @@ class ProductAttributeValue(models.Model):
         if is_used_on_products := self.check_is_used_on_products():
             raise UserError(is_used_on_products)
 
-
     # ------------------------------------------------------------
     # COMPUTE METHODS
     # ------------------------------------------------------------
@@ -125,8 +140,7 @@ class ProductAttributeValue(models.Model):
 
         However during variant set up (on the product template form) the name of
         the attribute is already on each line so there is no need to repeat it
-        on every value.
-        """
+        on every value."""
         if not self.env.context.get("show_attribute", True):
             return super()._compute_display_name()
 
@@ -136,7 +150,9 @@ class ProductAttributeValue(models.Model):
     @api.depends("pav_attribute_line_ids")
     def _compute_is_used_on_products(self):
         for pav in self:
-            pav.is_used_on_products = bool(pav.pav_attribute_line_ids.filtered("product_tmpl_id.active"))
+            pav.is_used_on_products = bool(
+                pav.pav_attribute_line_ids.filtered("product_tmpl_id.active")
+            )
 
     @api.depends("default_extra_price")
     def _compute_default_extra_price_changed(self):
@@ -144,7 +160,6 @@ class ProductAttributeValue(models.Model):
             pav.default_extra_price_changed = (
                 pav.default_extra_price != pav._origin.default_extra_price
             )
-
 
     # ------------------------------------------------------------
     # ACTION METHODS
@@ -180,7 +195,6 @@ class ProductAttributeValue(models.Model):
             },
         }
 
-
     # ------------------------------------------------------------
     # TOOLS
     # ------------------------------------------------------------
@@ -189,8 +203,9 @@ class ProductAttributeValue(models.Model):
         return randint(1, 11)
 
     def _without_no_variant_attributes(self):
-        return self.filtered(lambda pav: pav.attribute_id.create_variant != "no_variant")
-
+        return self.filtered(
+            lambda pav: pav.attribute_id.create_variant != "no_variant"
+        )
 
     # ------------------------------------------------------------
     # VALIDATIONS
@@ -202,6 +217,9 @@ class ProductAttributeValue(models.Model):
                 "You cannot delete the value %(value)s because it is used on the following"
                 " products:\n%(products)s\n",
                 value=pav.display_name,
-                products=", ".join(pav.pav_attribute_line_ids.product_tmpl_id.mapped("display_name")),
+                products=", ".join(
+                    pav.pav_attribute_line_ids.product_tmpl_id.mapped("display_name")
+                ),
             )
+
         return False

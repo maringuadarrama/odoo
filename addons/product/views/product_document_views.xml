@@ -21,10 +21,12 @@
         <field name="model">product.document</field>
         <field name="arch" type="xml">
             <list editable="top" multi_edit="true">
-                <field name="res_model" column_invisible="True" />
+                <field name="res_model"
+                    column_invisible="True" />
                 <field name="sequence" widget="handle" />
                 <field name="name" />
-                <field name="company_id" optional="show" groups="base.group_multi_company" />
+                <field name="company_id" optional="show"
+                    groups="base.group_multi_company" />
             </list>
         </field>
     </record>
@@ -107,8 +109,9 @@
                                     invisible="type == 'url'"
                                     class="oe_inline" />
                             </div>
-                            <field name="url" widget="url" invisible="type == 'binary'"
-                                required="type == 'url'" />
+                            <field name="url" widget="url"
+                                required="type == 'url'"
+                                invisible="type == 'binary'" />
                             <field name="res_name" string="Product Variant"
                                 invisible="res_model != 'product.product'" />
                         </group>

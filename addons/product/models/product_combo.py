@@ -9,20 +9,13 @@ class ProductCombo(models.Model):
     _description = "Product Combo"
     _order = "sequence, id"
 
-
     company_id = fields.Many2one(
-        comodel_name="res.company",
-        string="Company",
-        index=True
+        comodel_name="res.company", string="Company", index=True
     )
     currency_id = fields.Many2one(
-        comodel_name="res.currency",
-        compute="_compute_currency_id"
+        comodel_name="res.currency", compute="_compute_currency_id"
     )
-    name = fields.Char(
-        string="Name",
-        required=True
-    )
+    name = fields.Char(string="Name", required=True)
     sequence = fields.Integer(
         default=10,
         copy=False,
@@ -37,15 +30,14 @@ class ProductCombo(models.Model):
         digits="Product Price",
         compute="_compute_base_price",
         help="The minimum price among the products in this combo. This value will be used to"
-             "prorate the price of this combo with respect to the other combos in a combo product."
-             "This heuristic ensures that whatever product the user chooses in a combo, it will"
-             "always be the same price.",
+        "prorate the price of this combo with respect to the other combos in a combo product."
+        "This heuristic ensures that whatever product the user chooses in a combo, it will"
+        "always be the same price.",
     )
     count_combo_item = fields.Integer(
         string="Product Count",
         compute="_compute_count_combo_item",
     )
-
 
     # ------------------------------------------------------------
     # CONSTRAINT METHODS
@@ -59,14 +51,19 @@ class ProductCombo(models.Model):
     @api.constrains("combo_item_ids")
     def _check_combo_item_ids_no_duplicates(self):
         for combo in self:
-            if len(combo.combo_item_ids.mapped("product_id")) < len(combo.combo_item_ids):
-                raise ValidationError(_("A combo choice can't contain duplicate products."))
+            if len(combo.combo_item_ids.mapped("product_id")) < len(
+                combo.combo_item_ids
+            ):
+                raise ValidationError(
+                    _("A combo choice can't contain duplicate products.")
+                )
 
     @api.constrains("company_id")
     def _check_company_id(self):
-        templates = self.env["product.template"].sudo().search([("combo_ids", "in", self.ids)])
+        templates = (
+            self.env["product.template"].sudo().search([("combo_ids", "in", self.ids)])
+        )
         templates._check_company(fnames=["combo_ids"])
-
 
     # ------------------------------------------------------------
     # COMPUTE METHODS
@@ -83,14 +80,20 @@ class ProductCombo(models.Model):
     @api.depends("combo_item_ids")
     def _compute_base_price(self):
         for combo in self:
-            combo.base_price = min(combo.combo_item_ids.mapped(
-                lambda item: item.currency_id._convert(
-                    from_amount=item.lst_price,
-                    to_currency=combo.currency_id,
-                    company=combo.company_id or self.env.company,
-                    date=self.env.cr.now(),
+            combo.base_price = (
+                min(
+                    combo.combo_item_ids.mapped(
+                        lambda item: item.currency_id._convert(
+                            from_amount=item.lst_price,
+                            to_currency=combo.currency_id,
+                            company=combo.company_id or self.env.company,
+                            date=self.env.cr.now(),
+                        )
+                    )
                 )
-            )) if combo.combo_item_ids else 0
+                if combo.combo_item_ids
+                else 0
+            )
 
     @api.depends("combo_item_ids")
     def _compute_count_combo_item(self):

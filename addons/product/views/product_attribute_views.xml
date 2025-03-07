@@ -5,7 +5,9 @@
         <field name="model">product.attribute</field>
         <field name="arch" type="xml">
             <search>
-                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]" />
+                <filter name="inactive"
+                    string="Inactive"
+                    domain="[('active', '=', False)]" />
                 <field name="name" />
             </search>
         </field>
@@ -31,16 +33,13 @@
             <form string="Product Attribute">
                 <field name="count_product_tmpl_ids" invisible="1" />
                 <sheet>
-                    <widget
-                        name="web_ribbon"
+                    <widget name="web_ribbon"
                         title="Archived"
                         bg_color="text-bg-danger"
-                        invisible="active"
-                    />
-                    <div class="oe_button_box" name="button_box">
+                        invisible="active" />
+                    <div name="button_box" class="oe_button_box">
                         <button name="action_action_open_product_template_attribute_lines"
-                            type="object"
-                            class="oe_stat_button"
+                            type="object" class="oe_stat_button"
                             icon="fa-bars"
                             invisible="not count_product_tmpl_ids">
                             <div class="o_stat_info">
@@ -55,29 +54,29 @@
                         <group name="sale_main_fields">
                             <label for="name" string="Attribute Name" />
                             <field name="name" nolabel="1" />
-                            <field name="display_type" widget="radio" options="{'horizontal': True}" />
-                            <field name="create_variant"
-                                widget="radio"
-                                options="{'horizontal': True}"
+                            <field name="display_type" widget="radio"
+                                options="{'horizontal': True}" />
+                            <field name="create_variant" widget="radio"
+                                force_save="1"
                                 readonly="count_product_tmpl_ids != 0 or display_type == 'multi'"
-                                force_save="1" />
+                                options="{'horizontal': True}" />
                         </group>
                     </group>
                     <notebook>
-                        <page string="Attribute Values" name="attribute_values">
+                        <page name="attribute_values" string="Attribute Values">
                             <field name="value_ids" widget="pavs_one2many" nolabel="1">
                                 <list string="Values" editable="bottom">
                                     <field name="sequence" widget="handle" />
                                     <field name="name" />
-                                    <field name="display_type" column_invisible="True" />
-                                    <field name="is_custom" width="120px"
+                                    <field name="display_type"
+                                        column_invisible="True" />
+                                    <field name="is_custom"
+                                        width="120px"
                                         column_invisible="parent.display_type == 'multi'" />
-                                    <field name="html_color"
-                                        widget="color"
-                                        column_invisible="parent.display_type != 'color'"
-                                        invisible="image" />
-                                    <field name="image"
-                                        widget="image"
+                                    <field name="html_color" widget="color"
+                                        invisible="image"
+                                        column_invisible="parent.display_type != 'color'" />
+                                    <field name="image" widget="image"
                                         options="{'size': [70, 70]}"
                                         class="oe_avatar text-start float-none"
                                         column_invisible="parent.display_type != 'color'" />
@@ -85,13 +84,13 @@
                                     <button name="action_add_to_products" string="Add to products"
                                         type="object"
                                         icon="fa-plus"
-                                        column_invisible="parent.count_product_tmpl_ids &lt; 1"
-                                        invisible="pav_attribute_line_ids" />
+                                        invisible="pav_attribute_line_ids"
+                                        column_invisible="parent.count_product_tmpl_ids &lt; 1" />
                                     <button name="action_update_prices" string="Update extra prices"
                                         type="object"
                                         icon="fa-refresh"
-                                        column_invisible="parent.count_product_tmpl_ids &lt; 1"
-                                        invisible="not pav_attribute_line_ids or not default_extra_price_changed" />
+                                        invisible="not pav_attribute_line_ids or not default_extra_price_changed"
+                                        column_invisible="parent.count_product_tmpl_ids &lt; 1" />
                                 </list>
                             </field>
                         </page>

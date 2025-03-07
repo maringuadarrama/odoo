@@ -9,14 +9,15 @@ class ProductComboItem(models.Model):
     _description = "Product Combo Item"
     _check_company_auto = True
 
-
     combo_id = fields.Many2one(
         comodel_name="product.combo",
         required=True,
         ondelete="cascade",
     )
     company_id = fields.Many2one(
-        related="combo_id.company_id", store=True, precompute=True,
+        related="combo_id.company_id",
+        store=True,
+        precompute=True,
     )
     product_id = fields.Many2one(
         comodel_name="product.product",
@@ -40,7 +41,6 @@ class ProductComboItem(models.Model):
         default=0.0,
     )
 
-
     # ------------------------------------------------------------
     # CONSTRAINT METHODS
     # ------------------------------------------------------------
@@ -48,4 +48,6 @@ class ProductComboItem(models.Model):
     @api.constrains("product_id")
     def _check_product_id_no_combo(self):
         if any(combo_item.product_id.type == "combo" for combo_item in self):
-            raise ValidationError(_("A combo choice can't contain products of type \"combo\"."))
+            raise ValidationError(
+                _('A combo choice can\'t contain products of type "combo".')
+            )

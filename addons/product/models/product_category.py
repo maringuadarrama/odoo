@@ -13,7 +13,6 @@ class ProductCategory(models.Model):
     _rec_name = "complete_name"
     _order = "complete_name"
 
-
     name = fields.Char(
         string="Name",
         required=True,
@@ -40,10 +39,9 @@ class ProductCategory(models.Model):
         string="# Products",
         compute="_compute_count_product",
         help="The number of products under this category "
-             "(Does not consider the children categories)",
+        "(Does not consider the children categories)",
     )
     product_properties_definition = fields.PropertiesDefinition("Product Properties")
-
 
     # ------------------------------------------------------------
     # CONSTRAINT METHODS
@@ -53,7 +51,6 @@ class ProductCategory(models.Model):
     def _check_category_recursion(self):
         if self._has_cycle():
             raise ValidationError(_("You cannot create recursive categories."))
-
 
     # ------------------------------------------------------------
     # COMPUTE METHODS
@@ -66,6 +63,7 @@ class ProductCategory(models.Model):
             ["__count"]
         )
         group_data = {categ.id: count for categ, count in read_group_res}
+
         for categ in self:
             count_product = 0
             for sub_categ_id in categ.search([("id", "child_of", categ.ids)]).ids:
@@ -76,7 +74,9 @@ class ProductCategory(models.Model):
     def _compute_complete_name(self):
         for category in self:
             if category.parent_id:
-                category.complete_name = f"{category.parent_id.complete_name} / {category.name}"
+                category.complete_name = (
+                    f"{category.parent_id.complete_name} / {category.name}"
+                )
             else:
                 category.complete_name = category.name
 
@@ -87,7 +87,6 @@ class ProductCategory(models.Model):
 
         for categ in self:
             categ.display_name = categ.name
-
 
     # ------------------------------------------------------------
     # HELPERS

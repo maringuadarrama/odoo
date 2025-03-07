@@ -27,7 +27,6 @@ class ResPartner(models.Model):
         company_dependent=True,
     )
 
-
     @api.depends_context("company", "country_code")
     @api.depends("country_id", "specific_property_product_pricelist")
     def _compute_product_pricelist(self):
@@ -38,14 +37,26 @@ class ResPartner(models.Model):
     def _inverse_product_pricelist(self):
         for partner in self:
             pls = self.env["product.pricelist"].search(
-                [("country_group_ids.country_ids.code", "=", partner.country_id and partner.country_id.code or False)],
-                limit=1
+                [
+                    (
+                        "country_group_ids.country_ids.code",
+                        "=",
+                        partner.country_id and partner.country_id.code or False,
+                    )
+                ],
+                limit=1,
             )
             default_for_country = pls
             actual = partner.specific_property_product_pricelist
             # update at each change country, and so erase old pricelist
-            if partner.property_product_pricelist or (actual and default_for_country and default_for_country.id != actual.id):
-                partner.specific_property_product_pricelist = False if partner.property_product_pricelist.id == default_for_country.id else partner.property_product_pricelist.id
+            if partner.property_product_pricelist or (
+                actual and default_for_country and default_for_country.id != actual.id
+            ):
+                partner.specific_property_product_pricelist = (
+                    False
+                    if partner.property_product_pricelist.id == default_for_country.id
+                    else partner.property_product_pricelist.id
+                )
 
     def _commercial_fields(self):
         return super()._commercial_fields() + ["property_product_pricelist"]
