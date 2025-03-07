@@ -146,8 +146,9 @@
                 <field name="is_wave" invisible="1" />
                 <field name="show_lots_text" invisible="1" />
                 <header>
-                    <button name="action_confirm" invisible="state != 'draft'" string="Confirm"
-                        type="object" class="oe_highlight" />
+                    <button name="action_confirm" string="Confirm"
+                        type="object" class="oe_highlight"
+                        invisible="state != 'draft'" />
                     <button name="action_done" string="Validate" type="object" class="oe_highlight"
                         invisible="state != 'in_progress' or show_check_availability" />
                     <button name="action_assign" string="Check Availability" type="object"

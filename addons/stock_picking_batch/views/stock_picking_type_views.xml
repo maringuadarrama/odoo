@@ -18,8 +18,8 @@
                 </div>
             </xpath>
             <xpath expr="//button[@name='get_action_picking_tree_ready']" position="before">
-                <button t-if="record.count_picking_batch.raw_value > 0" class="btn btn-primary me-2"
-                    name="action_batch" type="object">
+                <button t-if="record.count_picking_batch.raw_value > 0"
+                    name="action_batch" type="object" class="btn btn-primary me-2">
                     <field name="count_picking_batch" /> Batches </button>
             </xpath>
             <xpath expr="//button[@name='get_action_picking_tree_ready']" position="attributes">

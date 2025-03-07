@@ -113,16 +113,15 @@
                     <field name="dock_id" groups="stock.group_stock_multi_locations" invisible="1" />
                     <field name="vehicle_id" placeholder="Third Party Provider" />
                     <field name="vehicle_category_id" placeholder="semi-truck" />
-                    <field name="vehicle_type" invisible="1" />
                     <field name="driver_id" />
-                    <label for="odometer" invisible="vehicle_type != 'car'" />
+<!--                     <label for="odometer" invisible="vehicle_type != 'car'" />
                     <div invisible="vehicle_type != 'car'">
                         <field name="odometer" class="oe_inline" />
                         <span> in </span>
                         <field name="odometer_uom_id" class="oe_inline"
                             options="{'no_create': True}" />
                     </div>
-                    <label for='used_weight_percentage' string="Weight"
+ -->                    <label for='used_weight_percentage' string="Weight"
                         invisible="not vehicle_category_id or not vehicle_weight_capacity" />
                     <div class='d-flex flex-row gap-4'
                         invisible="not vehicle_category_id or not vehicle_weight_capacity">
