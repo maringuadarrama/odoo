@@ -14,9 +14,7 @@ class SaleOrderDiscount(models.TransientModel):
     Provides three kind of discounts:
     * Discount on each sale order lines
     * Discount on the global order amount
-    * Fixed discount amount
-    """
-
+    * Fixed discount amount"""
     _name = "sale.order.discount"
     _description = "Discount Wizard"
 
@@ -24,16 +22,13 @@ class SaleOrderDiscount(models.TransientModel):
     # FIELDS
     # ------------------------------------------------------------
 
-    # sale.order fields
     sale_order_id = fields.Many2one(
-        "sale.order", default=lambda self: self.env.context.get("active_id"), required=True
+        "sale.order",
+        required=True,
+        default=lambda self: self.env.context.get("active_id"),
     )
     company_id = fields.Many2one(related="sale_order_id.company_id")
     currency_id = fields.Many2one(related="sale_order_id.currency_id")
-
-    # Discount logic
-    discount_amount = fields.Monetary(string="Amount")
-    discount_percentage = fields.Float(string="Percentage")
     discount_type = fields.Selection(
         selection=[
             ("sol_discount", "On All Order Lines"),
@@ -42,11 +37,13 @@ class SaleOrderDiscount(models.TransientModel):
         ],
         default="sol_discount",
     )
+    discount_amount = fields.Monetary(string="Amount")
+    discount_percentage = fields.Float(string="Percentage")
     tax_ids = fields.Many2many(
-        string="Taxes",
-        help="Taxes to add on the discount line.",
         comodel_name="account.tax",
+        string="Taxes",
         domain="[('type_tax_use', '=', 'sale'), ('company_id', '=', company_id)]",
+        help="Taxes to add on the discount line.",
     )
 
     # ------------------------------------------------------------
@@ -73,14 +70,15 @@ class SaleOrderDiscount(models.TransientModel):
             "company_id": self.company_id.id,
             "taxes_id": None,
         }
+
         services_category = self.env.ref("product.product_category_services", raise_if_not_found=False)
         if services_category:
             values["categ_id"] = services_category.id
+
         return values
 
     def _prepare_discount_line_values(self, product, amount, taxes, description=None):
         self.ensure_one()
-
         vals = {
             "order_id": self.sale_order_id.id,
             "product_id": product.id,
@@ -88,6 +86,7 @@ class SaleOrderDiscount(models.TransientModel):
             "price_unit": -amount,
             "tax_ids": [Command.set(taxes.ids)],
         }
+
         if description:
             # If not given, name will fallback on the standard SOL logic (cf. _compute_name)
             vals["name"] = description
