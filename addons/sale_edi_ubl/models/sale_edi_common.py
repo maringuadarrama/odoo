@@ -34,7 +34,7 @@ class SaleEdiCommon(models.AbstractModel):
                     Markup().join(Markup("<li>%s</li>") % l for l in logs)
             order.message_post(body=body)
 
-        lines_with_products = order.order_line.filtered('product_id')
+        lines_with_products = order.order_line_ids.filtered('product_id')
         # Recompute product price and discount according to sale price
         lines_with_products._compute_price_unit()
         lines_with_products._compute_discount()

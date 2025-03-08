@@ -52,7 +52,7 @@ class PosOrder(models.Model):
 
         order_ids = self.browse([o['id'] for o in data["pos.order"]])
         for order in order_ids:
-            used_pos_lines = order.lines.sale_order_origin_id.order_line.pos_order_line_ids.ids
+            used_pos_lines = order.lines.sale_order_origin_id.order_line_ids.pos_order_line_ids.ids
             lines = order.lines.filtered(
                 lambda l: (
                     l.id not in used_pos_lines
@@ -65,7 +65,7 @@ class PosOrder(models.Model):
                 )
             )
             for line in lines:
-                sale_lines = line.sale_order_origin_id.order_line or line.refunded_orderline_id.sale_order_origin_id.order_line
+                sale_lines = line.sale_order_origin_id.order_line_ids or line.refunded_orderline_id.sale_order_origin_id.order_line
                 sale_order_origin = line.sale_order_origin_id or line.refunded_orderline_id.sale_order_origin_id
                 if not any(line.display_type and line.is_downpayment for line in sale_lines):
                     self.env['sale.order.line'].create(

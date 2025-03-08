@@ -54,7 +54,7 @@ class Cart(PaymentPortal):
             'suggested_products': [],
         })
         if order_sudo:
-            order_sudo.order_line.filtered(lambda sol: sol.product_id and not sol.product_id.active).unlink()
+            order_sudo.order_line_ids.filtered(lambda sol: sol.product_id and not sol.product_id.active).unlink()
             values['suggested_products'] = order_sudo._cart_accessories()
             values.update(self._get_express_shop_payment_values(order_sudo))
 
@@ -77,7 +77,7 @@ class Cart(PaymentPortal):
             'payment_method_unknown_id': request.env.ref('payment.payment_method_unknown').id,
             'shipping_info_required': order._has_deliverable_products(),
             'delivery_amount': payment_utils.to_minor_currency_units(
-                order.order_line.filtered(lambda l: l.is_delivery).price_total, order.currency_id
+                order.order_line_ids.filtered(lambda l: l.is_delivery).price_total, order.currency_id
             ),
             'shipping_address_update_route': WebsiteSale._express_checkout_delivery_route,
         })
@@ -213,7 +213,7 @@ class Cart(PaymentPortal):
         # eg. website_sale_loyalty, a cart line could be a temporary record without id.
         # In this case, the line_id must be found out through the given product id.
         if not line_id:
-            line_id = order_sudo.order_line.filtered(
+            line_id = order_sudo.order_line_ids.filtered(
                 lambda sol: sol.product_id.id == product_id
             )[:1].id
             if not line_id:
@@ -281,7 +281,7 @@ class Cart(PaymentPortal):
                 }],
             }
         """
-        lines = order.order_line.filtered(lambda line: line.id in line_ids)
+        lines = order.order_line_ids.filtered(lambda line: line.id in line_ids)
         if not lines:
             return {}
 
@@ -309,7 +309,7 @@ class Cart(PaymentPortal):
         :rtype: dict
         :return: The tracking information.
         """
-        lines = order_sudo.order_line.filtered(
+        lines = order_sudo.order_line_ids.filtered(
             lambda line: line.id in line_ids
         ).with_context(display_default_code=False)
         return [

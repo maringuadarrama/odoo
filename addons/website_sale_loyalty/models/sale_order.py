@@ -189,7 +189,7 @@ class SaleOrder(models.Model):
 
     def _get_free_shipping_lines(self):
         self.ensure_one()
-        return self.order_line.filtered(lambda l: l.reward_id.reward_type == 'shipping')
+        return self.order_line_ids.filtered(lambda l: l.reward_id.reward_type == 'shipping')
 
     def _allow_nominative_programs(self):
         if not request or not hasattr(request, 'website'):
