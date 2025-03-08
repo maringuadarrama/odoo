@@ -115,7 +115,7 @@ class SaleOrderLine(models.Model):
         # dict of inverse factors for each relevant UoM found in SO
         factor_per_id = {
             uom.id: uom.factor
-            for uom in self.order_id.order_line.product_uom_id
+            for uom in self.order_id.order_line_ids.product_uom_id
         }
         # if sold as units, assume hours for time allocation
         factor_per_id[uom_unit.id] = uom_hour.factor
@@ -123,7 +123,7 @@ class SaleOrderLine(models.Model):
         allocated_hours = 0.0
         # method only called once per project, so also allocate hours for
         # all lines in SO that will share the same project
-        for line in self.order_id.order_line:
+        for line in self.order_id.order_line_ids:
             if line.is_service \
                     and line.product_id.service_tracking in ['task_in_project', 'project_only'] \
                     and line.product_id.project_template_id == self.product_id.project_template_id \

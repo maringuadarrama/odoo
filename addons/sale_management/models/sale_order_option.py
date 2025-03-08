@@ -120,7 +120,7 @@ class SaleOrderOption(models.Model):
             'product_uom_qty': self.quantity,
             'product_uom_id': self.uom_id.id,
             'discount': self.discount,
-            'sequence': max(self.order_id.order_line.mapped('sequence'), default=0) + 1
+            'sequence': max(self.order_id.order_line_ids.mapped('sequence'), default=0) + 1
         }
 
     @api.depends('line_id', 'order_id.order_line_ids', 'product_id')
@@ -128,7 +128,7 @@ class SaleOrderOption(models.Model):
         # NOTE: this field cannot be stored as the line_id is usually removed
         # through cascade deletion, which means the compute would be false
         for option in self:
-            option.is_present = bool(option.order_id.order_line.filtered(lambda l: l.product_id == option.product_id))
+            option.is_present = bool(option.order_id.order_line_ids.filtered(lambda l: l.product_id == option.product_id))
 
     def _search_is_present(self, operator, value):
         if (operator, value) in [('=', True), ('!=', False)]:

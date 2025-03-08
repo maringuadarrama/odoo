@@ -31,7 +31,7 @@ class SaleOrder(models.Model):
         for order in self:
             order.timesheet_count = timesheets_per_so.get(order.id, 0)
 
-    @api.depends('company_id.project_time_mode_id', 'company_id.timesheet_encode_uom_id', 'order_line.timesheet_ids')
+    @api.depends('company_id.project_time_mode_id', 'company_id.timesheet_encode_uom_id', 'order_line_ids.timesheet_ids')
     def _compute_timesheet_total_duration(self):
         group_data = self.env['account.analytic.line']._read_group([
             ('order_id', 'in', self.ids), ('project_id', '!=', False)
@@ -91,7 +91,7 @@ class SaleOrder(models.Model):
         """
         self.ensure_one()
         precision = self.env['decimal.precision'].precision_get('Product Unit')
-        return self.order_line.filtered(lambda sol:
+        return self.order_line_ids.filtered(lambda sol:
             sol.is_service
             and sol.invoice_status != "invoiced"
             and not sol.has_displayed_warning_upsell  # we don't want to display many times the warning each time we timesheet on the SOL
@@ -105,29 +105,29 @@ class SaleOrder(models.Model):
 
     def action_view_timesheet(self):
         self.ensure_one()
-        if not self.order_line:
+        if not self.order_line_ids:
             return {'type': 'ir.actions.act_window_close'}
 
         action = self.env["ir.actions.actions"]._for_xml_id("sale_timesheet.timesheet_action_from_sales_order")
-        default_sale_line = next((sale_line for sale_line in self.order_line if sale_line.is_service and sale_line.product_id.service_policy in ['ordered_prepaid', 'delivered_timesheet']), self.env['sale.order.line'])
+        default_sale_line = next((sale_line for sale_line in self.order_line_ids if sale_line.is_service and sale_line.product_id.service_policy in ['ordered_prepaid', 'delivered_timesheet']), self.env['sale.order.line'])
         context = {
             'search_default_billable_timesheet': True,
             'default_is_so_line_edited': True,
             'default_so_line': default_sale_line.id,
         }  # erase default filters
 
-        tasks = self.order_line.task_id._filtered_access('write')
+        tasks = self.order_line_ids.task_id._filtered_access('write')
         if tasks:
             context['default_task_id'] = tasks[0].id
         else:
-            projects = self.order_line.project_id._filtered_access('write')
+            projects = self.order_line_ids.project_id._filtered_access('write')
             if projects:
                 context['default_project_id'] = projects[0].id
             elif self.project_ids:
                 context['default_project_id'] = self.project_ids[0].id
         action.update({
             'context': context,
-            'domain': [('so_line', 'in', self.order_line.ids), ('project_id', '!=', False)],
+            'domain': [('so_line', 'in', self.order_line_ids.ids), ('project_id', '!=', False)],
             'help': _("""
                 <p class="o_view_nocontent_smiling_face">
                     No activities found. Let's start a new one!
@@ -141,7 +141,7 @@ class SaleOrder(models.Model):
 
     def _reset_has_displayed_warning_upsell_order_lines(self):
         precision = self.env['decimal.precision'].precision_get('Product Unit')
-        for line in self.order_line:
+        for line in self.order_line_ids:
             if line.has_displayed_warning_upsell and line.product_uom_id and float_compare(line.qty_delivered, line.product_uom_qty, precision_digits=precision) == 0:
                 line.has_displayed_warning_upsell = False
 

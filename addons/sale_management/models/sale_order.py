@@ -146,7 +146,7 @@ class SaleOrder(models.Model):
                 for fname in ['product_id', 'uom_id', 'quantity']
             )
 
-        lines = self.order_line
+        lines = self.order_line_ids
         options = self.sale_order_option_ids
         t_lines = self.sale_order_template_id.sale_order_template_line_ids
         t_options = self.sale_order_template_id.sale_order_template_option_ids

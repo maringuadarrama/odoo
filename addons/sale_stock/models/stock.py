@@ -152,7 +152,7 @@ class StockPicking(models.Model):
             if product.invoice_policy == 'delivery':
                 # Check if there is already a SO line for this product to get
                 # back its unit price (in case it was manually updated).
-                so_line = sale_order.order_line.filtered(lambda sol: sol.product_id == product)
+                so_line = sale_order.order_line_ids.filtered(lambda sol: sol.product_id == product)
                 if so_line:
                     so_line_vals['price_unit'] = so_line[0].price_unit
             elif product.invoice_policy == 'order':
