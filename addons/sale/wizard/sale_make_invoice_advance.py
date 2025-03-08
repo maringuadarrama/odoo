@@ -75,7 +75,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
             "order_id": order.id,
             "display_type": "line_section",
             "is_downpayment": True,
-            "sequence": order.order_line and order.order_line[-1].sequence + 1 or 10,
+            "sequence": order.order_line_ids and order.order_line_ids[-1].sequence + 1 or 10,
         }
 
     def _prepare_base_downpayment_line_values(self, order):
@@ -85,7 +85,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
             "order_id": order.id,
             "discount": 0.0,
             "is_downpayment": True,
-            "sequence": order.order_line and order.order_line[-1].sequence + 1 or 10,
+            "sequence": order.order_line_ids and order.order_line_ids[-1].sequence + 1 or 10,
         }
 
     def _prepare_down_payment_lines_values(self, order):
@@ -93,8 +93,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
         Apply the tax(es) to their respective lines.
 
         :param order: Order for which the down payment lines are created.
-        :return:      An array of dicts with the down payment lines values.
-        """
+        :return:      An array of dicts with the down payment lines values."""
         self.ensure_one()
         AccountTax = self.env["account.tax"]
 
@@ -103,7 +102,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
         else:
             ratio = self.fixed_amount / order.amount_total if order.amount_total else 1
 
-        order_lines = order.order_line.filtered(lambda l: not l.display_type and not l.is_downpayment)
+        order_lines = order.order_line_ids.filtered(lambda l: not l.display_type and not l.is_downpayment)
         down_payment_values = []
         for line in order_lines:
             base_line_values = line._prepare_base_line_for_taxes_computation(special_mode="total_excluded")
@@ -231,7 +230,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
     @api.depends("sale_order_ids")
     def _compute_has_down_payments(self):
         for wizard in self:
-            wizard.has_down_payments = bool(wizard.sale_order_ids.order_line.filtered("is_downpayment"))
+            wizard.has_down_payments = bool(wizard.sale_order_ids.order_line_ids.filtered("is_downpayment"))
 
     # next computed fields are only used for down payments invoices and therefore should only
     # have a value when 1 unique SO is invoiced through the wizard

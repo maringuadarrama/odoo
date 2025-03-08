@@ -89,7 +89,7 @@ class AccountMove(models.Model):
         # Update the description of DP lines (Draft -> Posted)
         dp_lines._compute_name()
         downpayment_lines = dp_lines.filtered(lambda sol: not sol.order_id.locked)
-        other_so_lines = downpayment_lines.order_id.order_line - downpayment_lines
+        other_so_lines = downpayment_lines.order_id.order_line_ids - downpayment_lines
         real_invoices = set(other_so_lines.invoice_lines.move_id)
         for so_dpl in downpayment_lines:
             so_dpl.price_unit = so_dpl._get_downpayment_line_price_unit(real_invoices)

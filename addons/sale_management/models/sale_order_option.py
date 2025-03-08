@@ -123,7 +123,7 @@ class SaleOrderOption(models.Model):
             'sequence': max(self.order_id.order_line.mapped('sequence'), default=0) + 1
         }
 
-    @api.depends('line_id', 'order_id.order_line', 'product_id')
+    @api.depends('line_id', 'order_id.order_line_ids', 'product_id')
     def _compute_is_present(self):
         # NOTE: this field cannot be stored as the line_id is usually removed
         # through cascade deletion, which means the compute would be false

@@ -21,7 +21,7 @@ class SaleOrder(models.Model):
         return {
             **super()._get_action_add_from_catalog_extra_context(),
             "product_catalog_currency_id": self.currency_id.id,
-            "product_catalog_digits": self.order_line._fields["price_unit"].get_digits(self.env),
+            "product_catalog_digits": self.order_line_ids._fields["price_unit"].get_digits(self.env),
         }
 
     def _get_product_catalog_domain(self):
@@ -46,7 +46,7 @@ class SaleOrder(models.Model):
 
     def _get_product_catalog_record_lines(self, product_ids, **kwargs):
         grouped_lines = defaultdict(lambda: self.env["sale.order.line"])
-        for line in self.order_line:
+        for line in self.order_line_ids:
             if line.display_type or line.product_id.id not in product_ids:
                 continue
             grouped_lines[line.product_id] |= line
@@ -84,7 +84,7 @@ class SaleOrder(models.Model):
         :rtype: float
         """
         request.update_context(catalog_skip_tracking=True)
-        sol = self.order_line.filtered(lambda line: line.product_id.id == product_id)
+        sol = self.order_line_ids.filtered(lambda line: line.product_id.id == product_id)
         if sol:
             if quantity != 0:
                 sol.product_uom_qty = quantity
@@ -107,7 +107,7 @@ class SaleOrder(models.Model):
                     "product_id": product_id,
                     "product_uom_qty": quantity,
                     "sequence": (
-                        (self.order_line and self.order_line[-1].sequence + 1) or 10
+                        (self.order_line_ids and self.order_line_ids[-1].sequence + 1) or 10
                     ),  # put it at the end of the order
                 }
             )

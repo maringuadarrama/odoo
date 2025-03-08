@@ -542,7 +542,7 @@ class SaleOrderLine(models.Model):
             self.linked_line_id
             or (
                 self.linked_virtual_id
-                and self.order_id.order_line.filtered(
+                and self.order_id.order_line_ids.filtered(
                     lambda line: line.virtual_id == self.linked_virtual_id
                 ).ensure_one()
             )
@@ -561,11 +561,11 @@ class SaleOrderLine(models.Model):
         return (
             (
                 self._origin
-                and self.order_id.order_line.filtered(lambda line: line.linked_line_id._origin == self._origin)
+                and self.order_id.order_line_ids.filtered(lambda line: line.linked_line_id._origin == self._origin)
             )
             or (
                 self.virtual_id
-                and self.order_id.order_line.filtered(lambda line: line.linked_virtual_id == self.virtual_id)
+                and self.order_id.order_line_ids.filtered(lambda line: line.linked_virtual_id == self.virtual_id)
             )
             or self.env["sale.order.line"]
         )

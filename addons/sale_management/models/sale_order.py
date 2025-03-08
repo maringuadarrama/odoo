@@ -118,7 +118,7 @@ class SaleOrder(models.Model):
         if len(order_lines_data) >= 2:
             order_lines_data[1][2]['sequence'] = -99
 
-        self.order_line = order_lines_data
+        self.order_line_ids = order_lines_data
 
         option_lines_data = [fields.Command.clear()]
         option_lines_data += [

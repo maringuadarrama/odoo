@@ -191,13 +191,13 @@
                         <field name="properties" nolabel="1" columns="2" hideAddButton="1" />
                     </group>
                     <notebook>
-                        <page string="Detailed Operations" name="page_detailed_operations"
+                        <page name="page_detailed_operations" string="Detailed Operations"
                             invisible="state == 'draft'">
                             <field name="move_line_ids"
                                 context="{'list_view_ref': 'stock_picking_batch.view_move_line_tree'}"
                                 readonly="state not in ['draft', 'in_progress']" />
-                            <button name="action_put_in_pack" type="object" class="oe_highlight"
-                                string="Put in Pack"
+                            <button name="action_put_in_pack" string="Put in Pack"
+                                type="object" class="oe_highlight"
                                 invisible="state in ('draft', 'done', 'cancel')"
                                 groups="stock.group_tracking_lot" />
                         </page>

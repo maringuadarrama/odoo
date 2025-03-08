@@ -24,16 +24,16 @@
         "views/portal_templates.xml",
         "views/product_template_views.xml",
         "views/product_product_views.xml",
-        "views/res_partner_views.xml",
         "views/purchase_order_views.xml",
         "views/purchase_order_line_views.xml",
-        "views/purchase_menu.xml",
+        "views/res_partner_views.xml",
         "report/purchase_bill_union_views.xml",
         "report/purchase_bill_line_match_views.xml",
         "report/purchase_report_views.xml",
         "report/purchase_order_templates.xml",
         "report/purchase_quotation_templates.xml",
         "wizard/bill_to_po_wizard_views.xml",
+        "views/purchase_menu.xml",
     ],
     "assets": {
         "web.assets_backend": [

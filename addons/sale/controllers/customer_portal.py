@@ -345,7 +345,7 @@ class CustomerPortal(payment_portal.PaymentPortal):
             # `untaxed_amount_to_invoice`, which is a monetary field. They require the currency to
             # ensure the values are saved in the correct format. However, the currency cannot be
             # read directly during the flush due to access rights, necessitating manual caching.
-            order_sudo.order_line.currency_id
+            order_sudo.order_line_ids.currency_id
 
             order_sudo.message_post(
                 author_id=(

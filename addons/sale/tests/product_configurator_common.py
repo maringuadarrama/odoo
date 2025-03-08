@@ -70,22 +70,35 @@ class TestProductConfiguratorCommon(TransactionCase):
                 {
                     "product_tmpl_id": cls.product_product_custo_desk.id,
                     "attribute_id": cls.product_attribute_1.id,
-                    "value_ids": [(4, product_attribute_value_1.id), (4, product_attribute_value_2.id)],
+                    "value_ids": [
+                        (4, product_attribute_value_1.id),
+                        (4, product_attribute_value_2.id),
+                    ],
                 },
                 {
                     "product_tmpl_id": cls.product_product_custo_desk.id,
                     "attribute_id": product_attribute_2.id,
-                    "value_ids": [(4, product_attribute_value_3.id), (4, product_attribute_value_4.id)],
+                    "value_ids": [
+                        (4, product_attribute_value_3.id),
+                        (4, product_attribute_value_4.id),
+                    ],
                 },
             ]
         )
 
         # Apply a price_extra for the attribute Aluminium
-        cls.product_product_custo_desk.attribute_line_ids[0].product_template_value_ids[1].price_extra = 50.40
+        cls.product_product_custo_desk.attribute_line_ids[0].product_template_value_ids[
+            1
+        ].price_extra = 50.40
 
         # Add a Custom attribute
         product_attribute_value_custom = cls.env["product.attribute.value"].create(
-            {"name": "Custom", "attribute_id": cls.product_attribute_1.id, "sequence": 3, "is_custom": True}
+            {
+                "name": "Custom",
+                "attribute_id": cls.product_attribute_1.id,
+                "sequence": 3,
+                "is_custom": True,
+            }
         )
         cls.product_product_custo_desk.attribute_line_ids[0].write(
             {"value_ids": [(4, product_attribute_value_custom.id)]}
@@ -109,20 +122,31 @@ class TestProductConfiguratorCommon(TransactionCase):
             {
                 "product_tmpl_id": cls.product_product_conf_chair.id,
                 "attribute_id": cls.product_attribute_1.id,
-                "value_ids": [(4, product_attribute_value_1.id), (4, product_attribute_value_2.id)],
+                "value_ids": [
+                    (4, product_attribute_value_1.id),
+                    (4, product_attribute_value_2.id),
+                ],
             }
         )
-        cls.product_product_conf_chair.attribute_line_ids[0].product_template_value_ids[1].price_extra = 6.40
-        cls.product_product_custo_desk.optional_product_ids = [(4, cls.product_product_conf_chair.id)]
+        cls.product_product_conf_chair.attribute_line_ids[0].product_template_value_ids[
+            1
+        ].price_extra = 6.40
+        cls.product_product_custo_desk.optional_product_ids = [
+            (4, cls.product_product_conf_chair.id)
+        ]
 
         # Setup a second optional product
-        cls.product_product_conf_chair_floor_protect = cls.env["product.template"].create(
+        cls.product_product_conf_chair_floor_protect = cls.env[
+            "product.template"
+        ].create(
             {
                 "name": "Chair floor protection (TEST)",
                 "list_price": 12.0,
             }
         )
-        cls.product_product_conf_chair.optional_product_ids = [(4, cls.product_product_conf_chair_floor_protect.id)]
+        cls.product_product_conf_chair.optional_product_ids = [
+            (4, cls.product_product_conf_chair_floor_protect.id)
+        ]
 
         cls.custom_pricelist = cls.env["product.pricelist"].create(
             {

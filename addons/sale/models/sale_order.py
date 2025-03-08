@@ -269,7 +269,7 @@ class SaleOrder(models.Model):
     )
 
     # Order line block
-    order_line = fields.One2many(
+    order_line_ids = fields.One2many(
         comodel_name="sale.order.line",
         inverse_name="order_id",
         string="Order Lines",
@@ -393,7 +393,7 @@ class SaleOrder(models.Model):
         elif operator == "=" and not value:
             # special case for [('invoice_ids', '=', False)], i.e. "Invoices is not set"
             #
-            # We cannot just search [('order_line.invoice_lines', '=', False)]
+            # We cannot just search [('order_line_ids.invoice_lines', '=', False)]
             # because it returns orders with uninvoiced lines, which is not
             # same "Invoices is not set" (some lines may have invoices and some
             # doesn't)
@@ -401,15 +401,15 @@ class SaleOrder(models.Model):
             # A solution is making inverted search first ("orders with invoiced
             # lines") and then invert results ("get all other orders")
             #
-            # Domain below returns subset of ('order_line.invoice_lines', '!=', False)
+            # Domain below returns subset of ('order_line_ids.invoice_lines', '!=', False)
             order_ids = self._search(
-                [("order_line.invoice_lines.move_id.move_type", "in", ("out_invoice", "out_refund"))]
+                [("order_line_ids.invoice_lines.move_id.move_type", "in", ("out_invoice", "out_refund"))]
             )
             return [("id", "not in", order_ids)]
 
         return [
-            ("order_line.invoice_lines.move_id.move_type", "in", ("out_invoice", "out_refund")),
-            ("order_line.invoice_lines.move_id", operator, value),
+            ("order_line_ids.invoice_lines.move_id.move_type", "in", ("out_invoice", "out_refund")),
+            ("order_line_ids.invoice_lines.move_id", operator, value),
         ]
 
     def _select_expected_date(self, expected_dates):
@@ -511,7 +511,7 @@ class SaleOrder(models.Model):
         return values
 
     def _recompute_taxes(self):
-        lines_to_recompute = self.order_line.filtered(lambda line: not line.display_type)
+        lines_to_recompute = self.order_line_ids.filtered(lambda line: not line.display_type)
         lines_to_recompute._compute_tax_ids()
         self.show_update_fpos = False
 
@@ -565,7 +565,7 @@ class SaleOrder(models.Model):
     def _get_product_documents(self):
         self.ensure_one()
         documents = (
-            self.order_line.product_id.product_document_ids | self.order_line.product_template_id.product_document_ids
+            self.order_line_ids.product_id.product_document_ids | self.order_line_ids.product_template_id.product_document_ids
         )
         return self._filter_product_documents(documents).sorted()
 
@@ -580,7 +580,7 @@ class SaleOrder(models.Model):
 
     def _get_update_prices_lines(self):
         """Hook to exclude specific lines which should not be updated based on price list recomputation"""
-        return self.order_line.filtered(lambda line: not line.display_type)
+        return self.order_line_ids.filtered(lambda line: not line.display_type)
 
     def _get_invoiceable_lines(self, final=False):
         """Return the invoiceable lines for order `self`."""
@@ -588,7 +588,7 @@ class SaleOrder(models.Model):
         invoiceable_line_ids = []
         pending_section = None
         precision = self.env["decimal.precision"].precision_get("Product Unit")
-        for line in self.order_line:
+        for line in self.order_line_ids:
             if line.display_type == "line_section":
                 # Only invoice the section if one of its lines is invoiceable
                 pending_section = line
@@ -728,7 +728,7 @@ class SaleOrder(models.Model):
 
         This is needed for the automatic invoice logic, as we want to automatically
         invoice the full SO when it's paid."""
-        for line in self.order_line:
+        for line in self.order_line_ids:
             if line.state == "sale":
                 # No need to set 0 as it is already the standard logic in the compute method.
                 line.qty_to_invoice = line.product_uom_qty - line.qty_invoiced
@@ -738,7 +738,7 @@ class SaleOrder(models.Model):
         return self.transaction_ids.sudo()._get_last()
 
     def _get_order_lines_to_report(self):
-        down_payment_lines = self.order_line.filtered(
+        down_payment_lines = self.order_line_ids.filtered(
             lambda line: line.is_downpayment and not line.display_type and not line._get_downpayment_state()
         )
 
@@ -755,7 +755,7 @@ class SaleOrder(models.Model):
             else:
                 return False
 
-        return self.order_line.filtered(show_line)
+        return self.order_line_ids.filtered(show_line)
 
     def _get_prepayment_required_amount(self):
         """Return the minimum amount needed to confirm automatically the quotation.
@@ -867,7 +867,7 @@ class SaleOrder(models.Model):
 
     def _get_copiable_order_lines(self):
         """Returns the order lines that can be copied to a new order."""
-        return self.order_line.filtered(lambda l: not l.is_downpayment)
+        return self.order_line_ids.filtered(lambda l: not l.is_downpayment)
 
     def _should_be_locked(self):
         self.ensure_one()
@@ -924,7 +924,7 @@ class SaleOrder(models.Model):
         if self.state not in {"draft", "sent"}:
             return _("Some orders are not in a state requiring confirmation.")
 
-        if any(not line.display_type and not line.is_downpayment and not line.product_id for line in self.order_line):
+        if any(not line.display_type and not line.is_downpayment and not line.product_id for line in self.order_line_ids):
             return _("A line on these orders missing a product, you cannot confirm it.")
 
         return False
@@ -939,7 +939,7 @@ class SaleOrder(models.Model):
     def _compute_amount_undiscounted(self):
         for order in self:
             total = 0.0
-            for line in order.order_line:
+            for line in order.order_line_ids:
                 total += (
                     (line.price_subtotal * 100) / (100 - line.discount)
                     if line.discount != 100
@@ -1077,25 +1077,25 @@ class SaleOrder(models.Model):
         for order in self:
             order.prepayment_percent = order.company_id.prepayment_percent
 
-    @api.depends("order_line.product_id")
+    @api.depends("order_line_ids.product_id")
     def _compute_has_archived_products(self):
         for order in self:
-            order.has_archived_products = any(not product.active for product in order.order_line.product_id)
+            order.has_archived_products = any(not product.active for product in order.order_line_ids.product_id)
 
-    @api.depends("order_line.invoice_lines")
+    @api.depends("order_line_ids.invoice_lines")
     def _compute_invoices(self):
         # The invoice_ids are obtained thanks to the invoice lines of the SO
         # lines, and we also search for possible refunds created directly from
         # existing invoices. This is necessary since such a refund is not
         # directly linked to the SO.
         for order in self:
-            invoices = order.order_line.invoice_lines.move_id.filtered(
+            invoices = order.order_line_ids.invoice_lines.move_id.filtered(
                 lambda r: r.move_type in ("out_invoice", "out_refund")
             )
             order.invoice_ids = invoices
             order.count_invoice = len(invoices)
 
-    @api.depends("state", "order_line.invoice_status")
+    @api.depends("state", "order_line_ids.invoice_status")
     def _compute_invoice_status(self):
         """Compute the invoice status of a SO. Possible statuses:
         - no: if the SO is not in status 'sale' or 'done', we consider that there is nothing to
@@ -1124,7 +1124,7 @@ class SaleOrder(models.Model):
                     # If only discount/delivery/promotion lines can be invoiced, the SO should not
                     # be invoiceable.
                     invoiceable_domain = lines_domain + [("invoice_status", "=", "to invoice")]
-                    invoiceable_lines = order.order_line.filtered_domain(invoiceable_domain)
+                    invoiceable_lines = order.order_line_ids.filtered_domain(invoiceable_domain)
                     special_lines = invoiceable_lines.filtered(lambda sol: not sol._can_be_invoiced_alone())
                     if invoiceable_lines == special_lines:
                         order.invoice_status = "no"
@@ -1152,15 +1152,15 @@ class SaleOrder(models.Model):
         for order in self:
             order.amount_paid = sum(tx.amount for tx in order.transaction_ids if tx.state in ("authorized", "done"))
 
-    @api.depends("order_line.amount_to_invoice")
+    @api.depends("order_line_ids.amount_to_invoice")
     def _compute_amount_to_invoice(self):
         for order in self:
-            order.amount_to_invoice = sum(order.order_line.mapped("amount_to_invoice"))
+            order.amount_to_invoice = sum(order.order_line_ids.mapped("amount_to_invoice"))
 
-    @api.depends("order_line.amount_invoiced")
+    @api.depends("order_line_ids.amount_invoiced")
     def _compute_amount_invoiced(self):
         for order in self:
-            order.amount_invoiced = sum(order.order_line.mapped("amount_invoiced"))
+            order.amount_invoiced = sum(order.order_line_ids.mapped("amount_invoiced"))
 
     @api.depends("partner_id", "company_id")
     def _compute_pricelist_id(self):
@@ -1211,9 +1211,7 @@ class SaleOrder(models.Model):
 
     @api.depends("partner_shipping_id", "partner_id", "company_id")
     def _compute_fiscal_position_id(self):
-        """
-        Trigger the change of fiscal position when the shipping address is modified.
-        """
+        """Trigger the change of fiscal position when the shipping address is modified."""
         cache = {}
         for order in self:
             if not order.partner_id:
@@ -1229,7 +1227,7 @@ class SaleOrder(models.Model):
                     ._get_fiscal_position(order.partner_id, order.partner_shipping_id)
                     .id
                 )
-            if fpos_id_before != cache[key] and order.order_line:
+            if fpos_id_before != cache[key] and order.order_line_ids:
                 order.show_update_fpos = True
             order.fiscal_position_id = cache[key]
 
@@ -1243,11 +1241,11 @@ class SaleOrder(models.Model):
                 date=(order.date_order or fields.Datetime.now()).date(),
             )
 
-    @api.depends("order_line.price_subtotal", "currency_id", "company_id")
+    @api.depends("order_line_ids.price_subtotal", "currency_id", "company_id")
     def _compute_amounts(self):
         AccountTax = self.env["account.tax"]
         for order in self:
-            order_lines = order.order_line.filtered(lambda x: not x.display_type)
+            order_lines = order.order_line_ids.filtered(lambda x: not x.display_type)
             base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
             AccountTax._add_tax_details_in_base_lines(base_lines, order.company_id)
             AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
@@ -1272,18 +1270,17 @@ class SaleOrder(models.Model):
                     current_amount=(order.amount_total / order.currency_rate),
                 )
 
-    @api.depends("order_line.customer_lead", "date_order", "state")
+    @api.depends("order_line_ids.customer_lead", "date_order", "state")
     def _compute_expected_date(self):
         """For service and consumable, we only take the min dates. This method is extended in sale_stock to
-        take the picking_policy of SO into account.
-        """
-        self.mapped("order_line")  # Prefetch indication
+        take the picking_policy of SO into account."""
+        self.mapped("order_line_ids")  # Prefetch indication
         for order in self:
             if order.state == "cancel":
                 order.expected_date = False
                 continue
 
-            dates_list = order.order_line.filtered(
+            dates_list = order.order_line_ids.filtered(
                 lambda line: not line.display_type and not line._is_delivery()
             ).mapped(lambda line: line and line._expected_date())
             if dates_list:
@@ -1292,11 +1289,11 @@ class SaleOrder(models.Model):
                 order.expected_date = False
 
     @api.depends_context("lang")
-    @api.depends("order_line.price_subtotal", "currency_id", "company_id")
+    @api.depends("order_line_ids.price_subtotal", "currency_id", "company_id")
     def _compute_tax_totals(self):
         AccountTax = self.env["account.tax"]
         for order in self:
-            order_lines = order.order_line.filtered(lambda x: not x.display_type)
+            order_lines = order.order_line_ids.filtered(lambda x: not x.display_type)
             base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
             AccountTax._add_tax_details_in_base_lines(base_lines, order.company_id)
             AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
@@ -1336,7 +1333,7 @@ class SaleOrder(models.Model):
         if self.env.context.get("sale_onchange_first_call"):
             return
 
-        if self.order_line and self.state == "draft":
+        if self.order_line_ids and self.state == "draft":
             return {
                 "warning": {
                     "title": _("Warning for the change of your quotation's company"),
@@ -1360,7 +1357,7 @@ class SaleOrder(models.Model):
 
     @api.onchange("fiscal_position_id")
     def _onchange_fpos_id_show_update_fpos(self):
-        if self.order_line and (
+        if self.order_line_ids and (
             not self.fiscal_position_id
             or (self.fiscal_position_id and self._origin.fiscal_position_id != self.fiscal_position_id)
         ):
@@ -1393,23 +1390,23 @@ class SaleOrder(models.Model):
 
     @api.onchange("pricelist_id")
     def _onchange_pricelist_id_show_update_prices(self):
-        self.show_update_pricelist = bool(self.order_line)
+        self.show_update_pricelist = bool(self.order_line_ids)
 
     @api.onchange("prepayment_percent")
     def _onchange_prepayment_percent(self):
         if not self.prepayment_percent:
             self.require_payment = False
 
-    @api.onchange("order_line")
+    @api.onchange("order_line_ids")
     def _onchange_order_line(self):
-        for index, line in enumerate(self.order_line):
+        for index, line in enumerate(self.order_line_ids):
             if line.product_type == "combo" and line.selected_combo_items:
                 linked_lines = line._get_linked_lines()
                 selected_combo_items = json.loads(line.selected_combo_items)
                 if selected_combo_items and len(selected_combo_items) != len(line.product_template_id.combo_ids):
-                    raise ValidationError(
-                        _("The number of selected combo items must match the number of available" " combo choices.")
-                    )
+                    raise ValidationError(_(
+                        "The number of selected combo items must match the number of available" " combo choices."
+                    ))
 
                 # Delete any existing combo item lines.
                 delete_commands = [Command.delete(linked_line.id) for linked_line in linked_lines]
@@ -1443,15 +1440,18 @@ class SaleOrder(models.Model):
                 update_commands = [
                     Command.update(
                         order_line.id,
-                        {"sequence": line.sequence + len(selected_combo_items) + line_index - index},
+                        {
+                            "sequence":
+                                line.sequence + len(selected_combo_items) + line_index - index
+                        },
                     )
-                    for line_index, order_line in enumerate(self.order_line)
+                    for line_index, order_line in enumerate(self.order_line_ids)
                     if line_index > index
                 ]
 
                 # Clear `selected_combo_items` to avoid applying the same changes multiple times.
                 line.selected_combo_items = False
-                self.order_line = delete_commands + create_commands + update_commands
+                self.order_line_ids = delete_commands + create_commands + update_commands
 
     # ------------------------------------------------------------
     # CORE METHODS
@@ -1474,12 +1474,12 @@ class SaleOrder(models.Model):
 
     def copy_data(self, default=None):
         default = dict(default or {})
-        default_has_no_order_line = "order_line" not in default
-        default.setdefault("order_line", [])
+        default_has_no_order_line = "order_line_ids" not in default
+        default.setdefault("order_line_ids", [])
         vals_list = super().copy_data(default=default)
         if default_has_no_order_line:
             for order, vals in zip(self, vals_list):
-                vals["order_line"] = [
+                vals["order_line_ids"] = [
                     Command.create(line_vals) for line_vals in order._get_copiable_order_lines().copy_data()
                 ]
         return vals_list
@@ -1506,14 +1506,14 @@ class SaleOrder(models.Model):
     # VALIDATION METHODS
     # ------------------------------------------------------------
 
-    @api.constrains("company_id", "order_line")
+    @api.constrains("company_id", "order_line_ids")
     def _check_order_line_company_id(self):
         for order in self:
-            invalid_companies = order.order_line.product_id.company_id.filtered(
+            invalid_companies = order.order_line_ids.product_id.company_id.filtered(
                 lambda c: order.company_id not in c._accessible_branches()
             )
             if invalid_companies:
-                bad_products = order.order_line.product_id.filtered(
+                bad_products = order.order_line_ids.product_id.filtered(
                     lambda p: p.company_id and p.company_id in invalid_companies
                 )
                 raise ValidationError(
@@ -1559,7 +1559,7 @@ class SaleOrder(models.Model):
 
     def action_quotation_send(self):
         """Opens a wizard to compose an email, with relevant mail template loaded by default"""
-        self.filtered(lambda so: so.state in ("draft", "sent")).order_line._validate_analytic_distribution()
+        self.filtered(lambda so: so.state in ("draft", "sent")).order_line_ids._validate_analytic_distribution()
         lang = self.env.context.get("lang")
 
         ctx = {
@@ -1646,7 +1646,7 @@ class SaleOrder(models.Model):
             if error_msg:
                 raise UserError(error_msg)
 
-        self.order_line._validate_analytic_distribution()
+        self.order_line_ids._validate_analytic_distribution()
 
         for order in self:
             if order.partner_id in order.message_partner_ids:
@@ -1955,11 +1955,11 @@ class SaleOrder(models.Model):
                 # 100 / 1.21 = 82.64, 82.64 * 1,21 = 99.99
                 # This is already corrected by adding/removing the missing cents on the DP invoice,
                 # but must also be accounted for on the final invoice.
-
                 delta_amount = 0
-                for order_line in self.order_line:
+                for order_line in self.order_line_ids:
                     if not order_line.is_downpayment:
                         continue
+
                     inv_amt = order_amt = 0
                     for invoice_line in order_line.invoice_lines:
                         sign = 1 if invoice_line.move_id.is_inbound() else -1
@@ -1979,7 +1979,9 @@ class SaleOrder(models.Model):
                     product_lines = move.line_ids.filtered(
                         lambda aml: aml.display_type == "product" and aml.is_downpayment
                     )
-                    tax_lines = move.line_ids.filtered(lambda aml: aml.tax_line_id.amount_type not in (False, "fixed"))
+                    tax_lines = move.line_ids.filtered(
+                        lambda aml: aml.tax_line_id.amount_type not in (False, "fixed")
+                    )
                     if tax_lines and product_lines and receivable_line:
                         line_commands = [
                             Command.update(

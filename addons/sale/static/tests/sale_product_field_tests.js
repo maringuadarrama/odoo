@@ -13,7 +13,7 @@ QUnit.module("Fields", (hooks) => {
                 "sale.order": {
                     fields: {
                         display_name: {string: "Displayed name", type: "char"},
-                        order_line: {
+                        order_line_ids: {
                             string: "order lines",
                             type: "one2many",
                             relation: "sale.order.line",
@@ -24,7 +24,7 @@ QUnit.module("Fields", (hooks) => {
                         {
                             id: 1,
                             display_name: "first record",
-                            order_line: [],
+                            order_line_ids: [],
                         },
                     ],
                     onchanges: {},
@@ -35,7 +35,7 @@ QUnit.module("Fields", (hooks) => {
                             string: "Order Reference",
                             type: "many2one",
                             relation: "sale.order",
-                            relation_field: "order_line",
+                            relation_field: "order_line_ids",
                         },
                         product_template_id: {
                             string: "Product",
@@ -105,7 +105,7 @@ QUnit.module("Fields", (hooks) => {
             arch: `
                 <form>
                     <sheet>
-                        <field name="order_line">
+                        <field name="order_line_ids">
                             <list editable="bottom">
                                 <field name="product_template_id" widget="sol_product_many2one"/>
                                 <field name="product_id" optional="hide"/>

@@ -191,6 +191,6 @@ class SaleOrderDiscount(models.TransientModel):
         self.ensure_one()
         self = self.with_company(self.company_id)
         if self.discount_type == "sol_discount":
-            self.sale_order_id.order_line.write({"discount": self.discount_percentage * 100})
+            self.sale_order_id.order_line_ids.write({"discount": self.discount_percentage * 100})
         else:
             self._create_discount_lines()

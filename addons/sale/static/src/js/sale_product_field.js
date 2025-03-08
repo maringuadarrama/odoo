@@ -106,8 +106,8 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
         // or if the line cannot be edited (e.g. locked SO)
         return (
             this.props.readonlyField ||
-            (this.props.record.model.root.activeFields.order_line &&
-                this.props.record.model.root._isReadonly("order_line"))
+            (this.props.record.model.root.activeFields.order_line_ids &&
+                this.props.record.model.root._isReadonly("order_line_ids"))
         );
     }
     get hasExternalButton() {
@@ -250,7 +250,7 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
                 await Promise.all([
                     applyProduct(this.props.record, mainProduct),
                     ...optionalProducts.map(async (product) => {
-                        const line = await saleOrderRecord.data.order_line.addNewRecord({
+                        const line = await saleOrderRecord.data.order_line_ids.addNewRecord({
                             position: "bottom",
                             mode: "readonly",
                         });
@@ -258,10 +258,10 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
                     }),
                 ]);
                 this._onProductUpdate();
-                saleOrderRecord.data.order_line.leaveEditMode();
+                saleOrderRecord.data.order_line_ids.leaveEditMode();
             },
             discard: () => {
-                saleOrderRecord.data.order_line.delete(this.props.record);
+                saleOrderRecord.data.order_line_ids.delete(this.props.record);
             },
             ...this._getAdditionalDialogProps(),
         });
@@ -296,7 +296,7 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
             date: serializeDateTime(saleOrder.date_order),
             edit: edit,
             save: async (comboProductData, selectedComboItems) => {
-                saleOrder.order_line.leaveEditMode();
+                saleOrder.order_line_ids.leaveEditMode();
                 const comboLineValues = {
                     product_uom_qty: comboProductData.quantity,
                     selected_combo_items: JSON.stringify(selectedComboItems.map(serializeComboItem)),
@@ -306,9 +306,9 @@ export class SaleOrderLineProductField extends ProductLabelSectionAndNoteField {
                 }
                 await comboLineRecord.update(comboLineValues);
                 // Ensure that the order lines are sorted according to their sequence.
-                await saleOrder.order_line._sort();
+                await saleOrder.order_line_ids._sort();
             },
-            discard: () => saleOrder.order_line.delete(comboLineRecord),
+            discard: () => saleOrder.order_line_ids.delete(comboLineRecord),
             ...this._getAdditionalDialogProps(),
         });
     }

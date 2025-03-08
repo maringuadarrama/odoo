@@ -15,11 +15,11 @@
 
         "data/stock_picking_batch_data.xml",
 
-        "views/stock_picking_type_views.xml",
         "views/stock_picking_views.xml",
         "views/stock_move_views.xml",
         "views/stock_move_line_views.xml",
         "views/stock_picking_batch_views.xml",
+        "views/stock_picking_type_views.xml",
 
         "wizard/stock_picking_to_batch_views.xml",
         "wizard/stock_add_to_wave_views.xml",

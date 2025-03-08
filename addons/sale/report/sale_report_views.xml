@@ -6,70 +6,70 @@
         <field name="arch" type="xml">
             <search string="Sales Analysis">
                 <field name="date" />
-                <filter string="Date" name="year" invisible="1" date="date" default_period="year" />
-                <filter string="Quotations" name="Quotations" domain="[('state','in', ('draft', 'sent'))]" />
-                <filter string="Sales Orders" name="Sales" domain="[('state','not in',('draft', 'cancel', 'sent'))]" />
-                <separator />
-                <filter name="filter_date" date="date" default_period="month" />
-                <filter
-                    name="filter_order_date"
-                    invisible="1"
-                    string="Order Date: Last 365 Days"
-                    domain="[('date', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]"
-                />
-                <separator />
                 <field name="user_id" />
                 <field name="team_id" />
                 <field name="product_id" />
                 <field name="product_tmpl_id" />
                 <field name="categ_id" />
-                <filter name="to_invoice" string="To Invoice" domain="[('line_invoice_status', '=', 'to invoice')]" />
-                <filter
-                    name="fully_invoiced"
-                    string="Fully Invoiced"
-                    domain="[('line_invoice_status', '=', 'invoiced')]"
-                />
                 <field name="partner_id" />
                 <field name="country_id" />
                 <field name="industry_id" />
+                <filter name="Quotations" string="Quotations"
+                    domain="[('state','in', ('draft', 'sent'))]" />
+                <filter name="Sales" string="Sales Orders"
+                    domain="[('state','not in',('draft', 'cancel', 'sent'))]" />
+                <separator />
+                <filter name="year" string="Date"
+                    date="date"
+                    default_period="year"
+                    invisible="1" />
+                <filter name="filter_date"
+                    date="date"
+                    default_period="month" />
+                <filter name="filter_order_date" string="Order Date: Last 365 Days"
+                    domain="[('date', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]"
+                    invisible="1"/>
+                <separator />
+                <filter name="to_invoice" string="To Invoice"
+                    domain="[('line_invoice_status', '=', 'to invoice')]" />
+                <filter name="fully_invoiced" string="Fully Invoiced"
+                    domain="[('line_invoice_status', '=', 'invoiced')]" />
                 <group expand="0" string="Extended Filters">
-                    <field name="categ_id" filter_domain="[('categ_id', 'child_of', self)]" />
-                    <field name="company_id" groups="base.group_multi_company" />
+                    <field name="categ_id"
+                        filter_domain="[('categ_id', 'child_of', self)]" />
+                    <field name="company_id"
+                        groups="base.group_multi_company" />
                 </group>
                 <group expand="1" string="Group By">
-                    <filter string="Salesperson" name="User" context="{'group_by':'user_id'}" />
-                    <filter string="Sales Team" name="sales_channel" context="{'group_by':'team_id'}" />
-                    <filter string="Customer" name="Customer" context="{'group_by':'partner_id'}" />
-                    <filter string="Customer Country" name="country_id" context="{'group_by':'country_id'}" />
-                    <filter string="Customer Industry" name="industry_id" context="{'group_by':'industry_id'}" />
-                    <filter string="Product" name="product_tmpl_id" context="{'group_by':'product_tmpl_id'}" />
-                    <filter
-                        string="Product Variant"
-                        name="product_id"
+                    <filter name="User" string="Salesperson"
+                        context="{'group_by':'user_id'}" />
+                    <filter name="sales_channel" string="Sales Team"
+                        context="{'group_by':'team_id'}" />
+                    <filter name="Customer" string="Customer"
+                        context="{'group_by':'partner_id'}" />
+                    <filter name="country_id" string="Customer Country"
+                        context="{'group_by':'country_id'}" />
+                    <filter name="industry_id" string="Customer Industry"
+                        context="{'group_by':'industry_id'}" />
+                    <filter name="product_tmpl_id" string="Product"
+                        context="{'group_by':'product_tmpl_id'}" />
+                    <filter name="product_id" string="Product Variant"
                         context="{'group_by':'product_id'}"
-                        groups="product.group_product_variant"
-                    />
-                    <filter string="Product Category" name="Category" context="{'group_by':'categ_id'}" />
-                    <filter string="Status" name="status" context="{'group_by':'state'}" />
-                    <filter
-                        string="Company"
-                        name="company"
-                        groups="base.group_multi_company"
+                        groups="product.group_product_variant" />
+                    <filter name="Category" string="Product Category"
+                        context="{'group_by':'categ_id'}" />
+                    <filter name="status" string="Status"
+                        context="{'group_by':'state'}" />
+                    <filter name="company" string="Company"
                         context="{'group_by':'company_id'}"
-                    />
+                        groups="base.group_multi_company" />
                     <separator />
-                    <filter
-                        string="Order Date"
-                        name="group_by_date"
+                    <filter name="group_by_date" string="Order Date"
                         context="{'group_by':'date'}"
-                        invisible="context.get('sale_report_view_hide_date')"
-                    />
-                    <filter
-                        string="Order Date"
-                        name="group_by_date_day"
+                        invisible="context.get('sale_report_view_hide_date')" />
+                    <filter name="group_by_date_day" string="Order Date"
                         context="{'group_by':'date:day'}"
-                        invisible="not context.get('sale_report_view_hide_date')"
-                    />
+                        invisible="not context.get('sale_report_view_hide_date')" />
                 </group>
             </search>
         </field>

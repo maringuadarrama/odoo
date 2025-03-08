@@ -14,7 +14,7 @@ class SaleOrder(models.Model):
     )
 
 
-    @api.depends("order_line.purchase_line_ids.order_id")
+    @api.depends("order_line_ids.purchase_line_ids.order_id")
     def _compute_count_purchase_order(self):
         for order in self:
             order.count_purchase_order = len(order._get_purchase_orders())
@@ -22,7 +22,7 @@ class SaleOrder(models.Model):
     def _action_confirm(self):
         result = super(SaleOrder, self)._action_confirm()
         for order in self:
-            order.order_line.sudo()._purchase_service_generation()
+            order.order_line_ids.sudo()._purchase_service_generation()
         return result
 
     def _action_cancel(self):
@@ -54,7 +54,7 @@ class SaleOrder(models.Model):
         return action
 
     def _get_purchase_orders(self):
-        return self.order_line.purchase_line_ids.order_id
+        return self.order_line_ids.purchase_line_ids.order_id
 
     def _activity_cancel_on_purchase(self):
         """If some SO are cancelled, we need to put an activity on their generated purchase.
@@ -63,7 +63,7 @@ class SaleOrder(models.Model):
         # map PO -> recordset of SOL as {purchase.order: set(sale.orde.liner)}
         purchase_to_notify_map = {}
         purchase_order_lines = self.env["purchase.order.line"].search([
-            ("sale_line_id", "in", self.mapped("order_line").ids),
+            ("sale_line_id", "in", self.mapped("order_line_ids").ids),
             ("state", "!=", "cancel")
         ])
 
