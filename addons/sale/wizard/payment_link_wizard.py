@@ -1,16 +1,15 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.tools import format_amount
+from odoo.tools.translate import _
 
 
 class PaymentLinkWizard(models.TransientModel):
     """Extends the 'payment.link.wizard'
 
     Relate sale order to payments, including functionality for sales orders to be
-    confirmed on down payments
-    """
-
+    confirmed on down payments"""
     _inherit = "payment.link.wizard"
     _description = "Generate Sales Payment Link"
 
@@ -18,11 +17,37 @@ class PaymentLinkWizard(models.TransientModel):
     # FIELDS
     # ------------------------------------------------------------
 
-    # Char
+    amount_paid = fields.Monetary(string="Already Paid", readonly=True)
     confirmation_message = fields.Char(compute="_compute_confirmation_message")
 
-    # Monetary
-    amount_paid = fields.Monetary(string="Already Paid", readonly=True)
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
+    @api.depends("amount")
+    def _compute_confirmation_message(self):
+        self.confirmation_message = False
+        for wizard in self.filtered(lambda w: w.res_model == "sale.order"):
+            sale_order = wizard.env["sale.order"].sudo().browse(wizard.res_id)
+            if sale_order.state in ("draft", "sent") and sale_order.require_payment:
+                remaining_amount = (
+                    sale_order._get_prepayment_required_amount()
+                    - sale_order.amount_paid
+                )
+                if (
+                    wizard.currency_id.compare_amounts(wizard.amount, remaining_amount)
+                    >= 0
+                ):
+                    wizard.confirmation_message = _(
+                        "This payment will confirm the quotation."
+                    )
+                else:
+                    wizard.confirmation_message = _(
+                        "Customer needs to pay at least %(amount)s to confirm the order.",
+                        amount=format_amount(
+                            wizard.env, remaining_amount, wizard.currency_id
+                        ),
+                    )
 
     # ------------------------------------------------------------
     # HELPERS
@@ -40,22 +65,3 @@ class PaymentLinkWizard(models.TransientModel):
             "access_token": self._prepare_access_token(),
             "sale_order_id": self.res_id,
         }
-
-    # ------------------------------------------------------------
-    # COMPUTE METHODS
-    # ------------------------------------------------------------
-
-    @api.depends("amount")
-    def _compute_confirmation_message(self):
-        self.confirmation_message = False
-        for wizard in self.filtered(lambda w: w.res_model == "sale.order"):
-            sale_order = wizard.env["sale.order"].sudo().browse(wizard.res_id)
-            if sale_order.state in ("draft", "sent") and sale_order.require_payment:
-                remaining_amount = sale_order._get_prepayment_required_amount() - sale_order.amount_paid
-                if wizard.currency_id.compare_amounts(wizard.amount, remaining_amount) >= 0:
-                    wizard.confirmation_message = _("This payment will confirm the quotation.")
-                else:
-                    wizard.confirmation_message = _(
-                        "Customer needs to pay at least %(amount)s to confirm the order.",
-                        amount=format_amount(wizard.env, remaining_amount, wizard.currency_id),
-                    )

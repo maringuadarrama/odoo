@@ -18,14 +18,11 @@
         <field name="inherit_id" ref="payment.payment_transaction_form" />
         <field name="arch" type="xml">
             <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
-                <button
-                    name="action_view_sales_orders"
-                    type="object"
-                    class="oe_stat_button"
+                <button name="action_view_sales_orders"
+                    type="object" class="oe_stat_button"
                     icon="fa-money"
-                    invisible="count_sale_order == 0"
-                >
-                    <field name="count_sale_order" widget="statinfo" string="Sales Order(s)" />
+                    invisible="count_sale_order == 0">
+                    <field name="count_sale_order" string="Sales Order(s)" widget="statinfo" />
                 </button>
             </xpath>
         </field>

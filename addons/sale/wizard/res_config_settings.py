@@ -5,12 +5,14 @@ from odoo import _, api, fields, models
 
 class ResConfigSettings(models.TransientModel):
     """Extends the 'res.config.settings' model to customize settings for sales orders."""
-
     _inherit = "res.config.settings"
 
     # Defaults
     default_invoice_policy = fields.Selection(
-        selection=[("order", "Invoice what is ordered"), ("delivery", "Invoice what is delivered")],
+        selection=[
+            ("order", "Invoice what is ordered"),
+            ("delivery", "Invoice what is delivered"),
+        ],
         string="Invoicing Policy",
         default="order",
         default_model="product.template",
@@ -18,27 +20,33 @@ class ResConfigSettings(models.TransientModel):
 
     # Groups
     group_auto_done_setting = fields.Boolean(
-        string="Lock Confirmed Sales", implied_group="sale.group_auto_done_setting"
+        string="Lock Confirmed Sales",
+        implied_group="sale.group_auto_done_setting",
     )
-    group_discount_per_so_line = fields.Boolean(string="Discounts", implied_group="sale.group_discount_per_so_line")
+    group_discount_per_so_line = fields.Boolean(
+        string="Discounts",
+        implied_group="sale.group_discount_per_so_line",
+    )
     group_proforma_sales = fields.Boolean(
         string="Pro-Forma Invoice",
         implied_group="sale.group_proforma_sales",
         help="Allows you to send pro-forma invoice.",
     )
-    group_warning_sale = fields.Boolean(string="Sale Order Warnings", implied_group="sale.group_warning_sale")
+    group_warning_sale = fields.Boolean(
+        string="Sale Order Warnings",
+        implied_group="sale.group_warning_sale",
+    )
 
     # Config params
     automatic_invoice = fields.Boolean(
         string="Automatic Invoice",
+        config_parameter="sale.automatic_invoice",
         help="The invoice is generated automatically and available in the customer portal when the "
         "transaction is confirmed by the payment provider.\nThe invoice is marked as paid and "
         "the payment is registered in the payment journal defined in the configuration of the "
         "payment provider.\nThis mode is advised if you issue the final invoice at the order "
         "and not after the delivery.",
-        config_parameter="sale.automatic_invoice",
     )
-
     invoice_mail_template_id = fields.Many2one(
         comodel_name="mail.template",
         string="Invoice Email Template",
@@ -46,10 +54,20 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="sale.default_invoice_email_template",
         help="Email sent to the customer once the invoice is available.",
     )
-    quotation_validity_days = fields.Integer(related="company_id.quotation_validity_days", readonly=False)
-    portal_confirmation_sign = fields.Boolean(related="company_id.portal_confirmation_sign", readonly=False)
-    portal_confirmation_pay = fields.Boolean(related="company_id.portal_confirmation_pay", readonly=False)
-    prepayment_percent = fields.Float(related="company_id.prepayment_percent", readonly=False)
+
+    quotation_validity_days = fields.Integer(
+        related="company_id.quotation_validity_days", readonly=False
+    )
+    prepayment_percent = fields.Float(
+        related="company_id.prepayment_percent", readonly=False
+    )
+    portal_confirmation_sign = fields.Boolean(
+        related="company_id.portal_confirmation_sign", readonly=False
+    )
+    portal_confirmation_pay = fields.Boolean(
+        related="company_id.portal_confirmation_pay", readonly=False
+    )
+
 
     # Modules
     module_delivery = fields.Boolean("Delivery Methods")
@@ -63,7 +81,6 @@ class ResConfigSettings(models.TransientModel):
     module_delivery_starshipit = fields.Boolean("Starshipit Connector")
     module_delivery_ups = fields.Boolean("UPS Connector")
     module_delivery_usps = fields.Boolean("USPS Connector")
-
     module_product_email_template = fields.Boolean("Specific Email")
     module_sale_amazon = fields.Boolean("Amazon Sync")
     module_sale_commission = fields.Boolean("Commissions")
@@ -99,13 +116,15 @@ class ResConfigSettings(models.TransientModel):
     @api.onchange("quotation_validity_days")
     def _onchange_quotation_validity_days(self):
         if self.quotation_validity_days < 0:
-            self.quotation_validity_days = self.env["res.company"].default_get(["quotation_validity_days"])[
-                "quotation_validity_days"
-            ]
+            self.quotation_validity_days = self.env["res.company"].default_get(
+                ["quotation_validity_days"]
+            )["quotation_validity_days"]
             return {
                 "warning": {
                     "title": _("Warning"),
-                    "message": _("Quotation Validity is required and must be greater or equal to 0."),
+                    "message": _(
+                        "Quotation Validity is required and must be greater or equal to 0."
+                    ),
                 },
             }
 
@@ -114,8 +133,12 @@ class ResConfigSettings(models.TransientModel):
     def set_values(self):
         super().set_values()
         if self.default_invoice_policy != "order":
-            self.env["ir.config_parameter"].set_param(key="sale.automatic_invoice", value=False)
+            self.env["ir.config_parameter"].set_param(
+                key="sale.automatic_invoice", value=False
+            )
 
-        send_invoice_cron = self.env.ref("sale.send_invoice_cron", raise_if_not_found=False)
+        send_invoice_cron = self.env.ref(
+            "sale.send_invoice_cron", raise_if_not_found=False
+        )
         if send_invoice_cron and send_invoice_cron.active != self.automatic_invoice:
             send_invoice_cron.active = self.automatic_invoice

@@ -22,9 +22,9 @@
                                 />
                                 <field
                                     name="discount_percentage"
-                                    invisible="discount_type not in ('so_discount', 'sol_discount')"
                                     widget="percentage"
                                     nolabel="1"
+                                    invisible="discount_type not in ('so_discount', 'sol_discount')"
                                 />
                                 <field name="tax_ids" invisible="1" />
                             </group>
@@ -36,9 +36,9 @@
                 </sheet>
                 <footer>
                     <button
-                        type="object"
-                        string="Apply"
                         name="action_apply_discount"
+                        string="Apply"
+                        type="object"
                         class="btn btn-primary"
                         data-hotkey="q"
                     />

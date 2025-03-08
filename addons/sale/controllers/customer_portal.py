@@ -1,10 +1,10 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import binascii
 
-from odoo import SUPERUSER_ID, _, fields, http
+from odoo import fields, http
 from odoo.exceptions import AccessError, MissingError
 from odoo.http import request
+from odoo.orm.utils import SUPERUSER_ID
+from odoo.tools.translate import _
 
 from odoo.addons.payment.controllers import portal as payment_portal
 from odoo.addons.portal.controllers.portal import pager as portal_pager
@@ -15,8 +15,7 @@ class CustomerPortal(payment_portal.PaymentPortal):
 
     This module enables customers to view, accept, and decline quotations, as well as manage their
     orders and payments through the portal. It also supports document downloads and payment processing
-    for sales orders.
-    """
+    for sales orders."""
 
     # ------------------------------------------------------------
     # HELPERS

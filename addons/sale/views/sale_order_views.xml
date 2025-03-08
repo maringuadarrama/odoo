@@ -1,34 +1,87 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
-    <!-- VIEWS -->
-
-    <record id="sale_order_view_activity" model="ir.ui.view">
-        <field name="name">sale.order.activity</field>
+    <record id="view_sales_order_filter" model="ir.ui.view">
+        <field name="name">sale.order.list.select</field>
         <field name="model">sale.order</field>
+        <field name="priority" eval="15" />
         <field name="arch" type="xml">
-            <activity string="Sales Order">
-                <field name="currency_id" />
-                <templates>
-                    <div t-name="activity-box" class="d-block">
-                        <div class="d-flex justify-content-between">
-                            <field name="name" display="full" class="o_text_block o_text_bold" />
-                            <div class="m-1" />
-                            <field name="amount_total" widget="monetary" />
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <field name="partner_id" muted="1" display="full" class="o_text_block" />
-                            <div class="m-1" />
-                            <field
-                                name="state"
-                                widget="badge"
-                                decoration-info="state == 'draft'"
-                                decoration-success="state == 'sale'"
-                            />
-                        </div>
-                    </div>
-                </templates>
-            </activity>
+            <search string="Search Sales Order">
+                <field
+                    name="name"
+                    string="Order"
+                    filter_domain="['|', '|', ('name', 'ilike', self), ('client_order_ref', 'ilike', self), ('partner_id', 'child_of', self)]"
+                />
+                <field name="partner_id" operator="child_of" />
+                <field name="user_id" />
+                <field name="team_id" string="Sales Team" />
+                <field name="order_line_ids" string="Product" filter_domain="[('order_line_ids.product_id', 'ilike', self)]" />
+                <!-- We only allow to search on the following sale order line fields (product, name) because the other fields, such as price, quantity, ...
+                    will not be searched as often, and if they need to be searched it's usually in the context of products
+                    and then they can be searched from the page listing the sale order lines related to a product (from the product itself).
+                -->
+                <filter string="My Orders" domain="[('user_id', '=', uid)]" name="my_sale_orders_filter" />
+                <filter
+                    invisible="1"
+                    string="Late Activities"
+                    name="activities_overdue"
+                    domain="[('my_activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"
+                    help="Show all records which has next action date is before today"
+                />
+                <filter
+                    invisible="1"
+                    string="Today Activities"
+                    name="activities_today"
+                    domain="[('my_activity_date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"
+                />
+                <filter
+                    invisible="1"
+                    string="Future Activities"
+                    name="activities_upcoming_all"
+                    domain="[('my_activity_date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]"
+                />
+                <group expand="0" string="Group By">
+                    <filter string="Salesperson" name="salesperson" domain="[]" context="{'group_by': 'user_id'}" />
+                    <filter name="customer" string="Customer" domain="[]" context="{'group_by': 'partner_id'}" />
+                    <filter string="Order Date" name="order_month" domain="[]" context="{'group_by': 'date_order'}" />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sale_order_view_search_inherit_quotation" model="ir.ui.view">
+        <field name="name">sale.order.search.inherit.quotation</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter" />
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <filter name="my_sale_orders_filter" position="replace">
+                <field name="campaign_id" />
+                <separator />
+                <filter string="My Quotations" name="my_quotation" domain="[('user_id', '=', uid)]" />
+                <separator />
+                <filter string="Quotations" name="draft" domain="[('state', 'in', ('draft', 'sent'))]" />
+                <filter string="Sales Orders" name="sales" domain="[('state', '=', 'sale')]" />
+                <separator />
+                <filter string="Create Date" name="filter_create_date" date="create_date" />
+            </filter>
+        </field>
+    </record>
+
+    <record id="sale_order_view_search_inherit_sale" model="ir.ui.view">
+        <field name="name">sale.order.search.inherit.sale</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter" />
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <filter name="my_sale_orders_filter" position="after">
+                <filter invisible="1" string="Sales Orders" name="sales" domain="[('state', '=', 'sale')]" />
+                <separator />
+                <filter string="To Invoice" name="to_invoice" domain="[('invoice_status','=','to invoice')]" />
+                <filter string="To Upsell" name="upselling" domain="[('invoice_status','=','upselling')]" />
+                <separator />
+                <filter string="Order Date" name="order_date" date="date_order" />
+            </filter>
         </field>
     </record>
 
@@ -109,6 +162,18 @@
                     </t>
                 </templates>
             </kanban>
+        </field>
+    </record>
+
+    <record id="view_quotation_kanban_with_onboarding" model="ir.ui.view">
+        <field name="name">sale.order.kanban</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="view_sale_order_kanban" />
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="attributes">
+                <attribute name="js_class">sale_onboarding_kanban</attribute>
+            </xpath>
         </field>
     </record>
 
@@ -242,18 +307,6 @@
         <field name="arch" type="xml">
             <xpath expr="//list" position="attributes">
                 <attribute name="js_class">sale_onboarding_list</attribute>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="view_quotation_kanban_with_onboarding" model="ir.ui.view">
-        <field name="name">sale.order.kanban</field>
-        <field name="model">sale.order</field>
-        <field name="inherit_id" ref="view_sale_order_kanban" />
-        <field name="mode">primary</field>
-        <field name="arch" type="xml">
-            <xpath expr="//kanban" position="attributes">
-                <attribute name="js_class">sale_onboarding_kanban</attribute>
             </xpath>
         </field>
     </record>
@@ -1043,87 +1096,32 @@
         </field>
     </record>
 
-    <record id="view_sales_order_filter" model="ir.ui.view">
-        <field name="name">sale.order.list.select</field>
+    <record id="sale_order_view_activity" model="ir.ui.view">
+        <field name="name">sale.order.activity</field>
         <field name="model">sale.order</field>
-        <field name="priority" eval="15" />
         <field name="arch" type="xml">
-            <search string="Search Sales Order">
-                <field
-                    name="name"
-                    string="Order"
-                    filter_domain="['|', '|', ('name', 'ilike', self), ('client_order_ref', 'ilike', self), ('partner_id', 'child_of', self)]"
-                />
-                <field name="partner_id" operator="child_of" />
-                <field name="user_id" />
-                <field name="team_id" string="Sales Team" />
-                <field name="order_line_ids" string="Product" filter_domain="[('order_line_ids.product_id', 'ilike', self)]" />
-                <!-- We only allow to search on the following sale order line fields (product, name) because the other fields, such as price, quantity, ...
-                    will not be searched as often, and if they need to be searched it's usually in the context of products
-                    and then they can be searched from the page listing the sale order lines related to a product (from the product itself).
-                -->
-                <filter string="My Orders" domain="[('user_id', '=', uid)]" name="my_sale_orders_filter" />
-                <filter
-                    invisible="1"
-                    string="Late Activities"
-                    name="activities_overdue"
-                    domain="[('my_activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"
-                    help="Show all records which has next action date is before today"
-                />
-                <filter
-                    invisible="1"
-                    string="Today Activities"
-                    name="activities_today"
-                    domain="[('my_activity_date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"
-                />
-                <filter
-                    invisible="1"
-                    string="Future Activities"
-                    name="activities_upcoming_all"
-                    domain="[('my_activity_date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]"
-                />
-                <group expand="0" string="Group By">
-                    <filter string="Salesperson" name="salesperson" domain="[]" context="{'group_by': 'user_id'}" />
-                    <filter name="customer" string="Customer" domain="[]" context="{'group_by': 'partner_id'}" />
-                    <filter string="Order Date" name="order_month" domain="[]" context="{'group_by': 'date_order'}" />
-                </group>
-            </search>
-        </field>
-    </record>
-
-    <record id="sale_order_view_search_inherit_quotation" model="ir.ui.view">
-        <field name="name">sale.order.search.inherit.quotation</field>
-        <field name="model">sale.order</field>
-        <field name="mode">primary</field>
-        <field name="inherit_id" ref="sale.view_sales_order_filter" />
-        <field name="arch" type="xml">
-            <filter name="my_sale_orders_filter" position="replace">
-                <field name="campaign_id" />
-                <separator />
-                <filter string="My Quotations" name="my_quotation" domain="[('user_id', '=', uid)]" />
-                <separator />
-                <filter string="Quotations" name="draft" domain="[('state', 'in', ('draft', 'sent'))]" />
-                <filter string="Sales Orders" name="sales" domain="[('state', '=', 'sale')]" />
-                <separator />
-                <filter string="Create Date" name="filter_create_date" date="create_date" />
-            </filter>
-        </field>
-    </record>
-
-    <record id="sale_order_view_search_inherit_sale" model="ir.ui.view">
-        <field name="name">sale.order.search.inherit.sale</field>
-        <field name="model">sale.order</field>
-        <field name="mode">primary</field>
-        <field name="inherit_id" ref="sale.view_sales_order_filter" />
-        <field name="arch" type="xml">
-            <filter name="my_sale_orders_filter" position="after">
-                <filter invisible="1" string="Sales Orders" name="sales" domain="[('state', '=', 'sale')]" />
-                <separator />
-                <filter string="To Invoice" name="to_invoice" domain="[('invoice_status','=','to invoice')]" />
-                <filter string="To Upsell" name="upselling" domain="[('invoice_status','=','upselling')]" />
-                <separator />
-                <filter string="Order Date" name="order_date" date="date_order" />
-            </filter>
+            <activity string="Sales Order">
+                <field name="currency_id" />
+                <templates>
+                    <div t-name="activity-box" class="d-block">
+                        <div class="d-flex justify-content-between">
+                            <field name="name" display="full" class="o_text_block o_text_bold" />
+                            <div class="m-1" />
+                            <field name="amount_total" widget="monetary" />
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <field name="partner_id" muted="1" display="full" class="o_text_block" />
+                            <div class="m-1" />
+                            <field
+                                name="state"
+                                widget="badge"
+                                decoration-info="state == 'draft'"
+                                decoration-success="state == 'sale'"
+                            />
+                        </div>
+                    </div>
+                </templates>
+            </activity>
         </field>
     </record>
 
@@ -1132,10 +1130,10 @@
     <record id="action_orders" model="ir.actions.act_window">
         <field name="name">Sales Orders</field>
         <field name="res_model">sale.order</field>
+        <field name="path">orders</field>
         <field name="view_mode">list,kanban,form,calendar,pivot,graph,activity</field>
         <field name="search_view_id" ref="sale_order_view_search_inherit_sale" />
         <field name="context">{'search_default_sales' : 1}</field>
-        <field name="path">orders</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create a new quotation, the first step of a new sale!
@@ -1146,54 +1144,12 @@
         </field>
     </record>
 
-    <record id="sale_order_action_view_order_tree" model="ir.actions.act_window.view">
-        <field name="sequence" eval="1" />
-        <field name="view_mode">list</field>
-        <field name="view_id" ref="sale.sale_order_list_upload" />
-        <field name="act_window_id" ref="action_orders" />
-    </record>
-
-    <record id="sale_order_action_view_order_kanban" model="ir.actions.act_window.view">
-        <field name="sequence" eval="2" />
-        <field name="view_mode">kanban</field>
-        <field name="view_id" ref="sale.sale_order_kanban_upload" />
-        <field name="act_window_id" ref="action_orders" />
-    </record>
-
-    <record id="sale_order_action_view_order_form" model="ir.actions.act_window.view">
-        <field name="sequence" eval="3" />
-        <field name="view_mode">form</field>
-        <field name="view_id" ref="sale.view_order_form" />
-        <field name="act_window_id" ref="action_orders" />
-    </record>
-
-    <record id="sale_order_action_view_order_calendar" model="ir.actions.act_window.view">
-        <field name="sequence" eval="4" />
-        <field name="view_mode">calendar</field>
-        <field name="view_id" ref="sale.view_sale_order_calendar" />
-        <field name="act_window_id" ref="action_orders" />
-    </record>
-
-    <record id="sale_order_action_view_order_pivot" model="ir.actions.act_window.view">
-        <field name="sequence" eval="5" />
-        <field name="view_mode">pivot</field>
-        <field name="view_id" ref="sale.view_sale_order_pivot" />
-        <field name="act_window_id" ref="action_orders" />
-    </record>
-
-    <record id="sale_order_action_view_order_graph" model="ir.actions.act_window.view">
-        <field name="sequence" eval="6" />
-        <field name="view_mode">graph</field>
-        <field name="view_id" ref="sale.view_sale_order_graph" />
-        <field name="act_window_id" ref="action_orders" />
-    </record>
-
     <record id="action_quotations_with_onboarding" model="ir.actions.act_window">
         <field name="name">Quotations</field>
-        <field name="path">sales</field>
         <field name="res_model">sale.order</field>
-        <field name="view_id" ref="view_quotation_tree_with_onboarding" />
+        <field name="path">sales</field>
         <field name="view_mode">list,kanban,form,calendar,pivot,graph,activity</field>
+        <field name="view_id" ref="view_quotation_tree_with_onboarding" />
         <field name="search_view_id" ref="sale_order_view_search_inherit_quotation" />
         <field name="context">{'search_default_my_quotation': 1}</field>
         <field name="help" type="html">
@@ -1212,20 +1168,6 @@
                 Check a sample. It's clean!
             </a>
         </field>
-    </record>
-
-    <record id="sale_order_action_view_quotation_tree" model="ir.actions.act_window.view">
-        <field name="sequence" eval="1" />
-        <field name="view_mode">list</field>
-        <field name="view_id" ref="sale.view_quotation_tree_with_onboarding" />
-        <field name="act_window_id" ref="action_quotations_with_onboarding" />
-    </record>
-
-    <record id="sale_order_action_view_quotation_kanban" model="ir.actions.act_window.view">
-        <field name="sequence" eval="2" />
-        <field name="view_mode">kanban</field>
-        <field name="view_id" ref="sale.view_quotation_kanban_with_onboarding" />
-        <field name="act_window_id" ref="action_quotations_with_onboarding" />
     </record>
 
     <record id="action_quotations" model="ir.actions.act_window">
@@ -1251,55 +1193,13 @@
         </field>
     </record>
 
-    <record id="action_quotations_tree" model="ir.actions.act_window.view">
-        <field name="sequence" eval="1" />
-        <field name="view_mode">list</field>
-        <field name="view_id" ref="sale.view_quotation_tree" />
-        <field name="act_window_id" ref="action_quotations" />
-    </record>
-
-    <record id="action_quotations_kanban" model="ir.actions.act_window.view">
-        <field name="sequence" eval="2" />
-        <field name="view_mode">kanban</field>
-        <field name="view_id" ref="sale.view_sale_order_kanban" />
-        <field name="act_window_id" ref="action_quotations" />
-    </record>
-
-    <record id="sale_order_action_view_quotation_form" model="ir.actions.act_window.view">
-        <field name="sequence" eval="3" />
-        <field name="view_mode">form</field>
-        <field name="view_id" ref="sale.view_order_form" />
-        <field name="act_window_id" ref="action_quotations" />
-    </record>
-
-    <record id="sale_order_action_view_quotation_calendar" model="ir.actions.act_window.view">
-        <field name="sequence" eval="4" />
-        <field name="view_mode">calendar</field>
-        <field name="view_id" ref="sale.view_sale_order_calendar" />
-        <field name="act_window_id" ref="action_quotations" />
-    </record>
-
-    <record id="sale_order_action_view_quotation_pivot" model="ir.actions.act_window.view">
-        <field name="sequence" eval="5" />
-        <field name="view_mode">pivot</field>
-        <field name="view_id" ref="sale.view_sale_order_pivot" />
-        <field name="act_window_id" ref="action_quotations" />
-    </record>
-
-    <record id="sale_order_action_view_quotation_graph" model="ir.actions.act_window.view">
-        <field name="sequence" eval="6" />
-        <field name="view_mode">graph</field>
-        <field name="view_id" ref="sale.view_sale_order_graph" />
-        <field name="act_window_id" ref="action_quotations" />
-    </record>
-
     <record id="action_orders_to_invoice" model="ir.actions.act_window">
         <field name="name">Orders to Invoice</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form,calendar,graph,pivot,kanban,activity</field>
-        <field name="context">{'create': False}</field>
-        <field name="domain">[('invoice_status','=','to invoice')]</field>
         <field name="search_view_id" ref="view_sales_order_filter" />
+        <field name="domain">[('invoice_status','=','to invoice')]</field>
+        <field name="context">{'create': False}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
             No orders to invoice found
@@ -1314,9 +1214,9 @@
         <field name="name">Orders to Upsell</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">list,form,calendar,graph,pivot,kanban,activity</field>
+        <field name="search_view_id" ref="view_sales_order_filter" />
         <field name="domain">[('invoice_status','=','upselling')]</field>
         <field name="context">{'create': False}</field>
-        <field name="search_view_id" ref="view_sales_order_filter" />
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
             No orders to upsell found.
@@ -1328,6 +1228,197 @@
             to sell extra hours when all ordered hours have been consumed.
             </p>
         </field>
+    </record>
+
+    <record id="action_quotation_form" model="ir.actions.act_window">
+        <field name="name">New Quotation</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">form</field>
+        <field name="search_view_id" ref="sale_order_view_search_inherit_quotation" />
+        <field name="context">{
+            'search_default_team_id': [active_id],
+            'default_team_id': active_id,
+            'default_user_id': uid,
+        }</field>
+    </record>
+
+    <record id="action_quotations_salesteams" model="ir.actions.act_window">
+        <field name="name">Quotations</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form,calendar,graph,kanban,pivot</field>
+        <field name="view_id" ref="sale.view_quotation_tree" />
+        <field name="search_view_id" ref="sale.sale_order_view_search_inherit_quotation" />
+        <field name="context">{
+            'search_default_team_id': [active_id],
+            'default_team_id': active_id,
+            'show_address': 1,
+        }</field>
+        <field name="domain">[]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a new quotation, the first step of a new sale!
+            </p><p>
+            Once the quotation is confirmed by the customer, it becomes a sales order.<br
+                /> You will be able to create an invoice and collect the payment.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_orders_salesteams" model="ir.actions.act_window">
+        <field name="name">Sales Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form,calendar,graph,kanban,pivot</field>
+        <field name="search_view_id" ref="sale.sale_order_view_search_inherit_sale" />
+        <field name="domain">[('state','not in',('draft','sent','cancel'))]</field>
+        <field name="context">{
+            'search_default_team_id': [active_id],
+            'default_team_id': active_id,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a new quotation, the first step of a new sale!
+            </p><p>
+            Once the quotation is confirmed by the customer, it becomes a sales order.<br
+                /> You will be able to create an invoice and collect the payment.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_orders_to_invoice_salesteams" model="ir.actions.act_window">
+        <field name="name">Sales Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form,calendar,graph,kanban,pivot</field>
+        <field name="search_view_id" ref="sale.sale_order_view_search_inherit_sale" />
+        <field name="domain">[('invoice_status','=','to invoice')]</field>
+        <field name="context">{
+            'search_default_team_id': [active_id],
+            'default_team_id': active_id,
+        }</field>
+    </record>
+
+    <record id="mail_followers_edit_action_from_sale" model="ir.actions.act_window">
+        <field name="name">Add/Remove Followers</field>
+        <field name="res_model">mail.followers.edit</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="sale.model_sale_order" />
+        <field name="binding_view_types">list,kanban</field>
+        <field name="context">{'default_res_model': 'sale.order', 'default_res_ids': active_ids}</field>
+    </record>
+
+    <record id="act_res_partner_2_sale_order" model="ir.actions.act_window">
+        <field name="name">Quotations and Sales</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,kanban,form,graph</field>
+        <field name="domain">[('partner_id', 'child_of', active_ids)]</field>
+        <field name="context">{'default_partner_id': active_id, 'active_test': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a new quotation, the first step of a new sale!
+            </p><p>
+            Once the quotation is confirmed by the customer, it becomes a sales order.<br
+                /> You will be able to create an invoice and collect the payment.
+            </p>
+        </field>
+        <field name="group_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]" />
+    </record>
+
+    <record id="sale_order_action_view_order_tree" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_orders" />
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sale.sale_order_list_upload" />
+        <field name="sequence" eval="1" />
+    </record>
+
+    <record id="sale_order_action_view_order_kanban" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_orders" />
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="sale.sale_order_kanban_upload" />
+        <field name="sequence" eval="2" />
+    </record>
+
+    <record id="sale_order_action_view_order_form" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_orders" />
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="sale.view_order_form" />
+        <field name="sequence" eval="3" />
+    </record>
+
+    <record id="sale_order_action_view_order_calendar" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_orders" />
+        <field name="view_mode">calendar</field>
+        <field name="view_id" ref="sale.view_sale_order_calendar" />
+        <field name="sequence" eval="4" />
+    </record>
+
+    <record id="sale_order_action_view_order_pivot" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_orders" />
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="sale.view_sale_order_pivot" />
+        <field name="sequence" eval="5" />
+    </record>
+
+    <record id="sale_order_action_view_order_graph" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_orders" />
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="sale.view_sale_order_graph" />
+        <field name="sequence" eval="6" />
+    </record>
+
+    <record id="sale_order_action_view_quotation_tree" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations_with_onboarding" />
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sale.view_quotation_tree_with_onboarding" />
+        <field name="sequence" eval="1" />
+    </record>
+
+    <record id="sale_order_action_view_quotation_kanban" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations_with_onboarding" />
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="sale.view_quotation_kanban_with_onboarding" />
+        <field name="sequence" eval="2" />
+    </record>
+
+    <record id="action_quotations_tree" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations" />
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sale.view_quotation_tree" />
+        <field name="sequence" eval="1" />
+    </record>
+
+    <record id="action_quotations_kanban" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations" />
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="sale.view_sale_order_kanban" />
+        <field name="sequence" eval="2" />
+    </record>
+
+    <record id="sale_order_action_view_quotation_form" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations" />
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="sale.view_order_form" />
+        <field name="sequence" eval="3" />
+    </record>
+
+    <record id="sale_order_action_view_quotation_calendar" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations" />
+        <field name="view_mode">calendar</field>
+        <field name="view_id" ref="sale.view_sale_order_calendar" />
+        <field name="sequence" eval="4" />
+    </record>
+
+    <record id="sale_order_action_view_quotation_pivot" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations" />
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="sale.view_sale_order_pivot" />
+        <field name="sequence" eval="5" />
+    </record>
+
+    <record id="sale_order_action_view_quotation_graph" model="ir.actions.act_window.view">
+        <field name="act_window_id" ref="action_quotations" />
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="sale.view_sale_order_graph" />
+        <field name="sequence" eval="6" />
     </record>
 
     <!-- ACTIONS (SERVER) -->
@@ -1353,23 +1444,14 @@
     <record id="model_sale_order_send_mail" model="ir.actions.server">
         <field name="name">Send an email</field>
         <field name="model_id" ref="sale.model_sale_order" />
-        <field name="sequence">1</field>
         <field name="binding_model_id" ref="sale.model_sale_order" />
         <field name="binding_view_types">list,kanban,form</field>
         <field name="state">code</field>
         <field name="code">
-            if records:
-                action = records.with_context(hide_default_template=True).action_quotation_send()
+if records:
+    action = records.with_context(hide_default_template=True).action_quotation_send()
         </field>
+        <field name="sequence">1</field>
     </record>
 
-    <record id="mail_followers_edit_action_from_sale" model="ir.actions.act_window">
-        <field name="name">Add/Remove Followers</field>
-        <field name="res_model">mail.followers.edit</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-        <field name="context">{'default_res_model': 'sale.order', 'default_res_ids': active_ids}</field>
-        <field name="binding_model_id" ref="sale.model_sale_order" />
-        <field name="binding_view_types">list,kanban</field>
-    </record>
 </odoo>

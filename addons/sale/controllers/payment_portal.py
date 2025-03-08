@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import http
 from odoo.exceptions import AccessError, MissingError, ValidationError
 from odoo.fields import Command
@@ -14,8 +12,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
 
     This module handles payment transactions for sales orders, ensuring proper access control,
     validation, and routing to the sales order portal. It also supports partial payments and
-    access token verification for secure transactions.
-    """
+    access token verification for secure transactions."""
 
     # ------------------------------------------------------------
     # HELPERS
@@ -28,8 +25,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
         :param str access_token: The portal or payment access token, respectively if we are in a
                                  portal or payment link flow.
         :return: The extended rendering context values.
-        :rtype: dict
-        """
+        :rtype: dict"""
         form_values = super()._get_extra_payment_form_values(
             sale_order_id=sale_order_id, access_token=access_token, **kwargs
         )
@@ -46,6 +42,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
                     kwargs.get("currency_id"),
                 ):
                     raise
+
                 order_sudo = request.env["sale.order"].sudo().browse(sale_order_id)
 
             # Interrupt the payment flow if the sales order has been canceled.
@@ -75,13 +72,13 @@ class PaymentPortal(payment_portal.PaymentPortal):
         :param dict kwargs: Locally unused data passed to `_create_transaction`
         :return: The mandatory values for the processing of the transaction
         :rtype: dict
-        :raise: ValidationError if the invoice id or the access token is invalid
-        """
+        :raise: ValidationError if the invoice id or the access token is invalid"""
         # Check the order id and the access token
         try:
             order_sudo = self._document_check_access("sale.order", order_id, access_token)
         except MissingError as error:
             raise error
+
         except AccessError:
             raise ValidationError(_("The access token is invalid."))
 
@@ -99,7 +96,6 @@ class PaymentPortal(payment_portal.PaymentPortal):
             custom_create_values={"sale_order_ids": [Command.set([order_id])]},
             **kwargs,
         )
-
         return tx_sudo._get_processing_values()
 
     # Payment overrides
@@ -114,13 +110,13 @@ class PaymentPortal(payment_portal.PaymentPortal):
         :param str access_token: The access token used to authenticate the partner
         :return: The result of the parent method
         :rtype: str
-        :raise: ValidationError if the order id is invalid
-        """
+        :raise: ValidationError if the order id is invalid"""
         # Cast numeric parameters as int or float and void them if their str value is malformed
         amount = self._cast_as_float(amount)
         sale_order_id = self._cast_as_int(sale_order_id)
         if sale_order_id:
             order_sudo = request.env["sale.order"].sudo().browse(sale_order_id).exists()
+
             if not order_sudo:
                 raise ValidationError(_("The provided parameters are invalid."))
 

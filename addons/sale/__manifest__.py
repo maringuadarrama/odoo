@@ -14,13 +14,10 @@ This module contains all the common features of Sales Management and eCommerce.
         "utm",
     ],
     "data": [
-        "security/ir.model.access.csv",
         "security/res_groups.xml",
+        "security/ir.model.access.csv",
         "security/ir_rules.xml",
-        "report/account_invoice_report_views.xml",
-        "report/ir_actions_report_templates.xml",
-        "report/ir_actions_report.xml",
-        "report/sale_report_views.xml",
+
         "data/ir_cron.xml",
         "data/ir_sequence_data.xml",
         "data/mail_activity_type_data.xml",
@@ -28,33 +25,36 @@ This module contains all the common features of Sales Management and eCommerce.
         "data/mail_template_data.xml",
         "data/sale_tour.xml",
         "data/ir_config_parameter.xml",  # Needs mail_template_data
+
+        "report/account_invoice_report_views.xml",
+        "report/ir_actions_report_templates.xml",
+        "report/ir_actions_report.xml",
+        "report/sale_report_views.xml",
+
         "wizard/account_accrued_orders_wizard_views.xml",
         "wizard/mass_cancel_orders_views.xml",
         "wizard/payment_link_wizard_views.xml",
         "wizard/res_config_settings_views.xml",
         "wizard/sale_make_invoice_advance_views.xml",
         "wizard/sale_order_discount_views.xml",
+
         # Define sale order views before their references
-        "views/sale_order_views.xml",
-        "views/account_views.xml",
-        "views/crm_team_views.xml",
-        "views/mail_activity_views.xml",
         "views/mail_activity_plan_views.xml",
+        "views/mail_activity_views.xml",
+        "views/product_category_views.xml",
+        "views/utm_campaign_views.xml",
         "views/payment_views.xml",
+        "views/sale_order_views.xml",
+        "views/sale_order_line_views.xml",
+        "views/account_move_views.xml",
+        "views/crm_team_views.xml",
         "views/product_document_views.xml",
         "views/product_template_views.xml",
-        "views/product_views.xml",
+        "views/product_product_views.xml",
         "views/res_partner_views.xml",
-        "views/sale_order_line_views.xml",
         "views/sale_portal_templates.xml",
-        "views/utm_campaign_views.xml",
-        "views/sale_menus.xml",  # Last because referencing actions defined in previous files
+        "views/sale_menus.xml",
     ],
-    "demo": [
-        "data/product_demo.xml",
-        "data/sale_demo.xml",
-    ],
-    "installable": True,
     "assets": {
         "web.assets_backend": [
             "sale/static/src/scss/sale_onboarding.scss",
@@ -99,6 +99,11 @@ This module contains all the common features of Sales Management and eCommerce.
             "sale/static/src/scss/sale_report.scss",
         ],
     },
+    "demo": [
+        "data/product_demo.xml",
+        "data/sale_demo.xml",
+    ],
+    "installable": True,
     "post_init_hook": "_post_init_hook",
     "license": "LGPL-3",
 }

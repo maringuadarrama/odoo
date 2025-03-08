@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
+
     <record id="email_template_edi_sale" model="mail.template">
         <field name="name">Sales: Send Quotation</field>
         <field name="model_id" ref="sale.model_sale_order"/>
@@ -402,4 +403,5 @@
         <field name="lang">{{ object.partner_id.lang }}</field>
         <field name="auto_delete" eval="True"/>
     </record>
+
 </odoo>

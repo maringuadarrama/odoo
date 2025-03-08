@@ -653,6 +653,7 @@ Alright, thanks for the clarification. I will confirm the order as soon as I get
         <field name="create_uid" ref="base.user_admin" />
         <field name="user_id" ref="base.user_admin" />
     </record>
+
     <record id="sale_activity_3" model="mail.activity">
         <field name="res_id" ref="sale.sale_order_4" />
         <field name="res_model_id" ref="sale.model_sale_order" />
@@ -661,6 +662,7 @@ Alright, thanks for the clarification. I will confirm the order as soon as I get
         <field name="create_uid" ref="base.user_admin" />
         <field name="user_id" ref="base.user_admin" />
     </record>
+
     <record id="sale_activity_4" model="mail.activity">
         <field name="res_id" ref="sale.sale_order_5" />
         <field name="res_model_id" ref="sale.model_sale_order" />
@@ -669,6 +671,7 @@ Alright, thanks for the clarification. I will confirm the order as soon as I get
         <field name="create_uid" ref="base.user_demo" />
         <field name="user_id" ref="base.user_demo" />
     </record>
+
     <record id="sale_activity_6" model="mail.activity">
         <field name="res_id" ref="sale.sale_order_7" />
         <field name="res_model_id" ref="sale.model_sale_order" />
@@ -678,6 +681,7 @@ Alright, thanks for the clarification. I will confirm the order as soon as I get
         <field name="create_uid" ref="base.user_admin" />
         <field name="user_id" ref="base.user_admin" />
     </record>
+
     <record id="sale_activity_7" model="mail.activity">
         <field name="res_id" ref="sale.sale_order_10" />
         <field name="res_model_id" ref="sale.model_sale_order" />
@@ -687,6 +691,7 @@ Alright, thanks for the clarification. I will confirm the order as soon as I get
         <field name="create_uid" ref="base.user_demo" />
         <field name="user_id" ref="base.user_demo" />
     </record>
+
     <record id="sale_activity_8" model="mail.activity">
         <field name="res_id" ref="sale.sale_order_12" />
         <field name="res_model_id" ref="sale.model_sale_order" />
@@ -695,6 +700,7 @@ Alright, thanks for the clarification. I will confirm the order as soon as I get
         <field name="create_uid" ref="base.user_demo" />
         <field name="user_id" ref="base.user_demo" />
     </record>
+
     <record id="sale_activity_9" model="mail.activity">
         <field name="res_id" ref="sale.sale_order_16" />
         <field name="res_model_id" ref="sale.model_sale_order" />
@@ -703,6 +709,7 @@ Alright, thanks for the clarification. I will confirm the order as soon as I get
         <field name="create_uid" ref="base.user_demo" />
         <field name="user_id" ref="base.user_demo" />
     </record>
+
     <record id="sale_activity_10" model="mail.activity">
         <field name="res_id" ref="sale.portal_sale_order_1" />
         <field name="res_model_id" ref="sale.model_sale_order" />
