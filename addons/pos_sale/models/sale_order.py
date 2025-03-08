@@ -23,7 +23,7 @@ class SaleOrder(models.Model):
 
     @api.model
     def _load_pos_data_fields(self, config_id):
-        return ['name', 'state', 'user_id', 'order_line', 'partner_id', 'pricelist_id', 'fiscal_position_id', 'amount_total', 'amount_untaxed', 'amount_unpaid',
+        return ['name', 'state', 'user_id', 'order_line_ids', 'partner_id', 'pricelist_id', 'fiscal_position_id', 'amount_total', 'amount_untaxed', 'amount_unpaid',
             'picking_ids', 'partner_shipping_id', 'partner_invoice_id', 'date_order']
 
     def _count_pos_order(self):
