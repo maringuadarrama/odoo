@@ -315,7 +315,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
             # Create down payment section if necessary
             SaleOrderline = self.env["sale.order.line"].with_context(sale_no_log_for_new_lines=True)
-            if not any(line.display_type and line.is_downpayment for line in order.order_line):
+            if not any(line.display_type and line.is_downpayment for line in order.order_line_ids):
                 SaleOrderline.create(self._prepare_down_payment_section_values(order))
 
             values, accounts = self._prepare_down_payment_lines_values(order)

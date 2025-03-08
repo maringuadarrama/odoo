@@ -43,7 +43,7 @@ class ProjectCreateInvoice(models.TransientModel):
         for wizard in self:
             amount_untaxed = 0.0
             amount_tax = 0.0
-            for line in wizard.sale_order_id.order_line.filtered(lambda sol: sol.invoice_status == 'to invoice'):
+            for line in wizard.sale_order_id.order_line_ids.filtered(lambda sol: sol.invoice_status == 'to invoice'):
                 amount_untaxed += line.price_reduce * line.qty_to_invoice
                 amount_tax += line.price_tax
             wizard.amount_to_invoice = amount_untaxed + amount_tax

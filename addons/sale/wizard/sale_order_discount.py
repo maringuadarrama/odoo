@@ -135,7 +135,7 @@ class SaleOrderDiscount(models.TransientModel):
         else:  # so_discount
             discount_percentage = self.discount_percentage
         total_price_per_tax_groups = defaultdict(float)
-        for line in self.sale_order_id.order_line:
+        for line in self.sale_order_id.order_line_ids:
             if not line.product_uom_qty or not line.price_unit:
                 continue
             discounted_price = line.price_unit * (1 - (line.discount or 0.0) / 100)
