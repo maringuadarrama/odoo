@@ -76,7 +76,7 @@ patch(PosStore.prototype, {
         let useLoadedLots = false;
         let userWasAskedAboutLoadedLots = false;
         let previousProductLine = null;
-        for (const line of sale_order.order_line) {
+        for (const line of sale_order.order_line_ids) {
             if (line.display_type === "line_note") {
                 if (previousProductLine) {
                     const previousNote = previousProductLine.customer_note;
