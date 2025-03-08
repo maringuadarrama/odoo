@@ -79,7 +79,7 @@ class SaleOrder(models.Model):
                 or coupon.program_id.is_nominative
                 or (rewards.reward_type == 'product' and rewards.multi_product)
                 or rewards in self.disabled_auto_rewards
-                or rewards in self.order_line.reward_id
+                or rewards in self.order_line_ids.reward_id
             ):
                 continue
 

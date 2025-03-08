@@ -43,7 +43,7 @@ class Cart(PaymentPortal):
                 request.session['sale_order_id'] = abandoned_order.id
                 return request.redirect('/shop/cart')
             elif revive_method == 'merge':
-                abandoned_order.order_line.write({'order_id': request.session['sale_order_id']})
+                abandoned_order.order_line_ids.write({'order_id': request.session['sale_order_id']})
                 abandoned_order.action_cancel()
             elif abandoned_order.id != request.session.get('sale_order_id'):  # abandoned cart found, user have to choose what to do
                 values.update({'id': abandoned_order.id, 'access_token': abandoned_order.access_token})
@@ -260,7 +260,7 @@ class Cart(PaymentPortal):
         website=True
     )
     def clear_cart(self):
-        request.cart.order_line.unlink()
+        request.cart.order_line_ids.unlink()
 
     def _get_cart_notification_information(self, order, line_ids):
         """ Get the information about the sales order lines to show in the notification.
