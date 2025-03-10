@@ -3009,6 +3009,11 @@ class AccountMoveLine(models.Model):
                         'company_id': line.company_id.id,
             })
 
+    def _preprocess_analytic_lines(self, analytic_line_vals):
+        """ Hook to process functionalities before create analytic lines 
+        """
+        pass
+
     def _create_analytic_lines(self):
         """ Create analytic items upon validation of an account.move.line having an analytic distribution.
         """
@@ -3016,7 +3021,7 @@ class AccountMoveLine(models.Model):
         analytic_line_vals = []
         for line in self:
             analytic_line_vals.extend(line._prepare_analytic_lines())
-
+        self._preprocess_analytic_lines(analytic_line_vals)
         self.env['account.analytic.line'].create(analytic_line_vals)
 
     def _prepare_analytic_lines(self):

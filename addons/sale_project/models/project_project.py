@@ -154,7 +154,7 @@ class ProjectProject(models.Model):
     def _onchange_reinvoiced_sale_order_id(self):
         if (
             not self.sale_line_id
-            and (service_sols := self.reinvoiced_sale_order_id.order_line.filtered('is_service'))
+            and (service_sols := self.reinvoiced_sale_order_id.order_line_ids.filtered('is_service'))
         ):
             self.sale_line_id = service_sols[0]
 

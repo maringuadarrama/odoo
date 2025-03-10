@@ -100,7 +100,7 @@ class SaleOrderLine(models.Model):
         # Remove related reward lines
         reward_coupon_set = {(l.reward_id, l.coupon_id, l.reward_identifier_code) for l in self if l.reward_id}
         related_lines = self.env['sale.order.line']
-        related_lines |= self.order_id.order_line.filtered(lambda l: (l.reward_id, l.coupon_id, l.reward_identifier_code) in reward_coupon_set)
+        related_lines |= self.order_id.order_line_ids.filtered(lambda l: (l.reward_id, l.coupon_id, l.reward_identifier_code) in reward_coupon_set)
         # Remove the line's coupon from order if it is the last line using that coupon
         coupons_to_unlink = self.env['loyalty.card']
         for line in self:

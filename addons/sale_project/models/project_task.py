@@ -202,7 +202,7 @@ class ProjectTask(models.Model):
         partner = self.partner_id or self.sale_line_id.order_id.partner_id
         return partner or super()._rating_get_partner()
 
-    @api.depends('sale_order_id.invoice_status', 'sale_order_id.order_line')
+    @api.depends('sale_order_id.invoice_status', 'sale_order_id.order_line_ids')
     def _compute_task_to_invoice(self):
         for task in self:
             if task.sale_order_id:
