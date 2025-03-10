@@ -2302,17 +2302,17 @@ class AccountMove(models.Model):
 
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
-        self = self.with_company((self.journal_id.company_id or self.env.company)._accessible_branches()[:1])
-
+        company = self.journal_id.company_id or self.env.company
+        self = self.with_company(company._accessible_branches()[:1])
+        p = self.partner_id
         warning = {}
-        if self.partner_id:
-            rec_account = self.partner_id.property_account_receivable_id
-            pay_account = self.partner_id.property_account_payable_id
+        if p:
+            rec_account = p.property_account_receivable_id or company.partner_id.property_account_receivable_id
+            pay_account = p.property_account_payable_id or company.partner_id.property_account_payable_id
             if not rec_account and not pay_account:
                 action = self.env.ref('account.action_account_config')
                 msg = _('Cannot find a chart of accounts for this company, You should configure it. \nPlease go to Account Configuration.')
                 raise RedirectWarning(msg, action.id, _('Go to the configuration panel'))
-            p = self.partner_id
             if p.invoice_warn == 'no-message' and p.parent_id:
                 p = p.parent_id
             if p.invoice_warn and p.invoice_warn != 'no-message':
