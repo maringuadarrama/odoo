@@ -358,7 +358,7 @@ class TestSalePurchase(TestCommonSalePurchaseNoChart):
         # for this test to run. Issue doesn't occur when running test locally => probably some other module is messing
         # with the permissions and/or there's an issue with the subsidiary setup
         order.sudo().with_company(company_1).action_confirm()
-        self.assertFalse(order.purchase_order_count)
+        self.assertFalse(order.count_purchase_order)
 
         order2 = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
@@ -373,4 +373,4 @@ class TestSalePurchase(TestCommonSalePurchaseNoChart):
 
         # FIXME: same sudo issue as above
         order2.sudo().with_company(company_2).action_confirm()
-        self.assertTrue(order2.purchase_order_count)
+        self.assertTrue(order2.count_purchase_order)
