@@ -83,7 +83,7 @@ class SaleOrder(models.Model):
             elif all(p.state in ['done', 'cancel'] for p in order.picking_ids):
                 order.delivery_status = 'full'
             elif any(p.state == 'done' for p in order.picking_ids) and any(
-                    l.qty_delivered for l in order.order_line):
+                    l.qty_delivered for l in order.order_line_ids):
                 order.delivery_status = 'partial'
             elif any(p.state == 'done' for p in order.picking_ids):
                 order.delivery_status = 'started'
@@ -99,7 +99,7 @@ class SaleOrder(models.Model):
             return super()._select_expected_date(expected_dates)
         return max(expected_dates)
 
-    @api.constrains('warehouse_id', 'state', 'order_line')
+    @api.constrains('warehouse_id', 'state', 'order_line_ids')
     def _check_warehouse(self):
         """ Ensure that the warehouse is set in case of storable products """
         orders_without_wh = self.filtered(lambda order: order.state not in ('draft', 'cancel') and not order.warehouse_id)
@@ -110,7 +110,7 @@ class SaleOrder(models.Model):
             )
         }
         other_company = set()
-        for order_line in orders_without_wh.order_line:
+        for order_line in orders_without_wh.order_line_ids:
             if order_line.product_id.type != 'consu':
                 continue
             if order_line.route_id.company_id and order_line.route_id.company_id != order_line.company_id:
@@ -124,9 +124,9 @@ class SaleOrder(models.Model):
             raise UserError(_("You must have a warehouse for line using a delivery in different company."))
 
     def write(self, values):
-        if values.get('order_line') and self.state == 'sale':
+        if values.get('order_line_ids') and self.state == 'sale':
             for order in self:
-                pre_order_line_qty = {order_line: order_line.product_uom_qty for order_line in order.mapped('order_line') if not order_line.is_expense}
+                pre_order_line_qty = {order_line: order_line.product_uom_qty for order_line in order.mapped('order_line_ids') if not order_line.is_expense}
 
         if values.get('partner_shipping_id') and self._context.get('update_delivery_shipping_partner'):
             for order in self:
@@ -146,14 +146,14 @@ class SaleOrder(models.Model):
             # TODO: Log a note on each down document
             deadline_datetime = values.get('commitment_date')
             for order in self:
-                order.order_line.move_ids.date_deadline = deadline_datetime or order.expected_date
+                order.order_line_ids.move_ids.date_deadline = deadline_datetime or order.expected_date
 
         res = super(SaleOrder, self).write(values)
-        if values.get('order_line') and self.state == 'sale':
+        if values.get('order_line_ids') and self.state == 'sale':
             rounding = self.env['decimal.precision'].precision_get('Product Unit')
             for order in self:
                 to_log = {}
-                for order_line in order.order_line:
+                for order_line in order.order_line_ids:
                     if order_line.display_type:
                         continue
                     if float_compare(order_line.product_uom_qty, pre_order_line_qty.get(order_line, 0.0), precision_rounding=order_line.product_uom_id.rounding or rounding) < 0:
@@ -179,7 +179,7 @@ class SaleOrder(models.Model):
             order.show_json_popover = bool(late_stock_picking)
 
     def _action_confirm(self):
-        self.order_line._action_launch_stock_rule()
+        self.order_line_ids._action_launch_stock_rule()
         return super(SaleOrder, self)._action_confirm()
 
     @api.depends('picking_ids')
@@ -220,8 +220,8 @@ class SaleOrder(models.Model):
     def _action_cancel(self):
         documents = None
         for sale_order in self:
-            if sale_order.state == 'sale' and sale_order.order_line:
-                sale_order_lines_quantities = {order_line: (order_line.product_uom_qty, 0) for order_line in sale_order.order_line}
+            if sale_order.state == 'sale' and sale_order.order_line_ids:
+                sale_order_lines_quantities = {order_line: (order_line.product_uom_qty, 0) for order_line in sale_order.order_line_ids}
                 documents = self.env['stock.picking'].with_context(include_draft_documents=True)._log_activity_get_documents(sale_order_lines_quantities, 'move_ids', 'UP')
         self.picking_ids.filtered(lambda p: p.state != 'done').action_cancel()
         if documents:

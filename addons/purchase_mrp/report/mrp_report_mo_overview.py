@@ -75,7 +75,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
 
     def _is_doc_in_done(self, doc_in):
         if doc_in._name == 'purchase.order':
-            return doc_in.state == 'purchase' and all(move.state in ('done', 'cancel') for move in doc_in.order_line.move_ids)
+            return doc_in.state == 'purchase' and all(move.state in ('done', 'cancel') for move in doc_in.order_line_ids.move_ids)
         return super()._is_doc_in_done(doc_in)
 
     def _get_origin(self, move):

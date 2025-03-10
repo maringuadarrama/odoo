@@ -106,7 +106,7 @@ class PurchaseOrder(models.Model):
                 name=name, product_qty=product_qty, price_unit=price_unit,
                 taxes_ids=taxes_ids)
             order_lines.append((0, 0, order_line_values))
-        self.order_line = order_lines
+        self.order_line_ids = order_lines
 
     def button_confirm(self):
         if self.alternative_po_ids and not self.env.context.get('skip_alternative_check', False):

@@ -316,8 +316,8 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
             purchase_orders.append(po)
 
         move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))
-        move_form.purchase_vendor_bill_id = PurchaseBillUnion.browse(-purchase_orders[0].id)
-        move_form.purchase_vendor_bill_id = PurchaseBillUnion.browse(-purchase_orders[1].id)
+        move_form.purchase_bill_union_id = PurchaseBillUnion.browse(-purchase_orders[0].id)
+        move_form.purchase_bill_union_id = PurchaseBillUnion.browse(-purchase_orders[1].id)
         move = move_form.save()
 
         self.assertInvoiceValues(move, [
@@ -358,7 +358,7 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
         po.order_line.qty_received = 12
 
         move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))
-        move_form.purchase_vendor_bill_id = self.env['purchase.bill.union'].browse(-po.id)
+        move_form.purchase_bill_union_id = self.env['purchase.bill.union'].browse(-po.id)
         move = move_form.save()
 
         self.assertEqual(move.amount_total, 0.01)
@@ -534,9 +534,9 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
 
         move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))
         PurchaseBillUnion = self.env['purchase.bill.union']
-        move_form.purchase_vendor_bill_id = PurchaseBillUnion.browse(-purchase_orders[0].id)
-        move_form.purchase_vendor_bill_id = PurchaseBillUnion.browse(-purchase_orders[1].id)
-        move_form.purchase_vendor_bill_id = PurchaseBillUnion.browse(-purchase_orders[2].id)
+        move_form.purchase_bill_union_id = PurchaseBillUnion.browse(-purchase_orders[0].id)
+        move_form.purchase_bill_union_id = PurchaseBillUnion.browse(-purchase_orders[1].id)
+        move_form.purchase_bill_union_id = PurchaseBillUnion.browse(-purchase_orders[2].id)
         invoice = move_form.save()
 
         expected_purchase = [
@@ -1148,7 +1148,7 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
                         move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))
                         move_form.ref = '111' if w_bill_ref == 'w_bill_ref' else ''
                         move_form.payment_reference = '222' if w_payment_reference == 'w_payment_reference' else ''
-                        move_form.purchase_vendor_bill_id = self.env['purchase.bill.union'].browse(-purchase_order.id).exists()
+                        move_form.purchase_bill_union_id = self.env['purchase.bill.union'].browse(-purchase_order.id).exists()
                         payment_reference = move_form._values['payment_reference']
                         self.assertEqual(payment_reference, expected_value, "The payment reference should be %s" % expected_value)
 
@@ -1188,6 +1188,6 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
         self.assertFalse(invoice1.invoice_user_id)
         # creating bill with Auto_complete feature
         move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))
-        move_form.purchase_vendor_bill_id = self.env['purchase.bill.union'].browse(-po2.id)
+        move_form.purchase_bill_union_id = self.env['purchase.bill.union'].browse(-po2.id)
         invoice2 = move_form.save()
         self.assertFalse(invoice2.invoice_user_id)

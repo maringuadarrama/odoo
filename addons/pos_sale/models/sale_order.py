@@ -23,7 +23,7 @@ class SaleOrder(models.Model):
 
     @api.model
     def _load_pos_data_fields(self, config_id):
-        return ['name', 'state', 'user_id', 'order_line', 'partner_id', 'pricelist_id', 'fiscal_position_id', 'amount_total', 'amount_untaxed', 'amount_unpaid',
+        return ['name', 'state', 'user_id', 'order_line_ids', 'partner_id', 'pricelist_id', 'fiscal_position_id', 'amount_total', 'amount_untaxed', 'amount_unpaid',
             'picking_ids', 'partner_shipping_id', 'partner_invoice_id', 'date_order']
 
     def _count_pos_order(self):
@@ -42,14 +42,14 @@ class SaleOrder(models.Model):
             'domain': [('id', 'in', linked_orders.ids)],
         }
 
-    @api.depends('order_line', 'amount_total', 'order_line.invoice_lines.parent_state', 'order_line.invoice_lines.price_total', 'order_line.pos_order_line_ids')
+    @api.depends('order_line_ids', 'amount_total', 'order_line_ids.invoice_lines.parent_state', 'order_line_ids.invoice_lines.price_total', 'order_line_ids.pos_order_line_ids')
     def _compute_amount_unpaid(self):
         for sale_order in self:
-            total_invoice_paid = sum(sale_order.order_line.filtered(lambda l: not l.display_type).mapped('invoice_lines').filtered(lambda l: l.parent_state != 'cancel').mapped('price_total'))
-            total_pos_paid = sum(sale_order.order_line.filtered(lambda l: not l.display_type).mapped('pos_order_line_ids.price_subtotal_incl'))
+            total_invoice_paid = sum(sale_order.order_line_ids.filtered(lambda l: not l.display_type).mapped('invoice_lines').filtered(lambda l: l.parent_state != 'cancel').mapped('price_total'))
+            total_pos_paid = sum(sale_order.order_line_ids.filtered(lambda l: not l.display_type).mapped('pos_order_line_ids.price_subtotal_incl'))
             sale_order.amount_unpaid = sale_order.amount_total - (total_invoice_paid + total_pos_paid)
 
-    @api.depends('order_line.pos_order_line_ids')
+    @api.depends('order_line_ids.pos_order_line_ids')
     def _compute_amount_to_invoice(self):
         super()._compute_amount_to_invoice()
         for order in self:

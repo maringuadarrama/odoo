@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models, tools
@@ -7,20 +6,20 @@ from odoo.tools import SQL
 
 
 class VendorDelayReport(models.Model):
-    _name = 'vendor.delay.report'
+    _name = "vendor.delay.report"
     _description = "Vendor Delay Report"
     _auto = False
 
-    partner_id = fields.Many2one('res.partner', 'Vendor', readonly=True)
-    product_id = fields.Many2one('product.product', 'Product', readonly=True)
-    category_id = fields.Many2one('product.category', 'Product Category', readonly=True)
-    date = fields.Datetime('Effective Date', readonly=True)
-    qty_total = fields.Float('Total Quantity', readonly=True)
-    qty_on_time = fields.Float('On-Time Quantity', readonly=True)
-    on_time_rate = fields.Float('On-Time Delivery Rate', readonly=True)
+    partner_id = fields.Many2one("res.partner", "Vendor", readonly=True)
+    product_id = fields.Many2one("product.product", "Product", readonly=True)
+    category_id = fields.Many2one("product.category", "Product Category", readonly=True)
+    date = fields.Datetime("Effective Date", readonly=True)
+    qty_total = fields.Float("Total Quantity", readonly=True)
+    qty_on_time = fields.Float("On-Time Quantity", readonly=True)
+    on_time_rate = fields.Float("On-Time Delivery Rate", readonly=True)
 
     def init(self):
-        tools.drop_view_if_exists(self.env.cr, 'vendor_delay_report')
+        tools.drop_view_if_exists(self.env.cr, "vendor_delay_report")
         self.env.cr.execute("""
 CREATE OR replace VIEW vendor_delay_report AS(
 SELECT m.id                     AS id,
@@ -55,17 +54,17 @@ GROUP  BY m.id
 )""")
 
     def _read_group_select(self, aggregate_spec, query):
-        if aggregate_spec == 'on_time_rate:sum':
+        if aggregate_spec == "on_time_rate:sum":
             # Make a weigthed average instead of simple average for these fields
             return SQL(
-                'CASE WHEN SUM(%s) !=0 THEN SUM(%s) / SUM(%s) * 100 ELSE 100 END',
-                self._field_to_sql(self._table, 'qty_total', query),
-                self._field_to_sql(self._table, 'qty_on_time', query),
-                self._field_to_sql(self._table, 'qty_total', query),
+                "CASE WHEN SUM(%s) !=0 THEN SUM(%s) / SUM(%s) * 100 ELSE 100 END",
+                self._field_to_sql(self._table, "qty_total", query),
+                self._field_to_sql(self._table, "qty_on_time", query),
+                self._field_to_sql(self._table, "qty_total", query),
             )
         return super()._read_group_select(aggregate_spec, query)
 
     def _read_group(self, domain, groupby=(), aggregates=(), having=(), offset=0, limit=None, order=None):
-        if 'on_time_rate:sum' in aggregates:
-            having = expression.AND([having, [('qty_total:sum', '>', '0')]])
+        if "on_time_rate:sum" in aggregates:
+            having = expression.AND([having, [("qty_total:sum", ">", "0")]])
         return super()._read_group(domain, groupby, aggregates, having, offset, limit, order)

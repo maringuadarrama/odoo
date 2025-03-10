@@ -25,7 +25,7 @@ class RegistrationEditor(models.TransientModel):
             ('event_ticket_id', 'in', sale_order.mapped('order_line.event_ticket_id').ids),
             ('state', '!=', 'cancel')])
 
-        so_lines = sale_order.order_line.filtered('event_ticket_id')
+        so_lines = sale_order.order_line_ids.filtered('event_ticket_id')
         so_line_to_reg = registrations.grouped('sale_order_line_id')
         attendee_list = []
         for so_line in so_lines:

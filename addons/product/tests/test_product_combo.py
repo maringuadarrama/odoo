@@ -11,7 +11,7 @@ from odoo.addons.product.tests.common import ProductCommon
 
 class TestProductCombo(ProductCommon):
 
-    def test_combo_item_count(self):
+    def test_count_combo_item(self):
         combo = self.env['product.combo'].create({
             'name': "Test combo",
             'combo_item_ids': [
@@ -21,7 +21,7 @@ class TestProductCombo(ProductCommon):
             ],
         })
 
-        self.assertEqual(combo.combo_item_count, 3)
+        self.assertEqual(combo.count_combo_item, 3)
 
     def test_currency_without_company_set(self):
         self.setup_main_company(currency_code='GBP')
