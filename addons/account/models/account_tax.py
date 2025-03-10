@@ -1378,6 +1378,8 @@ class AccountTax(models.Model):
             'raw_total_included': taxes_computation['total_included'] / rate if rate else 0.0,
             'taxes_data': [],
         }
+        base_line['price_unit_discounted_excluded_currency'] = base_line['tax_details']['raw_total_excluded_currency'] / base_line['quantity'] if base_line['quantity'] else 0.0
+        base_line['price_unit_discounted_included_currency'] = base_line['tax_details']['raw_total_included_currency'] / base_line['quantity'] if base_line['quantity'] else 0.0
         if company.tax_calculation_rounding_method == 'round_per_line':
             tax_details['raw_total_excluded'] = company.currency_id.round(tax_details['raw_total_excluded'])
             tax_details['raw_total_included'] = company.currency_id.round(tax_details['raw_total_included'])
