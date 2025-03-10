@@ -78,11 +78,11 @@ patch(PosStore.prototype, {
         let previousProductLine = null;
 
         const converted_lines = await this.data.call("sale.order.line", "read_converted", [
-            sale_order.order_line.map((l) => l.id),
+            sale_order.order_line_ids.map((l) => l.id),
         ]);
 
-        for (let i = 0; i < sale_order.order_line.length; ++i) {
-            const line = sale_order.order_line[i];
+        for (let i = 0; i < sale_order.order_line_ids.length; ++i) {
+            const line = sale_order.order_line_ids[i];
             if (line.display_type === "line_note") {
                 if (previousProductLine) {
                     const previousNote = previousProductLine.customer_note;
@@ -135,8 +135,7 @@ patch(PosStore.prototype, {
                 if (useLoadedLots) {
                     newLine.setPackLotLines({
                         modifiedPackLotLines: [],
-                        newPackLotLines: (converted_line.lot_names || []).map((name) => ({
-                            lot_name: name,
+                        newPackLotLines: (converted_line.lot_names || []).map((name) => ({                            lot_name: name,
                         })),
                     });
                 }
@@ -222,7 +221,7 @@ patch(PosStore.prototype, {
         //This function will create all the downpaymentlines. We will create one downpayment line per unique tax combination
         const percentage = total_down_payment / sale_order.amount_total;
         const grouped = Object.groupBy(
-            sale_order.order_line.filter((ol) => ol.product_id),
+            sale_order.order_line_ids.filter((ol) => ol.product_id),
             (ol) => ol.tax_ids.map((tax_id) => tax_id.id).sort((a, b) => a - b)
         );
 
