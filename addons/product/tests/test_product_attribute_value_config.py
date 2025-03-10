@@ -761,13 +761,13 @@ class TestProductAttributeValueConfig(TestProductAttributeValueCommon):
                 'value_ids': [(6, 0, [a1.id])],
             })]
         })
-        self.assertEqual(product_attribut.number_related_products, 1, 'The product attribute must have an associated product')
+        self.assertEqual(product_attribut.count_product_tmpl_ids, 1, 'The product attribute must have an associated product')
         product.action_archive()
         self.assertFalse(product.active, 'The product should be archived.')
         product.write({'attribute_line_ids': [[5, 0, 0]]})
         product.action_unarchive()
         self.assertTrue(product.active, 'The product should be unarchived.')
-        self.assertEqual(product_attribut.number_related_products, 0, 'The product attribute must not have an associated product')
+        self.assertEqual(product_attribut.count_product_tmpl_ids, 0, 'The product attribute must not have an associated product')
 
     def test_copy_extra_prices_of_product_attribute_values(self):
         """
