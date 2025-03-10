@@ -85,7 +85,7 @@ registry.category("web_tour.tours").add("purchase_tour", {
             trigger: ".o_purchase_order",
         },
         {
-            trigger: "div.o_field_widget[name='product_qty'] input ",
+            trigger: "div.o_field_widget[name='product_uom_qty'] input ",
             content: _t("Indicate the product quantity you want to order."),
             tooltipPosition: "right",
             run: "edit 12.0",

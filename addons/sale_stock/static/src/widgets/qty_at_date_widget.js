@@ -49,11 +49,11 @@ export class QtyAtDateWidget extends Component {
         if (data.scheduled_date) {
             // TODO: might need some round_decimals to avoid errors
             if (data.state === 'sale') {
-                this.calcData.will_be_fulfilled = data.free_qty_today >= data.qty_to_deliver;
+                this.calcData.will_be_fulfilled = data.qty_free_today >= data.qty_to_deliver;
             } else {
                 this.calcData.will_be_fulfilled = data.virtual_available_at_date >= data.qty_to_deliver;
             }
-            this.calcData.will_be_late = data.forecast_expected_date && data.forecast_expected_date > data.scheduled_date;
+            this.calcData.will_be_late = data.forecast_date_planned && data.forecast_date_planned > data.scheduled_date;
             if (['draft', 'sent'].includes(data.state)) {
                 // Moves aren't created yet, then the forecasted is only based on virtual_available of quant
                 this.calcData.forecasted_issue = !this.calcData.will_be_fulfilled && !data.is_mto;
@@ -71,8 +71,8 @@ export class QtyAtDateWidget extends Component {
             return;
         }
         this.calcData.delivery_date = formatDateTime(data.scheduled_date, { format: localization.dateFormat });
-        if (data.forecast_expected_date) {
-            this.calcData.forecast_expected_date_str = formatDateTime(data.forecast_expected_date, { format: localization.dateFormat });
+        if (data.forecast_date_planned) {
+            this.calcData.forecast_date_planned_str = formatDateTime(data.forecast_date_planned, { format: localization.dateFormat });
         }
     }
 
