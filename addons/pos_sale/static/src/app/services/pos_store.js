@@ -76,7 +76,7 @@ patch(PosStore.prototype, {
         let useLoadedLots = false;
         let userWasAskedAboutLoadedLots = false;
         let previousProductLine = null;
-        for (const line of sale_order.order_line) {
+        for (const line of sale_order.order_line_ids) {
             if (line.display_type === "line_note") {
                 if (previousProductLine) {
                     const previousNote = previousProductLine.customer_note;
@@ -214,7 +214,7 @@ patch(PosStore.prototype, {
         //This function will create all the downpaymentlines. We will create one downpayment line per unique tax combination
         const percentage = total_down_payment / sale_order.amount_total;
         const grouped = Object.groupBy(
-            sale_order.order_line.filter((ol) => ol.product_id),
+            sale_order.order_line_ids.filter((ol) => ol.product_id),
             (ol) => ol.tax_ids.map((tax_id) => tax_id.id).sort((a, b) => a - b)
         );
 
