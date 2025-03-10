@@ -271,7 +271,7 @@ class TestVariants(ProductVariantsCommon):
     def test_standard_price(self):
         """ Ensure template values are correctly (re)computed depending on the context """
         one_variant_product = self.product
-        self.assertEqual(one_variant_product.product_variant_count, 1)
+        self.assertEqual(one_variant_product.count_product_variant, 1)
 
         company_a = self.env.company
         company_b = self.env['res.company'].create({'name': 'CB', 'currency_id': self.env.ref('base.VEF').id})
