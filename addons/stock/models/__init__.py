@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from . import barcode
 from . import ir_actions_report
-from . import product_strategy
+from . import product_removal
+from . import stock_putaway_rule
 from . import res_company
 from . import res_partner
 from . import res_users

@@ -16,7 +16,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
         po_lines = self.env['purchase.order.line'].search(domain, order='date_planned, id')
 
         for po_line in po_lines:
-            line_qty = po_line.product_qty
+            line_qty = po_line.product_uom_qty
             # Need to fetch every move connected to a manufacturing order from this PO line. This can happen when:
             # - Multiple MOs are linked to a single PO line (e.g. Same MTO component for multiple MO).
             # - A MO has a backorder / is splitted.
@@ -75,7 +75,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
 
     def _is_doc_in_done(self, doc_in):
         if doc_in._name == 'purchase.order':
-            return doc_in.state == 'purchase' and all(move.state in ('done', 'cancel') for move in doc_in.order_line.move_ids)
+            return doc_in.state == 'purchase' and all(move.state in ('done', 'cancel') for move in doc_in.order_line_ids.move_ids)
         return super()._is_doc_in_done(doc_in)
 
     def _get_origin(self, move):

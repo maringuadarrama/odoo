@@ -53,5 +53,5 @@ class StockRule(models.Model):
         super()._notify_responsible(procurement)
         origin_order = self.env.context.get('po_to_notify')
         if origin_order:
-            notified_users = procurement.product_id.responsible_id.partner_id | origin_order.user_id.partner_id
+            notified_users = procurement.product_id.responsible_id.partner_id | origin_order.purchase_user_id.partner_id
             self._post_vendor_notification(origin_order, notified_users, procurement.product_id)

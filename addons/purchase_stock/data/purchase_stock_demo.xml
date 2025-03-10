@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-
         <record id="stock.res_company_1" model="res.company">
             <field eval="1.0" name="po_lead"/>
         </record>
@@ -46,35 +45,32 @@
             <field name="state">draft</field>
             <field name="date_order" eval="(datetime.now() + relativedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
             <field name="date_planned" eval="(datetime.now() + relativedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
-            <field name="order_line" model="purchase.order.line" eval="[(5, 0, 0),
+            <field name="order_line_ids" model="purchase.order.line" eval="[(5, 0, 0),
                 (0, 0, {
                     'product_id': ref('product.product_product_25'),
                     'name': obj().env.ref('product.product_product_25').partner_ref,
                     'price_unit': 286.80,
-                    'product_qty': 20.0,
+                    'product_uom_qty': 20.0,
                     'product_uom_id': ref('uom.product_uom_unit'),
                     'date_planned': DateTime.today()}),
                 (0, 0, {
                     'product_id': ref('product.product_product_20'),
                     'name': obj().env.ref('product.product_product_20').partner_ref,
                     'price_unit': 120.00,
-                    'product_qty': 10.0,
+                    'product_uom_qty': 10.0,
                     'product_uom_id': ref('uom.product_uom_unit'),
                     'date_planned': DateTime.today()}),
             ]"/>
         </record>
 
-        <function model="purchase.order" name="button_confirm" eval="[[ref('purchase_order_8')]]"/>
+        <function model="purchase.order" name="action_confirm" eval="[[ref('purchase_order_8')]]"/>
 
     </data>
 
     <data noupdate="0">
-
         <function model="stock.warehouse" name="write">
           <value model="stock.warehouse" search="[('partner_id', '=', ref('stock.res_partner_company_1'))]"/>
           <value eval="{'buy_to_resupply': True}"/>
         </function>
-
     </data>
-
 </odoo>
