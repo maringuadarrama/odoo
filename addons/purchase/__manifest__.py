@@ -24,6 +24,7 @@
         "views/portal_templates.xml",
         "views/product_template_views.xml",
         "views/product_product_views.xml",
+        "views/product_supplierinfo_views.xml",
         "views/purchase_order_views.xml",
         "views/purchase_order_line_views.xml",
         "views/res_partner_views.xml",
