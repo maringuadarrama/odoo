@@ -2,7 +2,7 @@ id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
 access_fleet_vehicle,access_fleet_vehicle,fleet.model_fleet_vehicle,fleet.fleet_group_manager,1,1,1,1
 access_fleet_vehicle_user,access_fleet_vehicle,fleet.model_fleet_vehicle,fleet.fleet_group_user,1,1,0,0
 access_fleet_vehicle_log,access_fleet_vehicle_log,fleet.model_fleet_vehicle_log,fleet.fleet_group_manager,1,1,1,1
-access_fleet_vehicle_log_user,access_fleet_vehicle_log,fleet.model_fleet_vehicle_log,fleet.fleet_group_user,1,0,0,0
+access_fleet_vehicle_log_user,access_fleet_vehicle_log,fleet.model_fleet_vehicle_log,base.group_user,1,0,0,0
 access_fleet_vehicle_model,access_fleet_vehicle_model,fleet.model_fleet_vehicle_model,fleet.fleet_group_manager,1,1,1,1
 access_fleet_vehicle_model_user,access_fleet_vehicle_model,fleet.model_fleet_vehicle_model,fleet.fleet_group_user,1,0,0,0
 access_fleet_vehicle_model_brand,access_fleet_vehicle_model_brand,fleet.model_fleet_vehicle_model_brand,fleet.fleet_group_manager,1,1,1,1
