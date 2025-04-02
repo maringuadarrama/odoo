@@ -50,16 +50,6 @@ class SaleOrder(models.Model):
             sale_order.amount_unpaid = sale_order.amount_total - (total_invoice_paid + total_pos_paid)
 
     @api.depends('order_line_ids.pos_order_line_ids')
-    def _compute_amount_to_invoice(self):
-        super()._compute_amount_to_invoice()
-        for order in self:
-            if order.invoice_status == 'done':
-                continue
-            # We need to account for the downpayment paid in POS with and without invoice
-            order_amount = sum(order.sudo().pos_order_line_ids.filtered(lambda pol: pol.sale_order_line_id.is_downpayment).mapped('price_subtotal_incl'))
-            order.amount_to_invoice_taxinc -= order_amount
-
-    @api.depends('order_line_ids.pos_order_line_ids')
     def _compute_amount_invoiced(self):
         super()._compute_amount_invoiced()
         for order in self:
@@ -67,13 +57,19 @@ class SaleOrder(models.Model):
                 continue
 
             # We need to account for the downpayment paid in POS with and without invoice
-            order_amount = sum(
+            amount_to_invoice_taxinc = sum(
+                order.sudo().pos_order_line_ids.filtered(
+                    lambda pol: pol.sale_order_line_id.is_downpayment
+                ).mapped('price_subtotal_incl')
+            )
+            amount_invoiced_taxinc = sum(
                 order.sudo().pos_order_line_ids.filtered(
                     lambda pol: pol.order_id.state in ['paid', 'done', 'invoiced']
-                    and pol.sale_order_line_id.is_downpayment).mapped('price_subtotal_incl'
-                )
+                    and pol.sale_order_line_id.is_downpayment
+                ).mapped('price_subtotal_incl')
             )
-            order.amount_invoiced_taxinc += order_amount
+            order.amount_to_invoice_taxinc -= amount_to_invoice_taxinc
+            order.amount_invoiced_taxinc += amount_invoiced_taxinc
 
 
 class SaleOrderLine(models.Model):

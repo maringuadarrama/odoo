@@ -1039,16 +1039,15 @@ class SaleOrder(models.Model):
             else:
                 order.invoice_status = "no"
 
-    @api.depends("order_line_ids.amount_to_invoice_taxinc")
-    def _compute_amount_to_invoice(self):
+    @api.depends(
+        "order_line_ids.amount_to_invoice_taxinc",
+        "order_line_ids.amount_invoiced_taxinc",
+    )
+    def _compute_amount_invoiced(self):
         for order in self:
             order.amount_to_invoice_taxinc = sum(
                 order.order_line_ids.mapped("amount_to_invoice_taxinc")
             )
-
-    @api.depends("order_line_ids.amount_invoiced_taxinc")
-    def _compute_amount_invoiced(self):
-        for order in self:
             order.amount_invoiced_taxinc = sum(
                 order.order_line_ids.mapped("amount_invoiced_taxinc")
             )

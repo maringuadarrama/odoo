@@ -1013,11 +1013,14 @@ class SaleOrderLine(models.Model):
         "price_unit_discounted_taxinc",
         "price_unit_discounted_taxexc",
         "qty_transfered",
+        "invoice_line_ids.parent_state",
+        "invoice_line_ids.price_total",
         "qty_invoiced",
     )
-    def _compute_amount_to_invoice(self):
+    def _compute_amount_invoiced(self):
         for line in self.filtered(lambda l: not l.display_type):
             amount_to_invoice_taxinc = amount_to_invoice_taxexc = 0.0
+            amount_invoiced_taxinc = amount_invoiced_taxexc = 0.0
 
             if line.state == "sale":
                 qty_done = (
@@ -1033,44 +1036,35 @@ class SaleOrderLine(models.Model):
                     line.price_unit_discounted_taxexc * qty_to_invoice
                 )
 
+                for invoice_line in line._get_invoice_line_ids():
+                    if (
+                        invoice_line.parent_state == "posted"
+                        or invoice_line.move_id.payment_state == "invoicing_legacy"
+                    ):
+                        invoice_date = (
+                            invoice_line.move_id.invoice_date
+                        )
+                        amount_invoiced_taxexc += (
+                            invoice_line.currency_id._convert(
+                                invoice_line.price_subtotal,
+                                line.currency_id,
+                                line.company_id,
+                                invoice_date,
+                            )
+                            * -invoice_line.move_id.direction_sign
+                        )
+                        amount_invoiced_taxinc += (
+                            invoice_line.currency_id._convert(
+                                invoice_line.price_total,
+                                line.currency_id,
+                                line.company_id,
+                                invoice_date,
+                            )
+                            * -invoice_line.move_id.direction_sign
+                        )
+
             line.amount_to_invoice_taxexc = amount_to_invoice_taxexc
             line.amount_to_invoice_taxinc = amount_to_invoice_taxinc
-
-    @api.depends(
-        "invoice_line_ids.move_id.state",
-        "invoice_line_ids.price_total",
-    )
-    def _compute_amount_invoiced(self):
-        for line in self.filtered(lambda l: not l.display_type):
-            amount_invoiced_taxinc = amount_invoiced_taxexc = 0.0
-
-            for invoice_line in line._get_invoice_line_ids():
-                if (
-                    invoice_line.parent_state == "posted"
-                    or invoice_line.move_id.payment_state == "invoicing_legacy"
-                ):
-                    invoice_date = (
-                        invoice_line.move_id.invoice_date or fields.Date.today()
-                    )
-                    amount_invoiced_taxexc += (
-                        invoice_line.currency_id._convert(
-                            invoice_line.price_subtotal,
-                            line.currency_id,
-                            line.company_id,
-                            invoice_date,
-                        )
-                        * -invoice_line.move_id.direction_sign
-                    )
-                    amount_invoiced_taxinc += (
-                        invoice_line.currency_id._convert(
-                            invoice_line.price_total,
-                            line.currency_id,
-                            line.company_id,
-                            invoice_date,
-                        )
-                        * -invoice_line.move_id.direction_sign
-                    )
-
             line.amount_invoiced_taxexc = amount_invoiced_taxexc
             line.amount_invoiced_taxinc = amount_invoiced_taxinc
 
