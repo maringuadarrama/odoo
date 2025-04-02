@@ -344,13 +344,6 @@ class SaleOrderLine(models.Model):
         string="Invoice Lines",
         copy=False,
     )
-    qty_invoiced = fields.Float(
-        string="Invoiced Quantity",
-        digits="Product Unit",
-        compute="_compute_qty_invoiced",
-        store=True,
-        readonly=True,
-    )
     qty_to_invoice = fields.Float(
         string="Quantity To Invoice",
         digits="Product Unit",
@@ -358,18 +351,11 @@ class SaleOrderLine(models.Model):
         store=True,
         readonly=True,
     )
-    amount_invoiced_taxexc = fields.Monetary(
-        string="Untaxed Invoiced Amount",
-        compute="_compute_amount_invoiced",
+    qty_invoiced = fields.Float(
+        string="Invoiced Quantity",
+        digits="Product Unit",
+        compute="_compute_qty_invoiced",
         store=True,
-        compute_sudo=True,
-        readonly=True,
-    )
-    amount_invoiced_taxinc = fields.Monetary(
-        string="Invoiced Amount",
-        compute="_compute_amount_invoiced",
-        store=True,
-        compute_sudo=True,
         readonly=True,
     )
     amount_to_invoice_taxinc = fields.Monetary(
@@ -381,6 +367,20 @@ class SaleOrderLine(models.Model):
     )
     amount_to_invoice_taxexc = fields.Monetary(
         string="Untaxed Amount To Invoice",
+        compute="_compute_amount_invoiced",
+        store=True,
+        compute_sudo=True,
+        readonly=True,
+    )
+    amount_invoiced_taxexc = fields.Monetary(
+        string="Untaxed Invoiced Amount",
+        compute="_compute_amount_invoiced",
+        store=True,
+        compute_sudo=True,
+        readonly=True,
+    )
+    amount_invoiced_taxinc = fields.Monetary(
+        string="Invoiced Amount",
         compute="_compute_amount_invoiced",
         store=True,
         compute_sudo=True,
@@ -1008,6 +1008,35 @@ class SaleOrderLine(models.Model):
                 line.product_updatable = False
 
     @api.depends(
+        "state",
+        "product_uom_qty",
+        "price_unit_discounted_taxinc",
+        "price_unit_discounted_taxexc",
+        "qty_transfered",
+        "qty_invoiced",
+    )
+    def _compute_amount_to_invoice(self):
+        for line in self.filtered(lambda l: not l.display_type):
+            amount_to_invoice_taxinc = amount_to_invoice_taxexc = 0.0
+
+            if line.state == "sale":
+                qty_done = (
+                    line.product_uom_qty
+                    if line.product_id.invoice_policy == "order"
+                    else line.qty_transfered
+                )
+                qty_to_invoice = qty_done - line.qty_invoiced
+                amount_to_invoice_taxinc += (
+                    line.price_unit_discounted_taxinc * qty_to_invoice
+                )
+                amount_to_invoice_taxexc += (
+                    line.price_unit_discounted_taxexc * qty_to_invoice
+                )
+
+            line.amount_to_invoice_taxexc = amount_to_invoice_taxexc
+            line.amount_to_invoice_taxinc = amount_to_invoice_taxinc
+
+    @api.depends(
         "invoice_line_ids.move_id.state",
         "invoice_line_ids.price_total",
     )
@@ -1044,36 +1073,6 @@ class SaleOrderLine(models.Model):
 
             line.amount_invoiced_taxexc = amount_invoiced_taxexc
             line.amount_invoiced_taxinc = amount_invoiced_taxinc
-
-    @api.depends(
-        "state",
-        "product_id",
-        "product_uom_qty",
-        "price_unit_discounted_taxinc",
-        "price_unit_discounted_taxexc",
-        "qty_transfered",
-        "qty_invoiced",
-    )
-    def _compute_amount_to_invoice(self):
-        for line in self.filtered(lambda l: not l.display_type):
-            amount_to_invoice_taxinc = amount_to_invoice_taxexc = 0.0
-
-            if line.state == "sale":
-                qty_done = (
-                    line.product_uom_qty
-                    if line.product_id.invoice_policy == "order"
-                    else line.qty_transfered
-                )
-                qty_to_invoice = qty_done - line.qty_invoiced
-                amount_to_invoice_taxinc += (
-                    line.price_unit_discounted_taxinc * qty_to_invoice
-                )
-                amount_to_invoice_taxexc += (
-                    line.price_unit_discounted_taxexc * qty_to_invoice
-                )
-
-            line.amount_to_invoice_taxexc = amount_to_invoice_taxexc
-            line.amount_to_invoice_taxinc = amount_to_invoice_taxinc
 
     @api.depends(
         "state", "product_uom_qty", "qty_transfered", "qty_invoiced", "qty_to_invoice"

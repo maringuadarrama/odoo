@@ -254,15 +254,15 @@ class PurchaseOrderLine(models.Model):
         string="Bill Lines",
         copy=False,
     )
-    qty_invoiced = fields.Float(
-        string="Billed Qty",
+    qty_to_invoice = fields.Float(
+        string="To Invoice Quantity",
         digits="Product Unit",
         compute="_compute_qty_invoiced",
         store=True,
         readonly=True,
     )
-    qty_to_invoice = fields.Float(
-        string="To Invoice Quantity",
+    qty_invoiced = fields.Float(
+        string="Billed Qty",
         digits="Product Unit",
         compute="_compute_qty_invoiced",
         store=True,

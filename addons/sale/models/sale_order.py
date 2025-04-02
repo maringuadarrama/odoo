@@ -914,7 +914,9 @@ class SaleOrder(models.Model):
     def _compute_tax_totals(self):
         AccountTax = self.env["account.tax"]
         for order in self:
-            order_lines = order.order_line_ids.filtered(lambda line: not line.display_type)
+            order_lines = order.order_line_ids.filtered(
+                lambda line: not line.display_type
+            )
             base_lines = [
                 line._prepare_base_line_for_taxes_computation() for line in order_lines
             ]
@@ -933,8 +935,7 @@ class SaleOrder(models.Model):
             order.with_company(order.company_id)
             order.partner_credit_warning = ""
             show_warning = (
-                order.state == "draft"
-                and order.company_id.account_use_credit_limit
+                order.state == "draft" and order.company_id.account_use_credit_limit
             )
             if show_warning:
                 order.partner_credit_warning = self.env[
@@ -1048,7 +1049,9 @@ class SaleOrder(models.Model):
     @api.depends("order_line_ids.amount_invoiced_taxinc")
     def _compute_amount_invoiced(self):
         for order in self:
-            order.amount_invoiced_taxinc = sum(order.order_line_ids.mapped("amount_invoiced_taxinc"))
+            order.amount_invoiced_taxinc = sum(
+                order.order_line_ids.mapped("amount_invoiced_taxinc")
+            )
 
     @api.depends("transaction_ids")
     def _compute_authorized_transaction_ids(self):
