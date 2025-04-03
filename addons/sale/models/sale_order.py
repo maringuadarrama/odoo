@@ -24,13 +24,11 @@ SALE_ORDER_STATE = [
     ("cancel", "Cancelled"),
 ]
 
-INVOICE_STATUS = [
+INVOICE_STATE = [
     ("no", "Nothing to invoice"),
-    ("to invoice", "To invoice"),
-    ("partially", "Partially invoiced"),
-    ("invoiced", "Fully Invoiced"),
-    ("upselling", "Upselling Opportunity"),
     ("to do", "To invoice"),
+    ("partially", "Partially invoiced"),
+    ("upselling", "Upselling Opportunity"),
     ("done", "Fully invoiced"),
     ("over done", "Upselling"),
 ]
@@ -445,21 +443,13 @@ class SaleOrder(models.Model):
         string="Invoice Count",
         compute="_compute_invoice_ids",
     )
-    invoice_status = fields.Selection(
-        selection=INVOICE_STATUS,
-        string="Invoice Status",
-        default="no",
-        compute="_compute_invoice_status",
-        store=True,
-        readonly=True,
-        copy=False,
-    )
+
     invoice_state = fields.Selection(
-        selection=INVOICE_STATUS,
+        selection=INVOICE_STATE,
         string="Invoice Status",
         default="no",
-        # compute="_compute_invoice_status",
-        # store=True,
+        compute="_compute_invoice_state",
+        store=True,
         readonly=True,
         copy=False,
     )
@@ -654,7 +644,7 @@ class SaleOrder(models.Model):
 
     # models.Model override
     def _compute_field_value(self, field):
-        if field.name != "invoice_status" or self.env.context.get(
+        if field.name != "invoice_state" or self.env.context.get(
             "mail_activity_automation_skip"
         ):
             return super()._compute_field_value(field)
@@ -662,12 +652,12 @@ class SaleOrder(models.Model):
         filtered_self = self.filtered(
             lambda so: so.ids
             and (so.user_id or so.partner_id.user_id)
-            and so._origin.invoice_status != "over done"
+            and so._origin.invoice_state != "over done"
         )
         super()._compute_field_value(field)
 
         upselling_orders = filtered_self.filtered(
-            lambda so: so.invoice_status == "over done"
+            lambda so: so.invoice_state == "over done"
         )
         upselling_orders._create_upsell_activity()
 
@@ -976,8 +966,8 @@ class SaleOrder(models.Model):
             order.invoice_ids = invoices
             order.count_invoice = len(invoices)
 
-    @api.depends("state", "order_line_ids.invoice_status")
-    def _compute_invoice_status(self):
+    @api.depends("state", "order_line_ids.invoice_state")
+    def _compute_invoice_state(self):
         """Compute the invoice status of a SO. Possible statuses:
         - no: if the SO is not in status 'sale' or 'done', we consider that there is nothing to
           invoice. This is also the default value if the conditions of no other status is met.
@@ -986,34 +976,34 @@ class SaleOrder(models.Model):
         - upselling: if all SO lines are invoiced or upselling, the status is upselling.
         """
         confirmed_orders = self.filtered(lambda so: so.state == "sale")
-        (self - confirmed_orders).invoice_status = "no"
+        (self - confirmed_orders).invoice_state = "no"
         if not confirmed_orders:
             return
 
         lines_domain = [("is_downpayment", "=", False), ("display_type", "=", False)]
-        line_invoice_status_all = [
-            (order.id, invoice_status)
-            for order, invoice_status in self.env["sale.order.line"]._read_group(
+        line_invoice_state_all = [
+            (order.id, invoice_state)
+            for order, invoice_state in self.env["sale.order.line"]._read_group(
                 lines_domain + [("order_id", "in", confirmed_orders.ids)],
-                ["order_id", "invoice_status"],
+                ["order_id", "invoice_state"],
             )
         ]
         for order in confirmed_orders:
-            line_invoice_status = [
-                d[1] for d in line_invoice_status_all if d[0] == order.id
+            line_invoice_state = [
+                d[1] for d in line_invoice_state_all if d[0] == order.id
             ]
             if order.state != "sale":
-                order.invoice_status = "no"
+                order.invoice_state = "no"
             elif any(
-                invoice_status == "to do" for invoice_status in line_invoice_status
+                invoice_state == "to do" for invoice_state in line_invoice_state
             ):
                 if any(
-                    invoice_status == "no" for invoice_status in line_invoice_status
+                    invoice_state == "no" for invoice_state in line_invoice_state
                 ):
                     # If only discount/delivery/promotion lines can be invoiced, the SO should not
                     # be invoiceable.
                     invoiceable_domain = lines_domain + [
-                        ("invoice_status", "=", "to do")
+                        ("invoice_state", "=", "to do")
                     ]
                     invoiceable_lines = order.order_line_ids.filtered_domain(
                         invoiceable_domain
@@ -1022,22 +1012,22 @@ class SaleOrder(models.Model):
                         lambda sol: not sol._can_be_invoiced_alone()
                     )
                     if invoiceable_lines == special_lines:
-                        order.invoice_status = "no"
+                        order.invoice_state = "no"
                     else:
-                        order.invoice_status = "to do"
+                        order.invoice_state = "to do"
                 else:
-                    order.invoice_status = "to do"
-            elif line_invoice_status and all(
-                invoice_status == "done" for invoice_status in line_invoice_status
+                    order.invoice_state = "to do"
+            elif line_invoice_state and all(
+                invoice_state == "done" for invoice_state in line_invoice_state
             ):
-                order.invoice_status = "done"
-            elif line_invoice_status and all(
-                invoice_status in ("done", "over done")
-                for invoice_status in line_invoice_status
+                order.invoice_state = "done"
+            elif line_invoice_state and all(
+                invoice_state in ("done", "over done")
+                for invoice_state in line_invoice_state
             ):
-                order.invoice_status = "over done"
+                order.invoice_state = "over done"
             else:
-                order.invoice_status = "no"
+                order.invoice_state = "no"
 
     @api.depends(
         "order_line_ids.amount_to_invoice_taxinc",

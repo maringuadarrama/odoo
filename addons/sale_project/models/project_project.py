@@ -82,11 +82,11 @@ class ProjectProject(models.Model):
                 )
         ).update({'sale_line_id': False})
 
-    def _get_projects_for_invoice_status(self, invoice_status):
-        """ Returns a recordset of project.project that has any Sale Order which invoice_status is the same as the
-            provided invoice_status.
+    def _get_projects_for_invoice_state(self, invoice_state):
+        """ Returns a recordset of project.project that has any Sale Order which invoice_state is the same as the
+            provided invoice_state.
 
-            :param invoice_status: The invoice status.
+            :param invoice_state: The invoice status.
         """
         result = self.env.execute_query(SQL("""
             SELECT id
@@ -97,23 +97,23 @@ class ProjectProject(models.Model):
                                 JOIN project_task pt ON pt.sale_order_id = so.id
                                WHERE pt.project_id = pp.id
                                  AND pt.active = true
-                                 AND so.invoice_status = %(invoice_status)s)
+                                 AND so.invoice_state = %(invoice_state)s)
                     OR EXISTS(SELECT 1
                                 FROM sale_order so
                                 JOIN sale_order_line sol ON sol.order_id = so.id
                                WHERE sol.id = pp.sale_line_id
-                                 AND so.invoice_status = %(invoice_status)s))
-               AND id in %(ids)s""", ids=tuple(self.ids), invoice_status=invoice_status))
+                                 AND so.invoice_state = %(invoice_state)s))
+               AND id in %(ids)s""", ids=tuple(self.ids), invoice_state=invoice_state))
         return self.env['project.project'].browse(id_ for id_, in result)
 
-    @api.depends('sale_order_id.invoice_status', 'tasks.sale_order_id.invoice_status')
+    @api.depends('sale_order_id.invoice_state', 'tasks.sale_order_id.invoice_state')
     def _compute_has_any_so_to_invoice(self):
-        """Has any Sale Order whose invoice_status is set as To Invoice"""
+        """Has any Sale Order whose invoice_state is set as To Invoice"""
         if not self.ids:
             self.has_any_so_to_invoice = False
             return
 
-        project_to_invoice = self._get_projects_for_invoice_status('to do')
+        project_to_invoice = self._get_projects_for_invoice_state('to do')
         project_to_invoice.has_any_so_to_invoice = True
         (self - project_to_invoice).has_any_so_to_invoice = False
 
@@ -296,20 +296,20 @@ class ProjectProject(models.Model):
 
         return super().action_profitability_items(section_name, domain, res_id)
 
-    @api.depends('sale_order_id.invoice_status', 'tasks.sale_order_id.invoice_status')
+    @api.depends('sale_order_id.invoice_state', 'tasks.sale_order_id.invoice_state')
     def _compute_has_any_so_with_nothing_to_invoice(self):
-        """Has any Sale Order whose invoice_status is set as No"""
+        """Has any Sale Order whose invoice_state is set as No"""
         if not self.ids:
             self.has_any_so_with_nothing_to_invoice = False
             return
 
-        project_nothing_to_invoice = self._get_projects_for_invoice_status('no')
+        project_nothing_to_invoice = self._get_projects_for_invoice_state('no')
         project_nothing_to_invoice.has_any_so_with_nothing_to_invoice = True
         (self - project_nothing_to_invoice).has_any_so_with_nothing_to_invoice = False
 
     def action_create_invoice(self):
         action = self.env["ir.actions.actions"]._for_xml_id("sale.action_view_sale_advance_payment_inv")
-        so_ids = (self.sale_order_id | self.task_ids.sale_order_id).filtered(lambda so: so.invoice_status in ['to do', 'no']).ids
+        so_ids = (self.sale_order_id | self.task_ids.sale_order_id).filtered(lambda so: so.invoice_state in ['to do', 'no']).ids
         action['context'] = {
             'active_id': so_ids[0] if len(so_ids) == 1 else False,
             'active_ids': so_ids

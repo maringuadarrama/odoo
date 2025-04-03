@@ -60,7 +60,7 @@ class PurchaseBillUnion(models.Model):
                     purchase_order
                 WHERE
                     state = 'purchase'
-                    AND invoice_status IN ('to do', 'no')
+                    AND invoice_state IN ('to do', 'no')
             )
             """
         )
@@ -73,7 +73,7 @@ class PurchaseBillUnion(models.Model):
             if doc.reference:
                 name += " - " + doc.reference
             amount = doc.amount
-            if doc.purchase_order_id and doc.purchase_order_id.invoice_status == "no":
+            if doc.purchase_order_id and doc.purchase_order_id.invoice_state == "no":
                 amount = 0.0
             name += ": " + formatLang(self.env, amount, currency_obj=doc.currency_id)
             doc.display_name = name

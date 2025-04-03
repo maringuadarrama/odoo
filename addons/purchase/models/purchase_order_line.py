@@ -268,19 +268,6 @@ class PurchaseOrderLine(models.Model):
         store=True,
         readonly=True,
     )
-    invoice_status = fields.Selection(
-        selection=[
-            ("no", "Nothing to bill"),
-            ("to do", "To bill"),
-            ("partially", "Partially billed"),
-            ("done", "Fully billed"),
-            ("over done", "Over billed"),
-        ],
-        string="Invoice status",
-        default="no",
-        compute="_compute_invoice_status",
-        store=True,
-    )
     invoice_state = fields.Selection(
         selection=[
             ("no", "Nothing to bill"),
@@ -291,8 +278,8 @@ class PurchaseOrderLine(models.Model):
         ],
         string="Invoice status",
         default="no",
-        # compute="_compute_invoice_status",
-        # store=True,
+        compute="_compute_invoice_state",
+        store=True,
     )
 
     # ------------------------------------------------------------
@@ -652,33 +639,33 @@ class PurchaseOrderLine(models.Model):
                 line.qty_to_invoice = 0
 
     @api.depends("state", "product_uom_qty", "qty_invoiced", "qty_to_invoice")
-    def _compute_invoice_status(self):
+    def _compute_invoice_state(self):
         precision = self.env["decimal.precision"].precision_get("Product Unit")
         for line in self.filtered(lambda l: not l.display_type):
             if line.state != "purchase":
-                line.invoice_status = "no"
+                line.invoice_state = "no"
             elif float_is_zero(line.qty_invoiced, precision_digits=precision):
-                line.invoice_status = "to do"
+                line.invoice_state = "to do"
             elif not float_is_zero(
                 line.qty_invoiced, precision_digits=precision
             ) and not float_is_zero(line.qty_to_invoice, precision_digits=precision):
-                line.invoice_status = "partially"
+                line.invoice_state = "partially"
             elif (
                 float_compare(
                     line.qty_invoiced, line.product_uom_qty, precision_digits=precision
                 )
                 == 0
             ):
-                line.invoice_status = "done"
+                line.invoice_state = "done"
             elif (
                 float_compare(
                     line.qty_invoiced, line.product_uom_qty, precision_digits=precision
                 )
                 > 0
             ):
-                line.invoice_status = "over done"
+                line.invoice_state = "over done"
             else:
-                line.invoice_status = "no"
+                line.invoice_state = "no"
 
     # -------------------------------------------------------------------------
     # ONCHANGE METHODS

@@ -31,9 +31,9 @@
                     invisible="1"/>
                 <separator />
                 <filter name="to_invoice" string="To Invoice"
-                    domain="[('line_invoice_status', '=', 'to do')]" />
+                    domain="[('line_invoice_state', '=', 'to do')]" />
                 <filter name="fully_invoiced" string="Fully Invoiced"
-                    domain="[('line_invoice_status', '=', 'done')]" />
+                    domain="[('line_invoice_state', '=', 'done')]" />
                 <group expand="0" string="Extended Filters">
                     <field name="categ_id"
                         filter_domain="[('categ_id', 'child_of', self)]" />
@@ -141,7 +141,7 @@
                 <field name="price_total" optional="show" sum="Sum of Total" />
                 <field name="state" optional="hide" />
                 <field name="pricelist_id" optional="hide" />
-                <field name="line_invoice_status" optional="hide" />
+                <field name="line_invoice_state" optional="hide" />
                 <field name="currency_id" column_invisible="True" />
             </list>
         </field>

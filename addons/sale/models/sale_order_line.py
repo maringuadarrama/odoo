@@ -386,20 +386,6 @@ class SaleOrderLine(models.Model):
         compute_sudo=True,
         readonly=True,
     )
-    invoice_status = fields.Selection(
-        selection=[
-            ("no", "Nothing to invoice"),
-            ("to do", "To invoice"),
-            ("partially", "Partially invoiced"),
-            ("done", "Fully invoiced"),
-            ("over done", "Over invoiced"),
-            ("upselling", "Upselling"),
-        ],
-        string="Invoice Status",
-        default="no",
-        compute="_compute_invoice_status",
-        store=True,
-    )
     invoice_state = fields.Selection(
         selection=[
             ("no", "Nothing to invoice"),
@@ -411,8 +397,8 @@ class SaleOrderLine(models.Model):
         ],
         string="Invoice Status",
         default="no",
-        # compute="_compute_invoice_status",
-        # store=True,
+        compute="_compute_invoice_state",
+        store=True,
     )
 
     is_product_archived = fields.Boolean(
@@ -1053,7 +1039,7 @@ class SaleOrderLine(models.Model):
     @api.depends(
         "state", "product_uom_qty", "qty_transfered", "qty_invoiced", "qty_to_invoice"
     )
-    def _compute_invoice_status(self):
+    def _compute_invoice_state(self):
         """Compute the invoice status of a SO line. Possible statuses:
         - no: if the SO is not in status 'sale', we consider that there is nothing to
           invoice. This is also the default value if the conditions of no other status is met.
@@ -1068,15 +1054,15 @@ class SaleOrderLine(models.Model):
         precision = self.env["decimal.precision"].precision_get("Product Unit")
         for line in self.filtered(lambda l: not l.display_type):
             if line.state != "sale":
-                line.invoice_status = "no"
+                line.invoice_state = "no"
             elif line.is_downpayment and line.amount_to_invoice_taxexc == 0:
-                line.invoice_status = "done"
+                line.invoice_state = "done"
             elif float_is_zero(line.qty_invoiced, precision_digits=precision):
-                line.invoice_status = "to do"
+                line.invoice_state = "to do"
             elif not float_is_zero(
                 line.qty_invoiced, precision_digits=precision
             ) and not float_is_zero(line.qty_to_invoice, precision_digits=precision):
-                line.invoice_status = "partially"
+                line.invoice_state = "partially"
             elif (
                 line.product_id.invoice_policy == "order"
                 and line.product_uom_qty >= 0.0
@@ -1087,23 +1073,23 @@ class SaleOrderLine(models.Model):
                 )
                 == 1
             ):
-                line.invoice_status = "upselling"
+                line.invoice_state = "upselling"
             elif (
                 float_compare(
                     line.qty_invoiced, line.product_uom_qty, precision_digits=precision
                 )
                 == 0
             ):
-                line.invoice_status = "done"
+                line.invoice_state = "done"
             elif (
                 float_compare(
                     line.qty_invoiced, line.product_uom_qty, precision_digits=precision
                 )
                 > 0
             ):
-                line.invoice_status = "over done"
+                line.invoice_state = "over done"
             else:
-                line.invoice_status = "no"
+                line.invoice_state = "no"
 
     # ------------------------------------------------------------
     # ONCHANGE METHODS

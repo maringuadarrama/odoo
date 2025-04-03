@@ -20,9 +20,9 @@ class PaymentTransaction(models.Model):
         copy=False,
         readonly=True,
     )
-    sale_order_ids_nbr = fields.Integer(
+    count_sale_order = fields.Integer(
         string="# of Sales Orders",
-        compute="_compute_sale_order_ids_nbr",
+        compute="_compute_count_sale_order",
     )
 
     def _compute_sale_order_reference(self, order):
@@ -50,9 +50,9 @@ class PaymentTransaction(models.Model):
         return order_reference
 
     @api.depends("sale_order_ids")
-    def _compute_sale_order_ids_nbr(self):
+    def _compute_count_sale_order(self):
         for trans in self:
-            trans.sale_order_ids_nbr = len(trans.sale_order_ids)
+            trans.count_sale_order = len(trans.sale_order_ids)
 
     def _post_process(self):
         """Override of `payment` to add Sales-specific logic to the post-processing.

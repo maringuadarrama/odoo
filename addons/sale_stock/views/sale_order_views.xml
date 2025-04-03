@@ -94,7 +94,7 @@
                     )
                 </attribute>
             </xpath>
-            <field name="invoice_status" position="before">
+            <field name="invoice_state" position="before">
                 <field name="date_effective" column_invisible="True" />
                 <field name="delivery_status"
                     decoration-success="delivery_status == 'full'"

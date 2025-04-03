@@ -53,7 +53,7 @@ class SaleOrder(models.Model):
     def _compute_amount_invoiced(self):
         super()._compute_amount_invoiced()
         for order in self:
-            if order.invoice_status == 'done':
+            if order.invoice_state == 'done':
                 continue
 
             # We need to account for the downpayment paid in POS with and without invoice

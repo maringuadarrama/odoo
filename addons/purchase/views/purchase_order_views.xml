@@ -97,10 +97,10 @@
                     domain="[('priority', '=', '1')]" />
                 <separator />
                 <filter name="not_invoiced" string="Waiting Bills"
-                    domain="[('invoice_status', '=', 'to do')]"
+                    domain="[('invoice_state', '=', 'to do')]"
                     help="Purchase orders that include lines not invoiced." />
                 <filter name="invoiced" string="Bills Received"
-                    domain="[('invoice_status', '=', 'done')]"
+                    domain="[('invoice_state', '=', 'done')]"
                     help="Purchase orders that have been invoiced." />
                 <separator />
                 <filter name="order_date" string="Order Date" date="date_order" />
@@ -202,7 +202,7 @@
                 <field name="amount_total" widget="monetary"
                     sum="Total amount" optional="show" />
                 <field name="state" optional="show" />
-                <field name="invoice_status"
+                <field name="invoice_state"
                     optional="hide"
                     column_invisible="context.get('quotation_only', False)" />
                 <field name="activity_exception_decoration" widget="activity_exception" />
@@ -270,7 +270,7 @@
                     decoration-warning="state == 'to approve'"
                     decoration-info="state == 'draft'"
                     optional="show" />
-                <field name="invoice_status"
+                <field name="invoice_state"
                     optional="hide" />
                 <field name="currency_id"
                     readonly="state in ['cancel', 'purchase']"
@@ -297,7 +297,7 @@
                 multi_edit="1"
                 sample="1"
                 decoration-muted="state == 'cancel'"
-                decoration-info="invoice_status == 'to do'">
+                decoration-info="invoice_state == 'to do'">
                 <header>
                     <button name="create_invoice" string="Create Bills"
                         type="object" />
@@ -324,9 +324,9 @@
                 <field name="currency_id" column_invisible="True"
                     readonly="state in ['cancel', 'purchase']" />
                 <field name="state" column_invisible="True" />
-                <field name="invoice_status" widget="badge"
-                    decoration-success="invoice_status == 'done'"
-                    decoration-info="invoice_status == 'to do'"
+                <field name="invoice_state" widget="badge"
+                    decoration-success="invoice_state == 'done'"
+                    decoration-info="invoice_state == 'to do'"
                     optional="show" />
                 <field name="date_planned"
                     optional="show"
@@ -423,7 +423,7 @@
                         type="object" class="oe_highlight"
                         context="{'create_bill': True}"
                         data-hotkey="w"
-                        invisible="state != 'purchase' or invoice_status in ('no', 'done') or not order_line_ids" />
+                        invisible="state != 'purchase' or invoice_state in ('no', 'done') or not order_line_ids" />
                     <button name="action_acknowledge" string="Acknowledge"
                         type="object"
                         invisible="acknowledged or state != 'purchase'" />
@@ -465,7 +465,7 @@
                         <button name="action_bill_matching"
                             type="object" class="oe_stat_button"
                             icon="fa-bullseye"
-                            invisible="not partner_id or state != 'purchase' or not count_partner_supplier_invoice or invoice_status == 'done'"
+                            invisible="not partner_id or state != 'purchase' or not count_partner_supplier_invoice or invoice_state == 'done'"
                             groups="account.group_account_invoice">
                             <div class="o_field_statinfo">
                                 <span class="o_stat_text">Bill Matching</span>
@@ -572,7 +572,7 @@
                                         groups="!uom.group_uom" />
                                     <field name="invoice_line_ids"
                                         column_invisible="True" />
-                                    <field name="invoice_status"
+                                    <field name="invoice_state"
                                         column_invisible="True" />
                                     <field name="sequence" widget="handle" />
                                     <field name="product_id" widget="product_label_section_and_note_field"
@@ -740,13 +740,13 @@
                                         groups="base.group_multi_company" />
                                 </group>
                                 <group name="invoice_info">
-                                    <field name="invoice_status"
+                                    <field name="invoice_state"
                                         invisible="state in ('draft', 'cancel')" />
                                     <field name="payment_term_id"
-                                        readonly="invoice_status == 'done' or locked"
+                                        readonly="invoice_state == 'done' or locked"
                                         options="{'no_create': True}" />
                                     <field name="fiscal_position_id"
-                                        readonly="invoice_status == 'done' or locked"
+                                        readonly="invoice_state == 'done' or locked"
                                         options="{'no_create': True}" />
                                 </group>
                             </group>

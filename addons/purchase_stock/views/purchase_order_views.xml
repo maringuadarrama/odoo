@@ -5,7 +5,7 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_view_tree" />
         <field name="arch" type="xml">
-            <field name="invoice_status" position="before">
+            <field name="invoice_state" position="before">
                 <field name="date_effective" column_invisible="True" />
                 <field name="receipt_status" widget="badge"
                     optional="hide"
@@ -82,7 +82,7 @@
                 position="after">
                 <field name="move_ids" />
             </xpath>
-            <xpath expr="//group[@name='invoice_info']/field[@name='invoice_status']" position="before">
+            <xpath expr="//group[@name='invoice_info']/field[@name='invoice_state']" position="before">
                 <field name="receipt_status" invisible="state != 'purchase'" />
             </xpath>
             <xpath expr="//field[@name='order_line_ids']/form//field[@name='analytic_distribution']"

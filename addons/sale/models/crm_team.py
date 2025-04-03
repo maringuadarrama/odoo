@@ -107,7 +107,7 @@ class CrmTeam(models.Model):
         sale_order_data = self.env["sale.order"]._read_group(
             [
                 ("team_id", "in", self.ids),
-                ("invoice_status", "=", "to do"),
+                ("invoice_state", "=", "to do"),
             ],
             ["team_id"],
             ["__count"],

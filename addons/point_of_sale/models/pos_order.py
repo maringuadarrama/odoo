@@ -347,6 +347,10 @@ class PosOrder(models.Model):
         ('invoiced', 'Fully Invoiced'),
         ('to_invoice', 'To Invoice'),
     ], string='Invoice Status', compute='_compute_invoice_status')
+    invoice_state = fields.Selection([
+        ('invoiced', 'Fully Invoiced'),
+        ('to_invoice', 'To Invoice'),
+    ], string='Invoice Status', compute='_compute_invoice_status')
 
     @api.depends('account_move')
     def _compute_invoice_status(self):

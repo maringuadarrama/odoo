@@ -430,7 +430,7 @@ class AccountMove(models.Model):
         common_domain = [
             ("company_id", "=", self.company_id.id),
             ("state", "=", "purchase"),
-            ("invoice_status", "in", ("to do", "no")),
+            ("invoice_state", "in", ("to do", "no")),
         ]
         matching_purchase_orders = self.env["purchase.order"]
 

@@ -94,14 +94,12 @@ class SaleReport(models.Model):
         string="Status",
         readonly=True,
     )
-    invoice_status = fields.Selection(
+    invoice_state = fields.Selection(
         selection=[
             ("no", "Nothing to invoice"),
-            ("to invoice", "To invoice"),
-            ("partially", "Partially invoiced"),
-            ("invoiced", "Fully Invoiced"),
-            ("upselling", "Upselling Opportunity"),
             ("to do", "To invoice"),
+            ("partially", "Partially invoiced"),
+            ("upselling", "Upselling Opportunity"),
             ("done", "Fully invoiced"),
             ("over done", "Upselling"),
         ],
@@ -154,14 +152,12 @@ class SaleReport(models.Model):
         string="Untaxed Amount Invoiced",
         readonly=True,
     )
-    line_invoice_status = fields.Selection(
+    line_invoice_state = fields.Selection(
         selection=[
             ("no", "Nothing to invoice"),
-            ("to invoice", "To invoice"),
-            ("partially", "Partially invoiced"),
-            ("invoiced", "Fully Invoiced"),
-            ("upselling", "Upselling Opportunity"),
             ("to do", "To invoice"),
+            ("partially", "Partially invoiced"),
+            ("upselling", "Upselling Opportunity"),
             ("done", "Fully invoiced"),
             ("over done", "Upselling"),
         ],
@@ -247,8 +243,8 @@ class SaleReport(models.Model):
             o.state AS state,
             o.name AS name,
             CONCAT('sale.order', ',', o.id) AS order_reference,
-            o.invoice_status as invoice_status,
-            l.invoice_status AS line_invoice_status,
+            o.invoice_state as invoice_state,
+            l.invoice_state AS line_invoice_state,
             l.product_id AS product_id,
             p.product_tmpl_id,
             t.categ_id AS categ_id,
@@ -355,7 +351,7 @@ class SaleReport(models.Model):
             l.product_id,
             l.order_id,
             l.price_unit,
-            l.invoice_status,
+            l.invoice_state,
             t.uom_id,
             t.categ_id,
             o.name,
@@ -363,7 +359,7 @@ class SaleReport(models.Model):
             o.partner_id,
             o.user_id,
             o.state,
-            o.invoice_status,
+            o.invoice_state,
             o.company_id,
             o.campaign_id,
             o.medium_id,

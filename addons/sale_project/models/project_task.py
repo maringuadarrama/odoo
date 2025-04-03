@@ -202,11 +202,11 @@ class ProjectTask(models.Model):
         partner = self.partner_id or self.sale_line_id.order_id.partner_id
         return partner or super()._rating_get_partner()
 
-    @api.depends('sale_order_id.invoice_status', 'sale_order_id.order_line_ids')
+    @api.depends('sale_order_id.invoice_state', 'sale_order_id.order_line_ids')
     def _compute_task_to_invoice(self):
         for task in self:
             if task.sale_order_id:
-                task.task_to_invoice = bool(task.sale_order_id.invoice_status not in ('no', 'done'))
+                task.task_to_invoice = bool(task.sale_order_id.invoice_state not in ('no', 'done'))
             else:
                 task.task_to_invoice = False
 
@@ -215,8 +215,8 @@ class ProjectTask(models.Model):
         sql = SQL("""(
             SELECT so.id
             FROM sale_order so
-            WHERE so.invoice_status != 'done'
-                AND so.invoice_status != 'no'
+            WHERE so.invoice_state != 'done'
+                AND so.invoice_state != 'no'
         )""")
         operator_new = 'in'
         if (bool(operator == '=') ^ bool(value)):

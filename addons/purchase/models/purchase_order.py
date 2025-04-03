@@ -317,39 +317,18 @@ class PurchaseOrder(models.Model):
         store=True,
         copy=False,
     )
-    invoice_status = fields.Selection(
-        [
-            ("no", "Nothing to bill"),
-            ("to invoice", "To bill"),
-            ("partially", "Partially billed"),
-            ("invoiced", "Fully billed"),
-            ("over invoiced", "Over billed"),
-            ("to do", "To bill"),
-            ("done", "Fully billed"),
-            ("over done", "Over billed"),
-        ],
-        string="Invoice status",
-        default="no",
-        compute="_compute_invoice_status",
-        store=True,
-        readonly=True,
-        copy=False,
-    )
     invoice_state = fields.Selection(
         [
             ("no", "Nothing to bill"),
-            ("to invoice", "To bill"),
-            ("partially", "Partially billed"),
-            ("invoiced", "Fully billed"),
-            ("over invoiced", "Over billed"),
             ("to do", "To bill"),
+            ("partially", "Partially billed"),
             ("done", "Fully billed"),
             ("over done", "Over billed"),
         ],
         string="Invoice status",
         default="no",
-        # compute="_compute_invoice_status",
-        # store=True,
+        compute="_compute_invoice_state",
+        store=True,
         readonly=True,
         copy=False,
     )
@@ -673,18 +652,18 @@ class PurchaseOrder(models.Model):
             order.count_invoice = len(invoices)
 
     @api.depends("state", "order_line_ids.qty_to_invoice")
-    def _compute_invoice_status(self):
+    def _compute_invoice_state(self):
         precision = self.env["decimal.precision"].precision_get("Product Unit")
         for order in self:
             if order.state != "purchase":
-                order.invoice_status = "no"
+                order.invoice_state = "no"
                 continue
 
             if any(
                 not float_is_zero(line.qty_to_invoice, precision_digits=precision)
                 for line in order.order_line_ids.filtered(lambda l: not l.display_type)
             ):
-                order.invoice_status = "to do"
+                order.invoice_state = "to do"
             elif (
                 all(
                     float_is_zero(line.qty_to_invoice, precision_digits=precision)
@@ -694,9 +673,9 @@ class PurchaseOrder(models.Model):
                 )
                 and order.invoice_ids
             ):
-                order.invoice_status = "done"
+                order.invoice_state = "done"
             else:
-                order.invoice_status = "no"
+                order.invoice_state = "no"
 
     # ------------------------------------------------------------
     # ONCHANGE METHODS
@@ -1122,7 +1101,7 @@ class PurchaseOrder(models.Model):
         invoice_vals_list = []
         sequence = 10
         for order in self:
-            if order.invoice_status != "to invoice":
+            if order.invoice_state != "to invoice":
                 continue
 
             order = order.with_company(order.company_id)
