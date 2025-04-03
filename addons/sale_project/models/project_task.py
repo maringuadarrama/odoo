@@ -12,7 +12,7 @@ class ProjectTask(models.Model):
 
     def _domain_sale_line_id(self):
         domain = expression.AND([
-            self.env['sale.order.line']._get_lines_sellable_domain(),
+            self.env['sale.order.line']._get_domain_sellable(),
             self.env['sale.order.line']._domain_sale_line_service(),
             [
                 '|',

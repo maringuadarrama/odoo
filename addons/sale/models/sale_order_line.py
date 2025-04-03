@@ -1120,7 +1120,7 @@ class SaleOrderLine(models.Model):
                 self.product_id = False
             return {
                 "warning": {
-                    "title": _("Warning for %s", product.name),
+                    "title": _(f"Warning for {product.name}"),
                     "message": product.sale_line_warn_msg,
                 }
             }
@@ -1184,6 +1184,26 @@ class SaleOrderLine(models.Model):
         self.ensure_one()
         return self.date_order
 
+    def _get_date_planned(self):
+        self.ensure_one()
+        if self.state == "sale" and self.date_order:
+            date_order = self.date_order
+        else:
+            date_order = fields.Datetime.now()
+        return date_order + timedelta(days=self.customer_lead or 0.0)
+
+    def _get_domain_sellable(self):
+        discount_products_ids = self.env.companies.sale_discount_product_id.ids
+        domain = [("is_downpayment", "=", False)]
+        if discount_products_ids:
+            domain = expression.AND(
+                [
+                    domain,
+                    [("product_id", "not in", discount_products_ids)],
+                ]
+            )
+        return domain
+
     def _get_downpayment_description(self):
         self.ensure_one()
         if self.display_type:
@@ -1233,14 +1253,6 @@ class SaleOrderLine(models.Model):
             return "cancel"
 
         return ""
-
-    def _get_date_planned(self):
-        self.ensure_one()
-        if self.state == "sale" and self.date_order:
-            date_order = self.date_order
-        else:
-            date_order = fields.Datetime.now()
-        return date_order + timedelta(days=self.customer_lead or 0.0)
 
     def _get_invoice_line_ids(self):
         self.ensure_one()
@@ -1304,18 +1316,6 @@ class SaleOrderLine(models.Model):
             )
             or self.env["sale.order.line"]
         )
-
-    def _get_lines_sellable_domain(self):
-        discount_products_ids = self.env.companies.sale_discount_product_id.ids
-        domain = [("is_downpayment", "=", False)]
-        if discount_products_ids:
-            domain = expression.AND(
-                [
-                    domain,
-                    [("product_id", "not in", discount_products_ids)],
-                ]
-            )
-        return domain
 
     def _get_lines_with_price(self):
         """A combo product line always has a zero price (by design). The actual price of the combo
