@@ -347,41 +347,41 @@ class SaleOrderLine(models.Model):
     qty_to_invoice = fields.Float(
         string="Quantity To Invoice",
         digits="Product Unit",
-        compute="_compute_qty_invoiced",
+        compute="_compute_invoice_amounts",
         store=True,
         readonly=True,
     )
     qty_invoiced = fields.Float(
         string="Invoiced Quantity",
         digits="Product Unit",
-        compute="_compute_qty_invoiced",
+        compute="_compute_invoice_amounts",
         store=True,
         readonly=True,
     )
     amount_to_invoice_taxinc = fields.Monetary(
         string="Un-invoiced Balance",
-        compute="_compute_amount_invoiced",
+        compute="_compute_invoice_amounts",
         store=True,
         compute_sudo=True,
         readonly=True,
     )
     amount_to_invoice_taxexc = fields.Monetary(
         string="Untaxed Amount To Invoice",
-        compute="_compute_amount_invoiced",
+        compute="_compute_invoice_amounts",
         store=True,
         compute_sudo=True,
         readonly=True,
     )
     amount_invoiced_taxexc = fields.Monetary(
         string="Untaxed Invoiced Amount",
-        compute="_compute_amount_invoiced",
+        compute="_compute_invoice_amounts",
         store=True,
         compute_sudo=True,
         readonly=True,
     )
     amount_invoiced_taxinc = fields.Monetary(
         string="Invoiced Amount",
-        compute="_compute_amount_invoiced",
+        compute="_compute_invoice_amounts",
         store=True,
         compute_sudo=True,
         readonly=True,

@@ -880,7 +880,9 @@ class SaleOrder(models.Model):
     def _compute_amounts(self):
         AccountTax = self.env["account.tax"]
         for order in self:
-            order_lines = order.order_line_ids.filtered(lambda x: not x.display_type)
+            order_lines = order.order_line_ids.filtered(
+                lambda line: not line.display_type
+            )
             base_lines = [
                 line._prepare_base_line_for_taxes_computation() for line in order_lines
             ]
