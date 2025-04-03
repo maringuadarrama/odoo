@@ -939,7 +939,7 @@ class SaleOrderLine(models.Model):
         for line in self.filtered(lambda l: not l.display_type):
             vals = {
                 "qty_to_invoice": 0.0,
-                "qty_invoice": 0.0,
+                "qty_invoiced": 0.0,
                 "amount_to_invoice_taxinc": 0.0,
                 "amount_to_invoice_taxexc": 0.0,
                 "amount_invoiced_taxinc": 0.0,
@@ -999,7 +999,7 @@ class SaleOrderLine(models.Model):
             if line.product_id.type == "combo":
                 combo_lines.append(line)
             else:
-                vals["qty_to_invoice"] = vals["qty_done"] - vals["qty_invoiced"]
+                vals["qty_to_invoice"] = vals["qty_to_invoice"] - vals["qty_invoiced"]
                 vals["amount_to_invoice_taxexc"] = (
                     vals["qty_to_invoice"] * line.price_unit_discounted_taxexc
                 )
