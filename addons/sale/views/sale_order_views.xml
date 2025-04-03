@@ -359,7 +359,7 @@
                         id="send_proforma_primary"
                         type="object" class="btn-primary"
                         context="{'proforma': True, 'validate_analytic': True}"
-                        invisible="state != 'draft' or count_invoice &gt;= 1"
+                        invisible="state != 'draft' or count_invoice_ids &gt;= 1"
                         groups="sale.group_proforma_sales" />
                     <button name="action_confirm" string="Confirm"
                         type="object" class="btn-primary"
@@ -370,7 +370,7 @@
                         id="send_proforma"
                         type="object"
                         context="{'proforma': True, 'validate_analytic': True}"
-                        invisible="state == 'draft' or count_invoice &gt;= 1"
+                        invisible="state == 'draft' or count_invoice_ids &gt;= 1"
                         groups="sale.group_proforma_sales" />
                     <button name="action_quotation_send" string="Send by Email"
                         id="send_by_email_primary"
@@ -418,8 +418,8 @@
                         <button name="action_view_invoice"
                             type="object" class="oe_stat_button"
                             icon="fa-pencil-square-o"
-                            invisible="count_invoice == 0">
-                            <field name="count_invoice" widget="statinfo" string="Invoices" />
+                            invisible="count_invoice_ids == 0">
+                            <field name="count_invoice_ids" widget="statinfo" string="Invoices" />
                         </button>
                     </div>
                     <div class="badge rounded-pill text-bg-secondary float-end fs-6 border-0"
@@ -954,7 +954,7 @@
                                         invisible="1"
                                         groups="!account.group_delivery_invoice_address" />
                                     <field name="journal_id"
-                                        readonly="count_invoice != 0 and state == 'sale'"
+                                        readonly="count_invoice_ids != 0 and state == 'sale'"
                                         groups="base.group_no_one" />
                                     <field name="invoice_state"
                                         invisible="state != 'sale'"

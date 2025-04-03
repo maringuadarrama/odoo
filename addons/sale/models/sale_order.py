@@ -163,7 +163,6 @@ class SaleOrder(models.Model):
         store=True,
         precompute=True,
     )
-    # TODO remove after upgrade
     user_id = fields.Many2one(
         comodel_name="res.users",
         string="Salesperson",
@@ -183,6 +182,7 @@ class SaleOrder(models.Model):
         tracking=2,
         index=True,
     )
+    # TODO remove after upgrade
     sale_user_id = fields.Many2one(
         comodel_name="res.users",
         string="Salesperson",
@@ -231,7 +231,7 @@ class SaleOrder(models.Model):
         string="Order Reference",
         required=True,
         default=lambda self: _("New"),
-        readonly=False,
+        readonly=True,
         copy=False,
         index="trigram",
     )
@@ -418,14 +418,6 @@ class SaleOrder(models.Model):
         digits=0,
         compute="_compute_amount_undiscounted",
     )
-    amount_invoiced_taxinc = fields.Monetary(
-        string="Already invoiced",
-        compute="_compute_amount_invoiced",
-    )
-    amount_to_invoice_taxinc = fields.Monetary(
-        string="Un-invoiced Balance",
-        compute="_compute_amount_to_invoice",
-    )
     tax_totals = fields.Binary(
         compute="_compute_tax_totals",
         exportable=False,
@@ -439,11 +431,18 @@ class SaleOrder(models.Model):
         search="_search_invoice_ids",
         copy=False,
     )
-    count_invoice = fields.Integer(
+    count_invoice_ids = fields.Integer(
         string="Invoice Count",
         compute="_compute_invoice_ids",
     )
-
+    amount_to_invoice_taxinc = fields.Monetary(
+        string="Un-invoiced Balance",
+        compute="_compute_amount_to_invoice",
+    )
+    amount_invoiced_taxinc = fields.Monetary(
+        string="Already invoiced",
+        compute="_compute_amount_invoiced",
+    )
     invoice_state = fields.Selection(
         selection=INVOICE_STATE,
         string="Invoice Status",
@@ -964,7 +963,7 @@ class SaleOrder(models.Model):
                 lambda r: r.move_type in ("out_invoice", "out_refund")
             )
             order.invoice_ids = invoices
-            order.count_invoice = len(invoices)
+            order.count_invoice_ids = len(invoices)
 
     @api.depends("state", "order_line_ids.invoice_state")
     def _compute_invoice_state(self):
@@ -994,12 +993,8 @@ class SaleOrder(models.Model):
             ]
             if order.state != "sale":
                 order.invoice_state = "no"
-            elif any(
-                invoice_state == "to do" for invoice_state in line_invoice_state
-            ):
-                if any(
-                    invoice_state == "no" for invoice_state in line_invoice_state
-                ):
+            elif any(invoice_state == "to do" for invoice_state in line_invoice_state):
+                if any(invoice_state == "no" for invoice_state in line_invoice_state):
                     # If only discount/delivery/promotion lines can be invoiced, the SO should not
                     # be invoiceable.
                     invoiceable_domain = lines_domain + [

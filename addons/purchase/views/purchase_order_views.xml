@@ -474,9 +474,9 @@
                         <button name="action_view_invoice"
                             type="object" class="oe_stat_button"
                             icon="fa-pencil-square-o"
-                            invisible="count_invoice == 0 or state in ('draft', 'to approve')">
+                            invisible="count_invoice_ids == 0 or state in ('draft', 'to approve')">
                             <field name='invoice_ids' invisible="1" />
-                            <field name="count_invoice" string="Vendor Bills" widget="statinfo" />
+                            <field name="count_invoice_ids" string="Vendor Bills" widget="statinfo" />
                         </button>
                     </div>
                     <div class="oe_title">
@@ -732,7 +732,7 @@
                                         domain="[('share', '=', False)]" />
                                     <field name="origin" />
                                     <field name="journal_id"
-                                        readonly="count_invoice != 0 and state == 'purchase'"
+                                        readonly="count_invoice_ids != 0 and state == 'purchase'"
                                         groups="base.group_no_one" />
                                     <field name="company_id"
                                         readonly="state in ('cancel', 'purchase')"

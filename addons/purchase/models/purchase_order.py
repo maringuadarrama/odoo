@@ -95,7 +95,7 @@ class PurchaseOrder(models.Model):
         precompute=True,
         readonly=False,
         check_company=True,
-        domain=[("company_id", "in", (False, company_id))],
+        domain='[("company_id", "in", (False, company_id))]',
         help="Fiscal positions are used to adapt taxes and accounts for particular customers "
         "or sales orders/invoices. The default value comes from the customer.",
     )
@@ -123,6 +123,26 @@ class PurchaseOrder(models.Model):
         help="International Commercial Terms are a series of predefined "
         "commercial terms used in international transactions.",
     )
+    user_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Buyer",
+        # compute="_compute_user_id",
+        # store=True,
+        # precompute=True,
+        readonly=False,
+        domain=lambda self: """
+            [
+                ('group_ids', '=', {}),
+                ('share', '=', False),
+                ('company_ids', '=', company_id),
+            ]
+        """.format(
+            self.env.ref("purchase.group_purchase_user").id
+        ),
+        tracking=True,
+        index=True,
+    )
+    # TODO remove after upgrade
     purchase_user_id = fields.Many2one(
         comodel_name="res.users",
         string="Buyer",
@@ -158,6 +178,7 @@ class PurchaseOrder(models.Model):
         string="Order Reference",
         required=True,
         default=lambda self: _("New"),
+        readonly=True,
         copy=False,
         index="trigram",
     )
@@ -220,9 +241,9 @@ class PurchaseOrder(models.Model):
     )
     date_validity = fields.Date(
         string="Expiration",
-        # compute="_compute_date_validity",
-        # store=True,
-        # precompute=True,
+        compute="_compute_date_validity",
+        store=True,
+        precompute=True,
         readonly=False,
         copy=False,
         help="Validity of the order, after that you will not able to sign & pay the quotation.",
@@ -310,7 +331,7 @@ class PurchaseOrder(models.Model):
         store=True,
         copy=False,
     )
-    count_invoice = fields.Integer(
+    count_invoice_ids = fields.Integer(
         string="Bill Count",
         default=0,
         compute="_compute_invoice_ids",
@@ -591,7 +612,7 @@ class PurchaseOrder(models.Model):
                 currency=order.currency_id or order.company_id.currency_id,
                 company=order.company_id,
             )
-            #TODO should i bring back amount_total_cc? lmmg
+            # TODO should i bring back amount_total_cc? lmmg
             # if order.currency_id != order.company_currency_id:
             #     order.tax_totals["amount_total_cc"] = (
             #         f"({formatLang(self.env, order.amount_total_cc, currency_obj=self.company_currency_id)})"
@@ -649,7 +670,7 @@ class PurchaseOrder(models.Model):
         for order in self:
             invoices = order.mapped("order_line_ids.invoice_line_ids.move_id")
             order.invoice_ids = invoices
-            order.count_invoice = len(invoices)
+            order.count_invoice_ids = len(invoices)
 
     @api.depends("state", "order_line_ids.qty_to_invoice")
     def _compute_invoice_state(self):
