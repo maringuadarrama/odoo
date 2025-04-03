@@ -745,14 +745,14 @@ class PurchaseOrder(models.Model):
         return {}
 
     @api.onchange("date_planned")
-    def onchange_date_planned(self):
+    def _onchange_date_planned(self):
         if self.date_planned:
             self.order_line_ids.filtered(
                 lambda line: not line.display_type
             ).date_planned = self.date_planned
 
     @api.onchange("company_id", "fiscal_position_id")
-    def _compute_tax_id(self):
+    def _compute_fiscal_position_id(self):
         """Trigger the recompute of the taxes if the fiscal position is changed"""
         self.order_line_ids._compute_tax_ids()
 
@@ -922,7 +922,7 @@ class PurchaseOrder(models.Model):
         return res
 
     def action_cancel(self):
-        self._can_be_cancelled_has_invoice()
+        self._can_be_cancelled_except_invoiced()
         self.write({"state": "cancel"})
 
     def action_confirm(self):
@@ -1878,7 +1878,7 @@ class PurchaseOrder(models.Model):
         #         )
         # return self.company_id.po_double_validation == "one_step" or is_manager
 
-    def _can_be_cancelled_has_invoice(self):
+    def _can_be_cancelled_except_invoiced(self):
         """Returns whether the order qualifies to be canceled by the current user"""
         self.ensure_one()
         purchase_orders_with_invoices = self.filtered(
