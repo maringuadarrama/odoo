@@ -158,11 +158,10 @@ class AccountAccruedOrdersWizard(models.TransientModel):
                 o = order.new(origin=order)
                 if is_purchase:
                     o.order_line_ids.with_context(accrual_entry_date=self.date)._compute_qty_transfered()
-                    o.order_line_ids.with_context(accrual_entry_date=self.date)._compute_qty_invoiced()
+                    o.order_line_ids.with_context(accrual_entry_date=self.date)._compute_invoice_amounts()
                 else:
                     o.order_line_ids.with_context(accrual_entry_date=self.date)._compute_qty_transfered()
-                    o.order_line_ids.with_context(accrual_entry_date=self.date)._compute_qty_invoiced()
-                    o.order_line_ids.with_context(accrual_entry_date=self.date)._compute_amount_invoiced()
+                    o.order_line_ids.with_context(accrual_entry_date=self.date)._compute_invoice_amounts()
                 lines = o.order_line_ids.filtered(
                     # We only want lines that are not sections or notes and include all lines
                     # for purchase orders but exclude downpayment lines for sales orders.

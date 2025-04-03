@@ -936,12 +936,14 @@ class SaleOrderLine(models.Model):
     @api.depends(
         "state",
         "product_uom_qty",
+        "price_subtotal",
+        "price_total",
         "qty_transfered",
         "invoice_line_ids.parent_state",
         "invoice_line_ids.product_uom_id",
         "invoice_line_ids.quantity",
     )
-    def _compute_qty_invoiced(self):
+    def _compute_invoice_amounts(self):
         """Compute the quantity invoiced. If case of a refund, the quantity invoiced is decreased.
         Note that this is the case only if the refund is generated from the SO and that is intentional:
         if a refund made would automatically decrease the invoiced quantity,
@@ -949,37 +951,78 @@ class SaleOrderLine(models.Model):
         """
         combo_lines = []
         for line in self.filtered(lambda l: not l.display_type):
-            qty_invoiced = 0.0
+            vals = {
+                "qty_to_invoice": 0.0,
+                "qty_invoice": 0.0,
+                "amount_to_invoice_taxinc": 0.0,
+                "amount_to_invoice_taxexc": 0.0,
+                "amount_invoiced_taxinc": 0.0,
+                "amount_invoiced_taxexc": 0.0,
+            }
+
             if line.state != "sale":
-                line.qty_invoiced = qty_invoiced
-                line.qty_to_invoice = 0.0
+                line.write(vals)
                 continue
 
-            for invoice_line in line._get_invoice_line_ids():
-                if (
-                    invoice_line.parent_state == "posted"
-                    or invoice_line.move_id.payment_state == "invoicing_legacy"
-                ):
-                    qty_invoiced += (
-                        invoice_line.product_uom_id._compute_quantity(
-                            invoice_line.quantity, line.product_uom_id
-                        )
-                        * -invoice_line.move_id.direction_sign
+            qty_done = (
+                line.product_uom_qty
+                if line.product_id.invoice_policy == "order"
+                else line.qty_transfered
+            )
+            vals.update(
+                {
+                    "qty_to_invoice": qty_done,
+                    "amount_to_invoice_taxinc": line.price_subtotal,
+                    "amount_to_invoice_taxexc": line.price_total,
+                }
+            )
+
+            if not line.invoice_line_ids:
+                line.write(vals)
+                continue
+
+            for invoice_line in line._get_invoice_line_ids().filtered(
+                lambda x: x.parent_state == "posted"
+            ):
+                invoice_date = invoice_line.move_id.invoice_date
+                vals["qty_invoiced"] += (
+                    invoice_line.product_uom_id._compute_quantity(
+                        invoice_line.quantity, line.product_uom_id
                     )
-            line.qty_invoiced = qty_invoiced
+                    * -invoice_line.move_id.direction_sign
+                )
+                vals["amount_invoiced_taxexc"] += (
+                    invoice_line.currency_id._convert(
+                        invoice_line.price_subtotal,
+                        line.currency_id,
+                        line.company_id,
+                        invoice_date,
+                    )
+                    * -invoice_line.move_id.direction_sign
+                )
+                vals["amount_invoiced_taxinc"] += (
+                    invoice_line.currency_id._convert(
+                        invoice_line.price_total,
+                        line.currency_id,
+                        line.company_id,
+                        invoice_date,
+                    )
+                    * -invoice_line.move_id.direction_sign
+                )
 
             if line.product_id.type == "combo":
                 combo_lines.append(line)
             else:
-                qty_done = (
-                    line.product_uom_qty
-                    if line.product_id.invoice_policy == "order"
-                    else line.qty_transfered
+                vals["qty_to_invoice"] = vals["qty_done"] - vals["qty_invoiced"]
+                vals["amount_to_invoice_taxexc"] = (
+                    vals["qty_to_invoice"] * line.price_unit_discounted_taxexc
                 )
-                line.qty_to_invoice = qty_done - line.qty_invoiced
+                vals["amount_to_invoice_taxinc"] = (
+                    vals["qty_to_invoice"] * line.price_unit_discounted_taxinc
+                )
 
-        # TODO I suspect this is wrong but we are not using this
-        # so i will just leave this here LMMG
+            line.write(vals)
+
         for combo_line in combo_lines:
             if any(
                 line.combo_item_id and line.qty_to_invoice
@@ -1006,67 +1049,6 @@ class SaleOrderLine(models.Model):
                 )
             ):
                 line.product_updatable = False
-
-    @api.depends(
-        "state",
-        "product_uom_qty",
-        "price_unit_discounted_taxinc",
-        "price_unit_discounted_taxexc",
-        "qty_transfered",
-        "invoice_line_ids.parent_state",
-        "invoice_line_ids.price_total",
-        "qty_invoiced",
-    )
-    def _compute_amount_invoiced(self):
-        for line in self.filtered(lambda l: not l.display_type):
-            amount_to_invoice_taxinc = amount_to_invoice_taxexc = 0.0
-            amount_invoiced_taxinc = amount_invoiced_taxexc = 0.0
-
-            if line.state == "sale":
-                qty_done = (
-                    line.product_uom_qty
-                    if line.product_id.invoice_policy == "order"
-                    else line.qty_transfered
-                )
-                qty_to_invoice = qty_done - line.qty_invoiced
-                amount_to_invoice_taxinc += (
-                    line.price_unit_discounted_taxinc * qty_to_invoice
-                )
-                amount_to_invoice_taxexc += (
-                    line.price_unit_discounted_taxexc * qty_to_invoice
-                )
-
-                for invoice_line in line._get_invoice_line_ids():
-                    if (
-                        invoice_line.parent_state == "posted"
-                        or invoice_line.move_id.payment_state == "invoicing_legacy"
-                    ):
-                        invoice_date = (
-                            invoice_line.move_id.invoice_date
-                        )
-                        amount_invoiced_taxexc += (
-                            invoice_line.currency_id._convert(
-                                invoice_line.price_subtotal,
-                                line.currency_id,
-                                line.company_id,
-                                invoice_date,
-                            )
-                            * -invoice_line.move_id.direction_sign
-                        )
-                        amount_invoiced_taxinc += (
-                            invoice_line.currency_id._convert(
-                                invoice_line.price_total,
-                                line.currency_id,
-                                line.company_id,
-                                invoice_date,
-                            )
-                            * -invoice_line.move_id.direction_sign
-                        )
-
-            line.amount_to_invoice_taxexc = amount_to_invoice_taxexc
-            line.amount_to_invoice_taxinc = amount_to_invoice_taxinc
-            line.amount_invoiced_taxexc = amount_invoiced_taxexc
-            line.amount_invoiced_taxinc = amount_invoiced_taxinc
 
     @api.depends(
         "state", "product_uom_qty", "qty_transfered", "qty_invoiced", "qty_to_invoice"

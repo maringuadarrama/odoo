@@ -95,12 +95,13 @@ class SaleOrderLine(models.Model):
             if all(picking.state == 'done' for picking in pos_lines.order_id.picking_ids):
                 sale_line.qty_transfered += sum((self._convert_qty(sale_line, pos_line.qty, 'p2s') for pos_line in pos_lines if sale_line.product_id.type != 'service'), 0)
 
-    @api.depends('pos_order_line_ids.qty')
-    def _compute_qty_invoiced(self):
-        super()._compute_qty_invoiced()
+    @api.depends('pos_order_line_ids', 'pos_order_line_ids.qty')
+    def _compute_invoice_amounts(self):
+        super()._compute_invoice_amounts()
         for sale_line in self:
             pos_lines = sale_line.pos_order_line_ids.filtered(lambda order_line: order_line.order_id.state not in ['cancel', 'draft'])
             sale_line.qty_invoiced += sum([self._convert_qty(sale_line, pos_line.qty, 'p2s') for pos_line in pos_lines], 0)
+            sale_line.amount_invoiced_taxexc += sum(sale_line.pos_order_line_ids.mapped('price_subtotal'))
 
     def _get_sale_order_fields(self):
         return ["product_id", "display_name", "price_unit", "product_uom_qty", "tax_ids", "qty_transfered", "qty_invoiced", "discount", "qty_to_invoice", "price_total", "is_downpayment"]
@@ -123,12 +124,6 @@ class SaleOrderLine(models.Model):
         # do not delete downpayment lines created from pos
         pos_downpayment_lines = self.filtered(lambda line: line.is_downpayment and line.sudo().pos_order_line_ids)
         return super(SaleOrderLine, self - pos_downpayment_lines).unlink()
-
-    @api.depends('pos_order_line_ids')
-    def _compute_amount_invoiced(self):
-        super()._compute_amount_invoiced()
-        for line in self:
-            line.amount_invoiced_taxexc += sum(line.pos_order_line_ids.mapped('price_subtotal'))
 
     def _get_downpayment_line_price_unit(self, invoices):
         return super()._get_downpayment_line_price_unit(invoices) + sum(
