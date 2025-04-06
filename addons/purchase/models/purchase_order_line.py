@@ -646,7 +646,7 @@ class PurchaseOrderLine(models.Model):
                     invoice_line.product_uom_id._compute_quantity(
                         invoice_line.quantity, line.product_uom_id
                     )
-                    * -invoice_line.move_id.direction_sign
+                    * invoice_line.move_id.direction_sign
                 )
 
             vals["qty_to_invoice"] = vals["qty_to_invoice"] - vals["qty_invoiced"]
