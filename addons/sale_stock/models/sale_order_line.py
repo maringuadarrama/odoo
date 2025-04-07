@@ -4,7 +4,7 @@ from collections import defaultdict
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.osv import expression
-from odoo.tools import float_compare
+from odoo.tools import float_compare, float_is_zero
 from odoo.tools.translate import _
 
 
@@ -42,6 +42,8 @@ class SaleOrderLine(models.Model):
         comodel_name="stock.move",
         inverse_name="sale_line_id",
         string="Stock Moves",
+        readonly=True,
+        copy=False,
     )
     date_scheduled = fields.Datetime(
         compute="_compute_qty_at_date",
@@ -60,10 +62,12 @@ class SaleOrderLine(models.Model):
         digits="Product Unit",
         compute="_compute_qty_at_date",
     )
-    qty_to_deliver = fields.Float(
+    qty_to_transfer = fields.Float(
         digits="Product Unit",
         compute="_compute_qty_transfered",
+        store=True,
     )
+
     display_qty_widget = fields.Boolean(
         compute="_compute_display_qty_widget",
     )
@@ -213,8 +217,7 @@ class SaleOrderLine(models.Model):
                     move.quantity, line.product_uom_id, rounding_method="HALF-UP"
                 )
             line.qty_transfered = qty_transfered
-
-        self.qty_to_deliver = self.product_uom_qty - self.qty_transfered
+            line.qty_to_transfer = line.product_uom_qty - line.qty_transfered
 
     @api.depends(
         "state",
@@ -223,7 +226,7 @@ class SaleOrderLine(models.Model):
         "product_uom_id",
         "product_uom_qty",
         "move_ids",
-        "qty_to_deliver",
+        "qty_to_transfer",
     )
     def _compute_display_qty_widget(self):
         """Compute the visibility of the inventory widget."""
@@ -232,7 +235,7 @@ class SaleOrderLine(models.Model):
                 line.state in ("draft", "sale")
                 and line.is_storable
                 and line.product_uom_id
-                and line.qty_to_deliver > 0
+                and line.qty_to_transfer > 0
             ):
                 if line.state == "sale" and not line.move_ids:
                     line.display_qty_widget = False

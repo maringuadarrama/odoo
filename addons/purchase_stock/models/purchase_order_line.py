@@ -46,10 +46,16 @@ class PurchaseOrderLine(models.Model):
     move_ids = fields.One2many(
         comodel_name="stock.move",
         inverse_name="purchase_line_id",
-        string="Reservation",
+        string="Stock Moves",
         readonly=True,
         copy=False,
     )
+    qty_to_transfer = fields.Float(
+        digits="Product Unit",
+        compute="_compute_qty_transfered",
+        store=True,
+    )
+
     propagate_cancel = fields.Boolean(string="Propagate cancellation", default=True)
     forecasted_issue = fields.Boolean(compute="_compute_forecasted_issue")
 
@@ -190,6 +196,7 @@ class PurchaseOrderLine(models.Model):
                     )
             line._track_qty_transfered(qty_transfered)
             line.qty_transfered = qty_transfered
+            line.qty_to_transfer = line.product_uom_qty - line.qty_transfered
 
     @api.depends("product_uom_qty", "date_planned")
     def _compute_forecasted_issue(self):

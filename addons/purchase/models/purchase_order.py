@@ -1612,20 +1612,7 @@ class PurchaseOrder(models.Model):
             return self.get_acknowledge_url()
         return self.get_portal_url()
 
-    def get_localized_date_planned(self, date_planned=False):
-        """Returns the localized date planned in the timezone of the order's user or the
-        company's partner or UTC if none of them are set."""
-        self.ensure_one()
-        date_planned = date_planned or self.date_planned
-        if not date_planned:
-            return False
-
-        if isinstance(date_planned, str):
-            date_planned = fields.Datetime.from_string(date_planned)
-        tz = self.get_order_timezone()
-        return date_planned.astimezone(tz)
-
-    def get_order_timezone(self):
+    def get_timezone(self):
         """Returns the timezone of the order's user or the company's partner
         or UTC if none of them are set."""
         self.ensure_one()

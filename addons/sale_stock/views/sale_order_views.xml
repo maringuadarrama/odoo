@@ -132,7 +132,7 @@
                 <field name="date_planned_forecast" invisible="1" />
                 <field name="warehouse_id" invisible="1" />
                 <field name="move_ids" invisible="1" />
-                <field name="qty_to_deliver" invisible="1" />
+                <field name="qty_to_transfer" invisible="1" />
                 <field name="is_mto" invisible="1" />
                 <field name="display_qty_widget" invisible="1" />
                 <widget name="qty_at_date_widget" />
@@ -146,7 +146,7 @@
                 <field name="date_planned_forecast" column_invisible="True" />
                 <field name="warehouse_id" column_invisible="True" />
                 <field name="move_ids" column_invisible="True" />
-                <field name="qty_to_deliver" column_invisible="True" />
+                <field name="qty_to_transfer" column_invisible="True" />
                 <field name="is_mto" column_invisible="True" />
                 <field name="display_qty_widget" column_invisible="True" />
                 <widget name="qty_at_date_widget" width="20px" />

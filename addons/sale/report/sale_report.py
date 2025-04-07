@@ -135,7 +135,7 @@ class SaleReport(models.Model):
         readonly=True,
     )
     product_uom_qty = fields.Float(string="Qty Ordered", readonly=True)
-    qty_to_deliver = fields.Float(string="Qty To Deliver", readonly=True)
+    qty_to_transfer = fields.Float(string="Qty To Deliver", readonly=True)
     qty_transfered = fields.Float(string="Qty Delivered", readonly=True)
     qty_to_invoice = fields.Float(string="Qty To Invoice", readonly=True)
     qty_invoiced = fields.Float(string="Qty Invoiced", readonly=True)
@@ -277,7 +277,7 @@ class SaleReport(models.Model):
             CASE WHEN l.product_id IS NOT NULL
                 THEN SUM((l.product_uom_qty - l.qty_transfered) / line_uom.factor * product_uom.factor)
                 ELSE 0
-            END AS qty_to_deliver,
+            END AS qty_to_transfer,
             CASE WHEN l.product_id IS NOT NULL
                 THEN SUM(l.qty_invoiced / line_uom.factor * product_uom.factor)
                 ELSE 0

@@ -60,10 +60,10 @@ class SaleOrderLine(models.Model):
                                                  precision_rounding=m.product_uom.rounding) > 0)
                                for m in moves) or not moves:
                             order_line.qty_transfered = 0
-                            order_line.qty_to_deliver = 0
+                            order_line.qty_to_transfer = 0
                         else:
                             order_line.qty_transfered = order_line.product_uom_qty
-                            order_line.qty_to_deliver = order_line.product_uom_qty - order_line.qty_transfered
+                            order_line.qty_to_transfer = order_line.product_uom_qty - order_line.qty_transfered
                         continue
         
                     moves = order_line.move_ids.filtered(lambda m: m.state == 'done' and not m.scrapped)
@@ -74,7 +74,7 @@ class SaleOrderLine(models.Model):
                     order_qty = order_line.product_uom_id._compute_quantity(order_line.product_uom_qty, relevant_bom.product_uom_id)
                     qty_transfered = moves._compute_kit_quantities(order_line.product_id, order_qty, relevant_bom, filters)
                     order_line.qty_transfered += relevant_bom.product_uom_id._compute_quantity(qty_transfered, order_line.product_uom_id)
-                    order_line.qty_to_deliver = order_line.product_uom_qty - order_line.qty_transfered
+                    order_line.qty_to_transfer = order_line.product_uom_qty - order_line.qty_transfered
 
                 # If no relevant BOM is found, fall back on the all-or-nothing policy. This happens
                 # when the product sold is made only of kits. In this case, the BOM of the stock moves
@@ -83,10 +83,10 @@ class SaleOrderLine(models.Model):
                     # if the move is ingoing, the product **sold** has delivered qty 0
                     if all(m.state == 'done' and m.location_dest_id.usage == 'customer' for m in order_line.move_ids):
                         order_line.qty_transfered = order_line.product_uom_qty
-                        order_line.qty_to_deliver = order_line.product_uom_qty - order_line.qty_transfered
+                        order_line.qty_to_transfer = order_line.product_uom_qty - order_line.qty_transfered
                     else:
                         order_line.qty_transfered = 0.0
-                        order_line.qty_to_deliver = 0.0
+                        order_line.qty_to_transfer = 0.0
 
     def compute_uom_qty(self, new_qty, stock_move, rounding=True):
         #check if stock move concerns a kit

@@ -49,9 +49,9 @@ export class QtyAtDateWidget extends Component {
         if (data.date_scheduled) {
             // TODO: might need some round_decimals to avoid errors
             if (data.state === 'sale') {
-                this.calcData.will_be_fulfilled = data.qty_free_today >= data.qty_to_deliver;
+                this.calcData.will_be_fulfilled = data.qty_free_today >= data.qty_to_transfer;
             } else {
-                this.calcData.will_be_fulfilled = data.qty_available_virtual_at_date >= data.qty_to_deliver;
+                this.calcData.will_be_fulfilled = data.qty_available_virtual_at_date >= data.qty_to_transfer;
             }
             this.calcData.will_be_late = data.date_planned_forecast && data.date_planned_forecast > data.date_scheduled;
             if (['draft', 'sent'].includes(data.state)) {

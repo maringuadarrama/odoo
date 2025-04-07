@@ -62,7 +62,7 @@ class SaleReport(models.Model):
                 * {self._case_value_or_one('account_currency_table.rate')}))
             ) AS discount_amount,
             SUM(l.qty_delivered) AS qty_transfered,
-            SUM(l.qty - l.qty_delivered) AS qty_to_deliver,
+            SUM(l.qty - l.qty_delivered) AS qty_to_transfer,
             CASE WHEN pos.account_move IS NOT NULL
                 THEN SUM(l.qty) ELSE 0
             END AS qty_invoiced,

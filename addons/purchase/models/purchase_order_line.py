@@ -732,7 +732,7 @@ class PurchaseOrderLine(models.Model):
         """Return a datetime which is the noon of the input date(time) according
         to order user's time zone, convert to UTC time."""
         return (
-            self.order_id.get_order_timezone()
+            self.order_id.get_timezone()
             .localize(datetime.combine(date, time(12)))
             .astimezone(UTC)
             .replace(tzinfo=None)
