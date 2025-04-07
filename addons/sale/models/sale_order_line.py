@@ -650,7 +650,7 @@ class SaleOrderLine(models.Model):
         This is true when only sale is installed: sale_stock redifine the behavior for 'consu' type,
         and sale_timesheet implements the behavior of 'service' + service_type=timesheet.
         """
-        for line in self:
+        for line in self.filtered(lambda l: not l.display_type):
             if line.is_expense:
                 line.qty_transfered_method = "analytic"
             else:  # service and consu

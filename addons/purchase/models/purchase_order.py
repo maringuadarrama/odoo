@@ -1445,7 +1445,7 @@ class PurchaseOrder(models.Model):
             "context": ctx,
         }
 
-    def _update_date_planned_for_lines(self, updated_dates):
+    def _update_order_lines_move_date_planned(self, updated_dates):
         # create or update the activity
         activity = self.env["mail.activity"].search(
             [
@@ -1463,7 +1463,7 @@ class PurchaseOrder(models.Model):
 
         # update the date on PO line
         for line, date in updated_dates:
-            line._update_date_planned(date)
+            line._update_move_date_planned(date)
 
     def _update_order_line_info(self, product_id, quantity, **kwargs):
         """Update purchase order line information for a given product or create

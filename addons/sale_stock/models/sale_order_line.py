@@ -9,9 +9,23 @@ from odoo.tools.translate import _
 
 
 class SaleOrderLine(models.Model):
-    "Inherit PurchaseOrderLine"
+    "Inherit SaleOrderLine"
 
     _inherit = "sale.order.line"
+
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    # Product related fields
+    is_storable = fields.Boolean(related="product_id.is_storable")
+    customer_lead = fields.Float(
+        compute="_compute_customer_lead",
+        store=True,
+        precompute=True,
+        readonly=False,
+        inverse="_inverse_customer_lead",
+    )
 
     warehouse_id = fields.Many2one(
         comodel_name="stock.warehouse",
@@ -29,27 +43,35 @@ class SaleOrderLine(models.Model):
         inverse_name="sale_line_id",
         string="Stock Moves",
     )
-    virtual_available_at_date = fields.Float(
+    date_scheduled = fields.Datetime(
+        compute="_compute_qty_at_date",
+    )
+    date_planned_forecast = fields.Datetime(
+        compute="_compute_qty_at_date",
+    )
+    qty_free_today = fields.Float(
         digits="Product Unit",
         compute="_compute_qty_at_date",
     )
-    scheduled_date = fields.Datetime(compute="_compute_qty_at_date")
-    forecast_date_planned = fields.Datetime(compute="_compute_qty_at_date")
-    qty_free_today = fields.Float(compute="_compute_qty_at_date", digits="Product Unit")
-    qty_available_today = fields.Float(compute="_compute_qty_at_date")
+    qty_available_today = fields.Float(
+        compute="_compute_qty_at_date",
+    )
+    qty_available_virtual_at_date = fields.Float(
+        digits="Product Unit",
+        compute="_compute_qty_at_date",
+    )
     qty_to_deliver = fields.Float(
-        compute="_compute_qty_to_deliver", digits="Product Unit"
+        digits="Product Unit",
+        compute="_compute_qty_transfered",
     )
-    display_qty_widget = fields.Boolean(compute="_compute_qty_to_deliver")
+    display_qty_widget = fields.Boolean(
+        compute="_compute_display_qty_widget",
+    )
     is_mto = fields.Boolean(compute="_compute_is_mto")
-    is_storable = fields.Boolean(related="product_id.is_storable")
-    customer_lead = fields.Float(
-        compute="_compute_customer_lead",
-        store=True,
-        precompute=True,
-        readonly=False,
-        inverse="_inverse_customer_lead",
-    )
+
+    # ------------------------------------------------------------
+    # CRUD METHODS
+    # ------------------------------------------------------------
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -71,6 +93,27 @@ class SaleOrderLine(models.Model):
                 previous_product_uom_qty=previous_product_uom_qty
             )
         return res
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
+    @api.depends("product_id")
+    def _compute_customer_lead(self):
+        super()._compute_customer_lead()  # Reset customer_lead when the product is modified
+        for line in self:
+            line.customer_lead = line.product_id.sale_delay
+
+    @api.depends("product_id")
+    def _compute_qty_transfered_method(self):
+        """Stock module compute delivered qty for product [('type', '=', 'consu')]
+        For SO line coming from expense, no picking should be generate: we don't manage stock for
+        those lines, even if the product is a storable.
+        """
+        super()._compute_qty_transfered_method()
+        for line in self.filtered(lambda l: not l.display_type):
+            if not line.is_expense and line.product_id.type == "consu":
+                line.qty_transfered_method = "stock_move"
 
     @api.depends("order_id.warehouse_id", "product_id", "route_id")
     def _compute_warehouse_id(self):
@@ -104,12 +147,6 @@ class SaleOrderLine(models.Model):
                 )
                 if rules:
                     line.warehouse_id = rules[0].location_src_id.warehouse_id
-
-    @api.depends("product_id")
-    def _compute_customer_lead(self):
-        super()._compute_customer_lead()  # Reset customer_lead when the product is modified
-        for line in self:
-            line.customer_lead = line.product_id.sale_delay
 
     @api.depends("product_id", "product_id.route_ids", "route_id", "warehouse_id")
     def _compute_is_mto(self):
@@ -147,18 +184,6 @@ class SaleOrderLine(models.Model):
             else:
                 line.is_mto = False
 
-    @api.depends("product_id")
-    def _compute_qty_transfered_method(self):
-        """Stock module compute delivered qty for product [('type', '=', 'consu')]
-        For SO line coming from expense, no picking should be generate: we don't manage stock for
-        those lines, even if the product is a storable.
-        """
-        super()._compute_qty_transfered_method()
-
-        for line in self:
-            if not line.is_expense and line.product_id.type == "consu":
-                line.qty_transfered_method = "stock_move"
-
     @api.depends(
         "move_ids.state",
         "move_ids.product_uom",
@@ -166,47 +191,43 @@ class SaleOrderLine(models.Model):
         "move_ids.scrapped",
     )
     def _compute_qty_transfered(self):
-        super()._compute_qty_transfered()
-        for line in self:
-            # TODO: maybe one day, this should be done in SQL for performance sake
-            if line.qty_transfered_method == "stock_move":
-                qty = 0.0
-                outgoing_moves, incoming_moves = line._get_outgoing_incoming_moves()
-                for move in outgoing_moves:
-                    if move.state != "done":
-                        continue
+        lines_by_stock_move = self.filtered(
+            lambda sol: sol.qty_transfered_method == "stock_move"
+        )
+        super(SaleOrderLine, self - lines_by_stock_move)._compute_qty_transfered()
+        for line in lines_by_stock_move:
+            qty_transfered = 0.0
+            outgoing_moves, incoming_moves = line._get_outgoing_incoming_moves()
+            for move in outgoing_moves:
+                if move.state != "done":
+                    continue
 
-                    qty += move.product_uom._compute_quantity(
-                        move.quantity, line.product_uom_id, rounding_method="HALF-UP"
-                    )
-                for move in incoming_moves:
-                    if move.state != "done":
-                        continue
+                qty_transfered += move.product_uom._compute_quantity(
+                    move.quantity, line.product_uom_id, rounding_method="HALF-UP"
+                )
+            for move in incoming_moves:
+                if move.state != "done":
+                    continue
 
-                    qty -= move.product_uom._compute_quantity(
-                        move.quantity, line.product_uom_id, rounding_method="HALF-UP"
-                    )
-                line.qty_transfered = qty
+                qty_transfered -= move.product_uom._compute_quantity(
+                    move.quantity, line.product_uom_id, rounding_method="HALF-UP"
+                )
+            line.qty_transfered = qty_transfered
 
-    @api.depends("move_ids")
-    def _compute_product_updatable(self):
-        super()._compute_product_updatable()
-        for line in self:
-            if line.move_ids.filtered(lambda m: m.state != "cancel"):
-                line.product_updatable = False
+        self.qty_to_deliver = self.product_uom_qty - self.qty_transfered
 
     @api.depends(
         "state",
+        "product_id",
         "is_storable",
         "product_uom_id",
         "product_uom_qty",
-        "qty_transfered",
         "move_ids",
+        "qty_to_deliver",
     )
-    def _compute_qty_to_deliver(self):
+    def _compute_display_qty_widget(self):
         """Compute the visibility of the inventory widget."""
-        for line in self:
-            line.qty_to_deliver = line.product_uom_qty - line.qty_transfered
+        for line in self.filtered(lambda l: not l.display_type):
             if (
                 line.state in ("draft", "sale")
                 and line.is_storable
@@ -222,10 +243,10 @@ class SaleOrderLine(models.Model):
 
     @api.depends(
         "order_id.date_commitment",
-        "customer_lead",
         "product_id",
         "product_uom_id",
         "product_uom_qty",
+        "customer_lead",
         "warehouse_id",
         "move_ids",
         "move_ids.forecast_expected_date",
@@ -247,11 +268,11 @@ class SaleOrderLine(models.Model):
             if move.product_id == line.product_id
         }
         all_moves = self.env["stock.move"].browse(all_move_ids)
-        forecast_date_planned_per_move = dict(
+        date_planned_forecast_per_move = dict(
             all_moves.mapped(lambda m: (m.id, m.forecast_expected_date))
         )
         # If the state is already in sale the picking is created and a simple forecasted quantity isn't enough
-        # Then used the forecasted data of the related stock.move
+        # Then use the forecasted data of the related stock.move
         for line in self.filtered(lambda l: l.state == "sale"):
             if not line.display_qty_widget:
                 continue
@@ -262,11 +283,11 @@ class SaleOrderLine(models.Model):
                 lambda m: m.product_id == line.product_id
                 and m.state not in ("cancel", "done")
             )
-            line.forecast_date_planned = max(
+            line.date_planned_forecast = max(
                 (
-                    forecast_date_planned_per_move[move.id]
+                    date_planned_forecast_per_move[move.id]
                     for move in moves
-                    if forecast_date_planned_per_move[move.id]
+                    if date_planned_forecast_per_move[move.id]
                 ),
                 default=False,
             )
@@ -279,10 +300,10 @@ class SaleOrderLine(models.Model):
                 line.qty_free_today += move.product_id.uom_id._compute_quantity(
                     move.forecast_availability, line.product_uom_id
                 )
-            line.scheduled_date = (
+            line.date_scheduled = (
                 line.order_id.date_commitment or line._get_date_planned()
             )
-            line.virtual_available_at_date = False
+            line.qty_available_virtual_at_date = False
             treated |= line
 
         qty_processed_per_product = defaultdict(lambda: 0)
@@ -299,10 +320,10 @@ class SaleOrderLine(models.Model):
                 )
             ] |= line
 
-        for (warehouse, scheduled_date), lines in grouped_lines.items():
+        for (warehouse, date_scheduled), lines in grouped_lines.items():
             product_qties = (
                 lines.mapped("product_id")
-                .with_context(to_date=scheduled_date, warehouse_id=warehouse)
+                .with_context(to_date=date_scheduled, warehouse_id=warehouse)
                 .read(
                     [
                         "qty_available",
@@ -320,8 +341,8 @@ class SaleOrderLine(models.Model):
                 for product in product_qties
             }
             for line in lines:
-                line.scheduled_date = scheduled_date
-                qty_available_today, qty_free_today, virtual_available_at_date = (
+                line.date_scheduled = date_scheduled
+                qty_available_today, qty_free_today, qty_available_virtual_at_date = (
                     qties_per_product[line.product_id.id]
                 )
                 line.qty_available_today = (
@@ -330,11 +351,11 @@ class SaleOrderLine(models.Model):
                 line.qty_free_today = (
                     qty_free_today - qty_processed_per_product[line.product_id.id]
                 )
-                line.virtual_available_at_date = (
-                    virtual_available_at_date
+                line.qty_available_virtual_at_date = (
+                    qty_available_virtual_at_date
                     - qty_processed_per_product[line.product_id.id]
                 )
-                line.forecast_date_planned = False
+                line.date_planned_forecast = False
                 product_qty = line.product_uom_qty
                 if (
                     line.product_uom_id
@@ -347,9 +368,9 @@ class SaleOrderLine(models.Model):
                     line.qty_free_today = line.product_id.uom_id._compute_quantity(
                         line.qty_free_today, line.product_uom_id
                     )
-                    line.virtual_available_at_date = (
+                    line.qty_available_virtual_at_date = (
                         line.product_id.uom_id._compute_quantity(
-                            line.virtual_available_at_date, line.product_uom_id
+                            line.qty_available_virtual_at_date, line.product_uom_id
                         )
                     )
                     product_qty = line.product_uom_id._compute_quantity(
@@ -358,11 +379,18 @@ class SaleOrderLine(models.Model):
                 qty_processed_per_product[line.product_id.id] += product_qty
             treated |= lines
         remaining = self - treated
-        remaining.virtual_available_at_date = False
-        remaining.scheduled_date = False
-        remaining.forecast_date_planned = False
+        remaining.qty_available_virtual_at_date = False
+        remaining.date_scheduled = False
+        remaining.date_planned_forecast = False
         remaining.qty_free_today = False
         remaining.qty_available_today = False
+
+    @api.depends("move_ids")
+    def _compute_product_updatable(self):
+        super()._compute_product_updatable()
+        for line in self:
+            if line.move_ids.filtered(lambda m: m.state != "cancel"):
+                line.product_updatable = False
 
     def _inverse_customer_lead(self):
         for line in self:
@@ -404,7 +432,7 @@ class SaleOrderLine(models.Model):
                     "The ordered quantity of a sale order line cannot be decreased below the amount already delivered. Instead, create a return in your inventory."
                 )
             )
-        super(SaleOrderLine, self)._update_line_quantity(values)
+        super()._update_line_quantity(values)
 
     def _get_location_final(self):
         # Can be overriden for inter-company transactions.
@@ -439,12 +467,12 @@ class SaleOrderLine(models.Model):
         """
         outgoing_moves_ids = set()
         incoming_moves_ids = set()
-
         moves = self.move_ids.filtered(
-            lambda r: r.state != "cancel"
-            and not r.scrapped
-            and self.product_id == r.product_id
+            lambda m: m.state != "cancel"
+            and not m.scrapped
+            and self.product_id == m.product_id
         )
+
         if moves and not strict:
             # The first move created was the one created from the intial rule that started it all.
             sorted_moves = moves.sorted("id")
@@ -454,6 +482,7 @@ class SaleOrderLine(models.Model):
                 if move.warehouse_id.id not in seen_wh_ids:
                     triggering_rule_ids.append(move.rule_id.id)
                     seen_wh_ids.add(move.warehouse_id.id)
+
         if self._context.get("accrual_entry_date"):
             moves = moves.filtered(
                 lambda r: fields.Date.context_today(r, r.date)
@@ -473,9 +502,10 @@ class SaleOrderLine(models.Model):
             elif move.location_id._is_outgoing() and move.to_refund:
                 incoming_moves_ids.add(move.id)
 
-        return self.env["stock.move"].browse(outgoing_moves_ids), self.env[
-            "stock.move"
-        ].browse(incoming_moves_ids)
+        return (
+            self.env["stock.move"].browse(outgoing_moves_ids),
+            self.env["stock.move"].browse(incoming_moves_ids),
+        )
 
     def _get_procurement_group(self):
         return self.order_id.procurement_group_id
@@ -493,7 +523,7 @@ class SaleOrderLine(models.Model):
         coming from a sale order line. This method could be override in order to add other custom key that could
         be used in move/po creation.
         """
-        values = super(SaleOrderLine, self)._prepare_procurement_values(group_id)
+        values = super()._prepare_procurement_values(group_id)
         self.ensure_one()
         # Use the delivery date if there is else use date_order and lead time
         date_deadline = self.order_id.date_commitment or self._get_date_planned()

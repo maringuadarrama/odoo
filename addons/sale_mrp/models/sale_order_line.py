@@ -8,16 +8,15 @@ from odoo.tools import float_compare
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
-    @api.depends('product_uom_qty', 'qty_transfered', 'product_id', 'state')
-    def _compute_qty_to_deliver(self):
+    def _compute_display_qty_widget(self):
         """The inventory widget should now be visible in more cases if the product is consumable."""
-        super()._compute_qty_to_deliver()
+        super()._compute_display_qty_widget()
         for line in self:
             # Hide the widget for kits since forecast doesn't support them.
             boms = self.env['mrp.bom']
             if line.state == 'sale':
                 boms = line.move_ids.mapped('bom_line_id.bom_id')
-            elif line.state in ['draft', 'sent'] and line.product_id:
+            elif line.state == 'draft' and line.product_id:
                 boms = boms._bom_find(line.product_id, company_id=line.company_id.id, bom_type='phantom')[line.product_id]
             relevant_bom = boms.filtered(lambda b: b.type == 'phantom' and
                     (b.product_id == line.product_id or
@@ -61,9 +60,12 @@ class SaleOrderLine(models.Model):
                                                  precision_rounding=m.product_uom.rounding) > 0)
                                for m in moves) or not moves:
                             order_line.qty_transfered = 0
+                            order_line.qty_to_deliver = 0
                         else:
                             order_line.qty_transfered = order_line.product_uom_qty
+                            order_line.qty_to_deliver = order_line.product_uom_qty - order_line.qty_transfered
                         continue
+        
                     moves = order_line.move_ids.filtered(lambda m: m.state == 'done' and not m.scrapped)
                     filters = {
                         'incoming_moves': lambda m: m.location_dest_id.usage in ['customer', 'transit'] and (not m.origin_returned_move_id or (m.origin_returned_move_id and m.to_refund)),
@@ -72,6 +74,7 @@ class SaleOrderLine(models.Model):
                     order_qty = order_line.product_uom_id._compute_quantity(order_line.product_uom_qty, relevant_bom.product_uom_id)
                     qty_transfered = moves._compute_kit_quantities(order_line.product_id, order_qty, relevant_bom, filters)
                     order_line.qty_transfered += relevant_bom.product_uom_id._compute_quantity(qty_transfered, order_line.product_uom_id)
+                    order_line.qty_to_deliver = order_line.product_uom_qty - order_line.qty_transfered
 
                 # If no relevant BOM is found, fall back on the all-or-nothing policy. This happens
                 # when the product sold is made only of kits. In this case, the BOM of the stock moves
@@ -80,8 +83,10 @@ class SaleOrderLine(models.Model):
                     # if the move is ingoing, the product **sold** has delivered qty 0
                     if all(m.state == 'done' and m.location_dest_id.usage == 'customer' for m in order_line.move_ids):
                         order_line.qty_transfered = order_line.product_uom_qty
+                        order_line.qty_to_deliver = order_line.product_uom_qty - order_line.qty_transfered
                     else:
                         order_line.qty_transfered = 0.0
+                        order_line.qty_to_deliver = 0.0
 
     def compute_uom_qty(self, new_qty, stock_move, rounding=True):
         #check if stock move concerns a kit

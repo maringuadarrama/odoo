@@ -125,11 +125,11 @@
         <field name="arch" type="xml">
             <xpath expr="//page/field[@name='order_line_ids']/form/group/group/div[@name='ordered_qty']/field[@name='product_uom_id']" position="after">
                 <!-- below fields are used in the widget qty_at_date_widget -->
-                <field name="virtual_available_at_date" invisible="1" />
+                <field name="qty_available_virtual_at_date" invisible="1" />
                 <field name="qty_available_today" invisible="1" />
                 <field name="qty_free_today" invisible="1" />
-                <field name="scheduled_date" invisible="1" />
-                <field name="forecast_date_planned" invisible="1" />
+                <field name="date_scheduled" invisible="1" />
+                <field name="date_planned_forecast" invisible="1" />
                 <field name="warehouse_id" invisible="1" />
                 <field name="move_ids" invisible="1" />
                 <field name="qty_to_deliver" invisible="1" />
@@ -139,11 +139,11 @@
             </xpath>
             <xpath expr="//page/field[@name='order_line_ids']/list/field[@name='qty_transfered']" position="after">
                 <!-- below fields are used in the widget qty_at_date_widget -->
-                <field name="virtual_available_at_date" column_invisible="True" />
+                <field name="qty_available_virtual_at_date" column_invisible="True" />
                 <field name="qty_available_today" column_invisible="True" />
                 <field name="qty_free_today" column_invisible="True" />
-                <field name="scheduled_date" column_invisible="True" />
-                <field name="forecast_date_planned" column_invisible="True" />
+                <field name="date_scheduled" column_invisible="True" />
+                <field name="date_planned_forecast" column_invisible="True" />
                 <field name="warehouse_id" column_invisible="True" />
                 <field name="move_ids" column_invisible="True" />
                 <field name="qty_to_deliver" column_invisible="True" />

@@ -17,7 +17,7 @@
                 <t t-if="!props.record.data.is_mto and ['draft', 'sent'].includes(props.record.data.state)">
                     <tr>
                         <td><strong>Forecasted Stock</strong><br/><small>On <span t-out="props.calcData.delivery_date"/></small></td>
-                        <td class="text-end"><b t-out='props.record.data.virtual_available_at_date'/> <t t-out='props.record.data.product_uom_id[1]'/></td>
+                        <td class="text-end"><b t-out='props.record.data.qty_available_virtual_at_date'/> <t t-out='props.record.data.product_uom_id[1]'/></td>
                     </tr>
                     <tr>
                         <td><strong>Available</strong><br /><small>All planned operations included</small></td>
@@ -44,10 +44,10 @@
                     </tr>
                     <tr t-if="props.record.data.qty_available_today &lt; props.record.data.qty_to_deliver">
                         <td>
-                            <span t-if="props.calcData.will_be_fulfilled and props.calcData.forecast_date_planned_str">
-                                Remaining demand available at <b t-out="props.calcData.forecast_date_planned_str" t-att-class="props.record.data.scheduled_date &lt; props.record.data.forecast_date_planned ? 'text-danger' : ''"/>
+                            <span t-if="props.calcData.will_be_fulfilled and props.calcData.date_planned_forecast_str">
+                                Remaining demand available at <b t-out="props.calcData.date_planned_forecast_str" t-att-class="props.record.data.date_scheduled &lt; props.record.data.date_planned_forecast ? 'text-danger' : ''"/>
                             </span>
-                            <span t-elif="!props.calcData.will_be_fulfilled and props.calcData.forecast_date_planned_str" class="text-danger">
+                            <span t-elif="!props.calcData.will_be_fulfilled and props.calcData.date_planned_forecast_str" class="text-danger">
                                 Not enough future availability
                             </span>
                             <span t-elif="!props.calcData.will_be_fulfilled" class="text-danger">

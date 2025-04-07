@@ -11,6 +11,13 @@ class PurchaseOrderLine(models.Model):
 
     _inherit = "purchase.order.line"
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    # Product related fields
+    is_storable = fields.Boolean(related="product_id.is_storable")
+
     qty_transfered_method = fields.Selection(
         ondelete={"stock_move": lambda self: self._ondelete_stock_moves()},
     )
@@ -43,9 +50,12 @@ class PurchaseOrderLine(models.Model):
         readonly=True,
         copy=False,
     )
-    is_storable = fields.Boolean(related="product_id.is_storable")
     propagate_cancel = fields.Boolean(string="Propagate cancellation", default=True)
     forecasted_issue = fields.Boolean(compute="_compute_forecasted_issue")
+
+    # ------------------------------------------------------------
+    # CRUD METHODS
+    # ------------------------------------------------------------
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -65,7 +75,6 @@ class PurchaseOrderLine(models.Model):
             lambda l: l.order_id.state == "purchase" and not l.display_type
         )
         previous_product_uom_qty = {line.id: line.product_uom_qty for line in lines}
-        previous_product_uom_qty = {line.id: line.product_uom_qty for line in lines}
 
         res = super().write(vals)
 
@@ -73,15 +82,15 @@ class PurchaseOrderLine(models.Model):
             for line in lines:
                 # Avoid updating kit component's stock.move
                 moves = line.move_ids.filtered(
-                    lambda s: s.state not in ("cancel", "done")
-                    and s.product_id == line.product_id
+                    lambda m: m.state not in ("cancel", "done")
+                    and m.product_id == line.product_id
                 )
                 moves.write({"price_unit": line._get_stock_move_price_unit()})
 
         if "product_uom_qty" in vals:
             lines = lines.filtered(
                 lambda l: float_compare(
-                    previous_product_qty[l.id],
+                    previous_product_uom_qty[l.id],
                     l.product_uom_qty,
                     precision_rounding=l.product_uom_id.rounding,
                 )
@@ -124,57 +133,63 @@ class PurchaseOrderLine(models.Model):
         self.env.cr.execute(query, {"ids": self._ids or (None,)})
         self.modified(modified_fields)
 
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
     def _compute_qty_transfered_method(self):
         super()._compute_qty_transfered_method()
         for line in self.filtered(lambda l: not l.display_type):
             if line.product_id.type == "consu":
                 line.qty_transfered_method = "stock_move"
 
-    @api.depends("move_ids.state", "move_ids.product_uom", "move_ids.quantity")
+    @api.depends(
+        "move_ids.state",
+        "move_ids.product_uom",
+        "move_ids.quantity",
+    )
     def _compute_qty_transfered(self):
-        from_stock_lines = self.filtered(
+        lines_by_stock_move = self.filtered(
             lambda order_line: order_line.qty_transfered_method == "stock_move"
         )
-        super(PurchaseOrderLine, self - from_stock_lines)._compute_qty_transfered()
-        for line in self:
-            if line.qty_transfered_method == "stock_move":
-                total = 0.0
-                # In case of a BOM in kit, the products delivered do not correspond
-                # to the products in the PO. Therefore, we can skip them since they
-                # will be handled later on.
-                for move in line._get_po_line_moves():
-                    if move.state == "done":
-                        if move._is_purchase_return():
-                            if not move.origin_returned_move_id or move.to_refund:
-                                total -= move.product_uom._compute_quantity(
-                                    move.quantity,
-                                    line.product_uom_id,
-                                    rounding_method="HALF-UP",
-                                )
-                        elif (
-                            move.origin_returned_move_id
-                            and move.origin_returned_move_id._is_dropshipped()
-                            and not move._is_dropshipped_returned()
-                        ):
-                            # Edge case: the dropship is returned to the stock, no to the supplier.
-                            # In this case, the received quantity on the PO is set although we didn't
-                            # receive the product physically in our stock. To avoid counting the
-                            # quantity twice, we do nothing.
-                            pass
-                        elif (
-                            move.origin_returned_move_id
-                            and move.origin_returned_move_id._is_purchase_return()
-                            and not move.to_refund
-                        ):
-                            pass
-                        else:
-                            total += move.product_uom._compute_quantity(
-                                move.quantity,
-                                line.product_uom_id,
-                                rounding_method="HALF-UP",
-                            )
-                line._track_qty_transfered(total)
-                line.qty_transfered = total
+        super(PurchaseOrderLine, self - lines_by_stock_move)._compute_qty_transfered()
+        for line in lines_by_stock_move:
+            qty_transfered = 0.0
+            # In case of a BOM in kit, the products delivered do not correspond
+            # to the products in the PO. Therefore, we can skip them since they
+            # will be handled later on.
+            for move in line._get_stock_moves():
+                if move._is_purchase_return():
+                    if not move.origin_returned_move_id or move.to_refund:
+                        qty_transfered -= move.product_uom._compute_quantity(
+                            move.quantity,
+                            line.product_uom_id,
+                            rounding_method="HALF-UP",
+                        )
+                elif (
+                    move.origin_returned_move_id
+                    and move.origin_returned_move_id._is_dropshipped()
+                    and not move._is_dropshipped_returned()
+                ):
+                    # Edge case: the dropship is returned to the stock, no to the supplier.
+                    # In this case, the received quantity on the PO is set although we didn't
+                    # receive the product physically in our stock. To avoid counting the
+                    # quantity twice, we do nothing.
+                    pass
+                elif (
+                    move.origin_returned_move_id
+                    and move.origin_returned_move_id._is_purchase_return()
+                    and not move.to_refund
+                ):
+                    pass
+                else:
+                    qty_transfered += move.product_uom._compute_quantity(
+                        move.quantity,
+                        line.product_uom_id,
+                        rounding_method="HALF-UP",
+                    )
+            line._track_qty_transfered(qty_transfered)
+            line.qty_transfered = qty_transfered
 
     @api.depends("product_uom_qty", "date_planned")
     def _compute_forecasted_issue(self):
@@ -219,7 +234,7 @@ class PurchaseOrderLine(models.Model):
         return self.env["stock.move"].create(values)
 
     def _create_or_update_picking(self):
-        for line in self:
+        for line in self.filtered(lambda l: not l.display_type):
             if line.product_id and line.product_id.type == "consu":
                 rounding = line.product_uom_id.rounding
                 # Prevent decreasing below received quantity
@@ -292,13 +307,13 @@ class PurchaseOrderLine(models.Model):
         for move in moves_to_update:
             move.date_deadline = new_date
 
-    def _update_date_planned(self, updated_date):
+    def _update_move_date_planned(self, updated_date):
         move_to_update = self.move_ids.filtered(
             lambda m: m.state not in ["done", "cancel"]
         )
         # Only change the date if there is no move done or none
         if not self.move_ids or move_to_update:
-            super()._update_date_planned(updated_date)
+            super()._update_move_date_planned(updated_date)
         if move_to_update:
             self._update_move_date_deadline(updated_date)
 
@@ -311,9 +326,11 @@ class PurchaseOrderLine(models.Model):
         super()._merge_po_line(rfq_line)
         self.move_dest_ids += rfq_line.move_dest_ids
 
-    def _get_po_line_moves(self):
+    def _get_stock_moves(self):
         self.ensure_one()
-        moves = self.move_ids.filtered(lambda m: m.product_id == self.product_id)
+        moves = self.move_ids.filtered(
+            lambda m: m.product_id == self.product_id and m.state == "done"
+        )
         if self._context.get("accrual_entry_date"):
             moves = moves.filtered(
                 lambda r: fields.Date.context_today(r, r.date)
@@ -385,11 +402,13 @@ class PurchaseOrderLine(models.Model):
     def _get_outgoing_incoming_moves(self):
         outgoing_moves = self.env["stock.move"]
         incoming_moves = self.env["stock.move"]
-        for move in self.move_ids.filtered(
-            lambda r: r.state != "cancel"
-            and not r.scrapped
-            and self.product_id == r.product_id
-        ):
+        moves = self.move_ids.filtered(
+            lambda m: m.state != "cancel"
+            and not m.scrapped
+            and self.product_id == m.product_id
+        )
+
+        for move in moves:
             if move._is_purchase_return() and (
                 move.to_refund or not move.origin_returned_move_id
             ):

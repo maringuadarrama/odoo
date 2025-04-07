@@ -77,7 +77,7 @@ class PurchaseOrder(models.Model):
             ("full", "Fully Received"),
         ],
         string="Receipt Status",
-        compute="_compute_receipt_status",
+        compute="_compute_transfer_state",
         store=True,
         help="Red: Late\n\
             Orange: To process today\n\
@@ -92,7 +92,7 @@ class PurchaseOrder(models.Model):
             ("over done", "Over transferred"),
         ],
         string="Receipt Status",
-        # compute="_compute_receipt_status",
+        # compute="_compute_transfer_state",
         # store=True,
         help="Red: Late\n\
             Orange: To process today\n\
@@ -176,7 +176,7 @@ class PurchaseOrder(models.Model):
                 order.is_shipped = False
 
     @api.depends("picking_ids", "picking_ids.state")
-    def _compute_receipt_status(self):
+    def _compute_transfer_state(self):
         for order in self:
             if not order.picking_ids or all(
                 p.state == "cancel" for p in order.picking_ids

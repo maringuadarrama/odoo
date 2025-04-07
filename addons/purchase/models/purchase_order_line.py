@@ -757,7 +757,7 @@ class PurchaseOrderLine(models.Model):
                 subtype_xmlid="mail.mt_note",
             )
 
-    def _update_date_planned(self, updated_date):
+    def _update_move_date_planned(self, updated_date):
         self.date_planned = updated_date
 
     def _validate_analytic_distribution(self):

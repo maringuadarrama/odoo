@@ -64,7 +64,7 @@ class SaleOrder(models.Model):
             ("full", "Fully Delivered"),
         ],
         string="Delivery Status",
-        compute="_compute_delivery_status",
+        compute="_compute_transfer_state",
         store=True,
         help="Blue: Not Delivered/Started\n\
             Orange: Partially Delivered\n\
@@ -79,7 +79,7 @@ class SaleOrder(models.Model):
             ("over done", "Over transferred"),
         ],
         string="Delivery Status",
-        # compute="_compute_delivery_status",
+        # compute="_compute_transfer_state",
         # store=True,
         help="Blue: Not Delivered/Started\n\
             Orange: Partially Delivered\n\
@@ -300,7 +300,7 @@ class SaleOrder(models.Model):
             order.date_effective = min(dates_list, default=False)
 
     @api.depends("picking_ids", "picking_ids.state")
-    def _compute_delivery_status(self):
+    def _compute_transfer_state(self):
         for order in self:
             if not order.picking_ids or all(
                 p.state == "cancel" for p in order.picking_ids

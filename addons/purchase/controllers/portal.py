@@ -291,7 +291,7 @@ class CustomerPortal(portal.CustomerPortal):
             updated_dates.append((line, updated_date))
 
         if updated_dates:
-            order_sudo._update_date_planned_for_lines(updated_dates)
+            order_sudo._update_order_lines_move_date_planned(updated_dates)
         return Response(status=204)
 
     @http.route(
