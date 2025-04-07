@@ -248,7 +248,7 @@ class PurchaseOrderLine(models.Model):
                 ):
                     raise UserError(
                         _(
-                            "You cannot decrease the ordered quantity below the received quantity.\n"
+                            "The ordered quantity cannot be decreased below the already received quantity.\n"
                             "Create a return first."
                         )
                     )
@@ -295,6 +295,10 @@ class PurchaseOrderLine(models.Model):
                 moves = line._create_stock_moves(picking)
                 moves._action_confirm()._action_assign()
 
+    def _merge_po_line(self, rfq_line):
+        super()._merge_po_line(rfq_line)
+        self.move_dest_ids += rfq_line.move_dest_ids
+
     def _update_move_date_deadline(self, new_date):
         """Updates corresponding move picking line deadline dates that are not yet completed."""
         moves_to_update = self.move_ids.filtered(
@@ -322,9 +326,58 @@ class PurchaseOrderLine(models.Model):
         """Update qty_transfered_method for old PO before install this module."""
         self.search(["!", ("state", "=", "purchase")])._compute_qty_transfered_method()
 
-    def _merge_po_line(self, rfq_line):
-        super()._merge_po_line(rfq_line)
-        self.move_dest_ids += rfq_line.move_dest_ids
+    def _get_move_dests_initial_demand(self, move_dests):
+        return self.product_id.uom_id._compute_quantity(
+            sum(
+                move_dests.filtered(
+                    lambda m: m.state != "cancel"
+                    and m.location_dest_id.usage != "supplier"
+                ).mapped("product_qty")
+            ),
+            self.product_uom_id,
+            rounding_method="HALF-UP",
+        )
+
+    def _get_outgoing_incoming_moves(self):
+        outgoing_moves = self.env["stock.move"]
+        incoming_moves = self.env["stock.move"]
+        moves = self.move_ids.filtered(
+            lambda m: m.state != "cancel"
+            and not m.scrapped
+            and self.product_id == m.product_id
+        )
+
+        for move in moves:
+            if move._is_purchase_return() and (
+                move.to_refund or not move.origin_returned_move_id
+            ):
+                outgoing_moves |= move
+            elif move.location_dest_id.usage != "supplier":
+                if not move.origin_returned_move_id or (
+                    move.origin_returned_move_id and move.to_refund
+                ):
+                    incoming_moves |= move
+        return outgoing_moves, incoming_moves
+
+    def _get_procurement_qty(self):
+        self.ensure_one()
+        qty = 0.0
+        outgoing_moves, incoming_moves = self._get_outgoing_incoming_moves()
+        for move in outgoing_moves:
+            qty_to_compute = (
+                move.quantity if move.state == "done" else move.product_uom_qty
+            )
+            qty -= move.product_uom._compute_quantity(
+                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
+            )
+        for move in incoming_moves:
+            qty_to_compute = (
+                move.quantity if move.state == "done" else move.product_uom_qty
+            )
+            qty += move.product_uom._compute_quantity(
+                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
+            )
+        return qty
 
     def _get_stock_moves(self):
         self.ensure_one()
@@ -366,59 +419,6 @@ class PurchaseOrderLine(models.Model):
                 round=False,
             )
         return float_round(price_unit, precision_digits=price_unit_prec)
-
-    def _get_move_dests_initial_demand(self, move_dests):
-        return self.product_id.uom_id._compute_quantity(
-            sum(
-                move_dests.filtered(
-                    lambda m: m.state != "cancel"
-                    and m.location_dest_id.usage != "supplier"
-                ).mapped("product_qty")
-            ),
-            self.product_uom_id,
-            rounding_method="HALF-UP",
-        )
-
-    def _get_qty_procurement(self):
-        self.ensure_one()
-        qty = 0.0
-        outgoing_moves, incoming_moves = self._get_outgoing_incoming_moves()
-        for move in outgoing_moves:
-            qty_to_compute = (
-                move.quantity if move.state == "done" else move.product_uom_qty
-            )
-            qty -= move.product_uom._compute_quantity(
-                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
-            )
-        for move in incoming_moves:
-            qty_to_compute = (
-                move.quantity if move.state == "done" else move.product_uom_qty
-            )
-            qty += move.product_uom._compute_quantity(
-                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
-            )
-        return qty
-
-    def _get_outgoing_incoming_moves(self):
-        outgoing_moves = self.env["stock.move"]
-        incoming_moves = self.env["stock.move"]
-        moves = self.move_ids.filtered(
-            lambda m: m.state != "cancel"
-            and not m.scrapped
-            and self.product_id == m.product_id
-        )
-
-        for move in moves:
-            if move._is_purchase_return() and (
-                move.to_refund or not move.origin_returned_move_id
-            ):
-                outgoing_moves |= move
-            elif move.location_dest_id.usage != "supplier":
-                if not move.origin_returned_move_id or (
-                    move.origin_returned_move_id and move.to_refund
-                ):
-                    incoming_moves |= move
-        return outgoing_moves, incoming_moves
 
     def _find_candidate(
         self,
@@ -481,7 +481,7 @@ class PurchaseOrderLine(models.Model):
             return res
 
         price_unit = self._get_stock_move_price_unit()
-        qty = self._get_qty_procurement()
+        qty = self._get_procurement_qty()
 
         move_dests = self.move_dest_ids or self.move_ids.move_dest_ids
         move_dests = move_dests.filtered(

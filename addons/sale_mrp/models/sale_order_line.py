@@ -146,7 +146,7 @@ class SaleOrderLine(models.Model):
             ),
         }
 
-    def _get_qty_procurement(self, previous_product_uom_qty=False):
+    def _get_procurement_qty(self, previous_product_uom_qty=False):
         self.ensure_one()
         # Specific case when we change the qty on a SO for a kit product.
         # We don't try to be too smart and keep a simple approach: we use the quantity of entire
@@ -159,4 +159,4 @@ class SaleOrderLine(models.Model):
             order_qty = self.product_uom_id._compute_quantity(order_qty, bom.product_uom_id)
             qty = moves._compute_kit_quantities(self.product_id, order_qty, bom, filters)
             return bom.product_uom_id._compute_quantity(qty, self.product_uom_id)
-        return super()._get_qty_procurement(previous_product_uom_qty=previous_product_uom_qty)
+        return super()._get_procurement_qty(previous_product_uom_qty=previous_product_uom_qty)

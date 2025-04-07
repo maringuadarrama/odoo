@@ -400,157 +400,6 @@ class SaleOrderLine(models.Model):
                     days=line.customer_lead or 0.0
                 )
 
-    def _create_procurements(self, product_qty, procurement_uom, origin, values):
-        self.ensure_one()
-        return [
-            self.env["procurement.group"].Procurement(
-                self.product_id,
-                product_qty,
-                procurement_uom,
-                self._get_location_final(),
-                self.product_id.display_name,
-                origin,
-                self.order_id.company_id,
-                values,
-            )
-        ]
-
-    def _update_line_quantity(self, values):
-        precision = self.env["decimal.precision"].precision_get("Product Unit")
-        line_products = self.filtered(lambda l: l.product_id.type == "consu")
-        if (
-            line_products.mapped("qty_transfered")
-            and float_compare(
-                values["product_uom_qty"],
-                max(line_products.mapped("qty_transfered")),
-                precision_digits=precision,
-            )
-            == -1
-        ):
-            raise UserError(
-                _(
-                    "The ordered quantity of a sale order line cannot be decreased below the amount already delivered. Instead, create a return in your inventory."
-                )
-            )
-        super()._update_line_quantity(values)
-
-    def _get_location_final(self):
-        # Can be overriden for inter-company transactions.
-        self.ensure_one()
-        return self.order_id.partner_shipping_id.property_stock_customer
-
-    def _get_qty_procurement(self, previous_product_uom_qty=False):
-        self.ensure_one()
-        qty = 0.0
-        outgoing_moves, incoming_moves = self._get_outgoing_incoming_moves(strict=False)
-        for move in outgoing_moves:
-            qty_to_compute = (
-                move.quantity if move.state == "done" else move.product_uom_qty
-            )
-            qty += move.product_uom._compute_quantity(
-                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
-            )
-        for move in incoming_moves:
-            qty_to_compute = (
-                move.quantity if move.state == "done" else move.product_uom_qty
-            )
-            qty -= move.product_uom._compute_quantity(
-                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
-            )
-        return qty
-
-    def _get_outgoing_incoming_moves(self, strict=True):
-        """Return the outgoing and incoming moves of the sale order line.
-        @param strict: If True, only consider the moves that are strictly delivered to the customer (old behavior).
-                       If False, consider the moves that were created through the initial rule of the delivery route,
-                       to support the new push mechanism.
-        """
-        outgoing_moves_ids = set()
-        incoming_moves_ids = set()
-        moves = self.move_ids.filtered(
-            lambda m: m.state != "cancel"
-            and not m.scrapped
-            and self.product_id == m.product_id
-        )
-
-        if moves and not strict:
-            # The first move created was the one created from the intial rule that started it all.
-            sorted_moves = moves.sorted("id")
-            triggering_rule_ids = []
-            seen_wh_ids = set()
-            for move in sorted_moves:
-                if move.warehouse_id.id not in seen_wh_ids:
-                    triggering_rule_ids.append(move.rule_id.id)
-                    seen_wh_ids.add(move.warehouse_id.id)
-
-        if self._context.get("accrual_entry_date"):
-            moves = moves.filtered(
-                lambda r: fields.Date.context_today(r, r.date)
-                <= self._context["accrual_entry_date"]
-            )
-
-        for move in moves:
-            if (strict and move.location_dest_id._is_outgoing()) or (
-                not strict
-                and move.rule_id.id in triggering_rule_ids
-                and (move.location_final_id or move.location_dest_id)._is_outgoing()
-            ):
-                if not move.origin_returned_move_id or (
-                    move.origin_returned_move_id and move.to_refund
-                ):
-                    outgoing_moves_ids.add(move.id)
-            elif move.location_id._is_outgoing() and move.to_refund:
-                incoming_moves_ids.add(move.id)
-
-        return (
-            self.env["stock.move"].browse(outgoing_moves_ids),
-            self.env["stock.move"].browse(incoming_moves_ids),
-        )
-
-    def _get_procurement_group(self):
-        return self.order_id.procurement_group_id
-
-    def _prepare_procurement_group_vals(self):
-        return {
-            "name": self.order_id.name,
-            "move_type": self.order_id.picking_policy,
-            "sale_id": self.order_id.id,
-            "partner_id": self.order_id.partner_shipping_id.id,
-        }
-
-    def _prepare_procurement_values(self, group_id=False):
-        """Prepare specific key for moves or other components that will be created from a stock rule
-        coming from a sale order line. This method could be override in order to add other custom key that could
-        be used in move/po creation.
-        """
-        values = super()._prepare_procurement_values(group_id)
-        self.ensure_one()
-        # Use the delivery date if there is else use date_order and lead time
-        date_deadline = self.order_id.date_commitment or self._get_date_planned()
-        date_planned = date_deadline - timedelta(
-            days=self.order_id.company_id.security_lead
-        )
-        values.update(
-            {
-                "group_id": group_id,
-                "sale_line_id": self.id,
-                "date_planned": date_planned,
-                "date_deadline": date_deadline,
-                "route_ids": self.route_id,
-                "warehouse_id": self.warehouse_id,
-                "partner_id": self.order_id.partner_shipping_id.id,
-                "location_final_id": self._get_location_final(),
-                "product_description_variants": self.with_context(
-                    lang=self.order_id.partner_id.lang
-                )._get_sale_order_line_multiline_description_variants(),
-                "company_id": self.order_id.company_id,
-                "sequence": self.sequence,
-                "never_product_template_attribute_value_ids": self.product_no_variant_attribute_value_ids,
-                "packaging_uom_id": self.product_uom_id,
-            }
-        )
-        return values
-
     def _action_launch_stock_rule(self, previous_product_uom_qty=False):
         """
         Launch procurement group run method with required/custom fields generated by a
@@ -569,7 +418,7 @@ class SaleOrderLine(models.Model):
                 or line.product_id.type != "consu"
             ):
                 continue
-            qty = line._get_qty_procurement(previous_product_uom_qty)
+            qty = line._get_procurement_qty(previous_product_uom_qty)
             if (
                 float_compare(qty, line.product_uom_qty, precision_digits=precision)
                 == 0
@@ -624,6 +473,158 @@ class SaleOrderLine(models.Model):
                 # Trigger the Scheduler for Pickings
                 pickings_to_confirm.action_confirm()
         return True
+
+    def _create_procurements(self, product_qty, procurement_uom, origin, values):
+        self.ensure_one()
+        return [
+            self.env["procurement.group"].Procurement(
+                self.product_id,
+                product_qty,
+                procurement_uom,
+                self._get_location_final(),
+                self.product_id.display_name,
+                origin,
+                self.order_id.company_id,
+                values,
+            )
+        ]
+
+    def _update_line_quantity(self, values):
+        precision = self.env["decimal.precision"].precision_get("Product Unit")
+        line_products = self.filtered(lambda l: l.product_id.type == "consu")
+        if (
+            line_products.mapped("qty_transfered")
+            and float_compare(
+                values["product_uom_qty"],
+                max(line_products.mapped("qty_transfered")),
+                precision_digits=precision,
+            )
+            == -1
+        ):
+            raise UserError(
+                _(
+                    "The ordered quantity of a sale order line cannot be decreased below the "
+                    "already delivered quantity. Create a return first."
+                )
+            )
+        super()._update_line_quantity(values)
+
+    def _get_location_final(self):
+        # Can be overriden for inter-company transactions.
+        self.ensure_one()
+        return self.order_id.partner_shipping_id.property_stock_customer
+
+    def _get_outgoing_incoming_moves(self, strict=True):
+        """Return the outgoing and incoming moves of the sale order line.
+        @param strict: If True, only consider the moves that are strictly delivered to the customer (old behavior).
+                       If False, consider the moves that were created through the initial rule of the delivery route,
+                       to support the new push mechanism.
+        """
+        outgoing_moves_ids = set()
+        incoming_moves_ids = set()
+        moves = self.move_ids.filtered(
+            lambda m: m.state != "cancel"
+            and not m.scrapped
+            and self.product_id == m.product_id
+        )
+
+        if moves and not strict:
+            # The first move created was the one created from the intial rule that started it all.
+            sorted_moves = moves.sorted("id")
+            triggering_rule_ids = []
+            seen_wh_ids = set()
+            for move in sorted_moves:
+                if move.warehouse_id.id not in seen_wh_ids:
+                    triggering_rule_ids.append(move.rule_id.id)
+                    seen_wh_ids.add(move.warehouse_id.id)
+
+        if self._context.get("accrual_entry_date"):
+            moves = moves.filtered(
+                lambda r: fields.Date.context_today(r, r.date)
+                <= self._context["accrual_entry_date"]
+            )
+
+        for move in moves:
+            if (strict and move.location_dest_id._is_outgoing()) or (
+                not strict
+                and move.rule_id.id in triggering_rule_ids
+                and (move.location_final_id or move.location_dest_id)._is_outgoing()
+            ):
+                if not move.origin_returned_move_id or (
+                    move.origin_returned_move_id and move.to_refund
+                ):
+                    outgoing_moves_ids.add(move.id)
+            elif move.location_id._is_outgoing() and move.to_refund:
+                incoming_moves_ids.add(move.id)
+
+        return (
+            self.env["stock.move"].browse(outgoing_moves_ids),
+            self.env["stock.move"].browse(incoming_moves_ids),
+        )
+
+    def _get_procurement_qty(self, previous_product_uom_qty=False):
+        self.ensure_one()
+        qty = 0.0
+        outgoing_moves, incoming_moves = self._get_outgoing_incoming_moves(strict=False)
+        for move in outgoing_moves:
+            qty_to_compute = (
+                move.quantity if move.state == "done" else move.product_uom_qty
+            )
+            qty += move.product_uom._compute_quantity(
+                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
+            )
+        for move in incoming_moves:
+            qty_to_compute = (
+                move.quantity if move.state == "done" else move.product_uom_qty
+            )
+            qty -= move.product_uom._compute_quantity(
+                qty_to_compute, self.product_uom_id, rounding_method="HALF-UP"
+            )
+        return qty
+
+    def _get_procurement_group(self):
+        return self.order_id.procurement_group_id
+
+    def _prepare_procurement_group_vals(self):
+        return {
+            "name": self.order_id.name,
+            "move_type": self.order_id.picking_policy,
+            "sale_id": self.order_id.id,
+            "partner_id": self.order_id.partner_shipping_id.id,
+        }
+
+    def _prepare_procurement_values(self, group_id=False):
+        """Prepare specific key for moves or other components that will be created from a stock rule
+        coming from a sale order line. This method could be override in order to add other custom key that could
+        be used in move/po creation.
+        """
+        values = super()._prepare_procurement_values(group_id)
+        self.ensure_one()
+        # Use the delivery date if there is else use date_order and lead time
+        date_deadline = self.order_id.date_commitment or self._get_date_planned()
+        date_planned = date_deadline - timedelta(
+            days=self.order_id.company_id.security_lead
+        )
+        values.update(
+            {
+                "group_id": group_id,
+                "sale_line_id": self.id,
+                "date_planned": date_planned,
+                "date_deadline": date_deadline,
+                "route_ids": self.route_id,
+                "warehouse_id": self.warehouse_id,
+                "partner_id": self.order_id.partner_shipping_id.id,
+                "location_final_id": self._get_location_final(),
+                "product_description_variants": self.with_context(
+                    lang=self.order_id.partner_id.lang
+                )._get_sale_order_line_multiline_description_variants(),
+                "company_id": self.order_id.company_id,
+                "sequence": self.sequence,
+                "never_product_template_attribute_value_ids": self.product_no_variant_attribute_value_ids,
+                "packaging_uom_id": self.product_uom_id,
+            }
+        )
+        return values
 
     # === HOOKS ===#
 

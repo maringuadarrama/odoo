@@ -83,7 +83,7 @@ class PurchaseOrderLine(models.Model):
     def _get_upstream_documents_and_responsibles(self, visited):
         return [(self.order_id, self.order_id.purchase_user_id, visited)]
 
-    def _get_qty_procurement(self):
+    def _get_procurement_qty(self):
         self.ensure_one()
         # Specific case when we change the qty on a PO for a kit product.
         # We don't try to be too smart and keep a simple approach: we compare the quantity before
@@ -92,7 +92,7 @@ class PurchaseOrderLine(models.Model):
         bom = self.env['mrp.bom'].sudo()._bom_find(self.product_id, bom_type='phantom')[self.product_id]
         if bom and 'previous_product_qty' in self.env.context:
             return self.env.context['previous_product_qty'].get(self.id, 0.0)
-        return super()._get_qty_procurement()
+        return super()._get_procurement_qty()
 
     def _get_move_dests_initial_demand(self, move_dests):
         kit_bom = self.env['mrp.bom']._bom_find(self.product_id, bom_type='phantom')[self.product_id]
