@@ -69,20 +69,6 @@ class PurchaseOrder(models.Model):
         copy=False,
         help="Completion date of the first receipt order.",
     )
-    receipt_status = fields.Selection(
-        [
-            ("no", "Nothing to receive"),
-            ("pending", "Not Received"),
-            ("partial", "Partially Received"),
-            ("full", "Fully Received"),
-        ],
-        string="Receipt Status",
-        compute="_compute_transfer_state",
-        store=True,
-        help="Red: Late\n\
-            Orange: To process today\n\
-            Green: On time",
-    )
     transfer_state = fields.Selection(
         [
             ("no", "Nothing to transfer"),
@@ -92,8 +78,8 @@ class PurchaseOrder(models.Model):
             ("over done", "Over transferred"),
         ],
         string="Receipt Status",
-        # compute="_compute_transfer_state",
-        # store=True,
+        compute="_compute_transfer_state",
+        store=True,
         help="Red: Late\n\
             Orange: To process today\n\
             Green: On time",
@@ -181,13 +167,13 @@ class PurchaseOrder(models.Model):
             if not order.picking_ids or all(
                 p.state == "cancel" for p in order.picking_ids
             ):
-                order.receipt_status = False
+                order.transfer_state = False
             elif all(p.state in ["done", "cancel"] for p in order.picking_ids):
-                order.receipt_status = "full"
+                order.transfer_state = "full"
             elif any(p.state == "done" for p in order.picking_ids):
-                order.receipt_status = "partial"
+                order.transfer_state = "partial"
             else:
-                order.receipt_status = "pending"
+                order.transfer_state = "pending"
 
     # --------------------------------------------------
     # ONCHANGE METHODS

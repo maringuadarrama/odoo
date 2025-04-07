@@ -55,21 +55,6 @@ class SaleOrder(models.Model):
         string="Delivery Orders",
         compute="_compute_count_picking_ids",
     )
-    delivery_status = fields.Selection(
-        [
-            ("no", "Nothing to deliver"),
-            ("pending", "Not Delivered"),
-            ("started", "Started"),
-            ("partial", "Partially Delivered"),
-            ("full", "Fully Delivered"),
-        ],
-        string="Delivery Status",
-        compute="_compute_transfer_state",
-        store=True,
-        help="Blue: Not Delivered/Started\n\
-            Orange: Partially Delivered\n\
-            Green: Fully Delivered",
-    )
     transfer_state = fields.Selection(
         [
             ("no", "Nothing to transfer"),
@@ -79,8 +64,8 @@ class SaleOrder(models.Model):
             ("over done", "Over transferred"),
         ],
         string="Delivery Status",
-        # compute="_compute_transfer_state",
-        # store=True,
+        compute="_compute_transfer_state",
+        store=True,
         help="Blue: Not Delivered/Started\n\
             Orange: Partially Delivered\n\
             Green: Fully Delivered",
@@ -305,17 +290,17 @@ class SaleOrder(models.Model):
             if not order.picking_ids or all(
                 p.state == "cancel" for p in order.picking_ids
             ):
-                order.delivery_status = False
+                order.transfer_state = False
             elif all(p.state in ["done", "cancel"] for p in order.picking_ids):
-                order.delivery_status = "full"
+                order.transfer_state = "full"
             elif any(p.state == "done" for p in order.picking_ids) and any(
                 l.qty_transfered for l in order.order_line_ids
             ):
-                order.delivery_status = "partial"
+                order.transfer_state = "partial"
             elif any(p.state == "done" for p in order.picking_ids):
-                order.delivery_status = "started"
+                order.transfer_state = "started"
             else:
-                order.delivery_status = "pending"
+                order.transfer_state = "pending"
 
     @api.depends("picking_ids", "picking_ids.state")
     def _compute_json_popover(self):

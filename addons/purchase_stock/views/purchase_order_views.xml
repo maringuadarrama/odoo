@@ -7,11 +7,11 @@
         <field name="arch" type="xml">
             <field name="invoice_state" position="before">
                 <field name="date_effective" column_invisible="True" />
-                <field name="receipt_status" widget="badge"
+                <field name="transfer_state" widget="badge"
                     optional="hide"
-                    decoration-success="date_planned and (date_planned &gt; datetime.datetime.combine(datetime.date.today(), datetime.time(23,59,59)).to_utc().strftime('%Y-%m-%d %H:%M:%S') or receipt_status=='full' and date_effective &lt;= date_planned)"
-                    decoration-danger="date_planned and (date_planned &lt; date_effective or date_planned &lt; datetime.datetime.combine(datetime.date.today(), datetime.time(0,0,0)).to_utc().strftime('%Y-%m-%d %H:%M:%S') and receipt_status!='full' and date_effective &lt;= date_planned)"
-                    decoration-warning="date_planned and date_planned &gt;= datetime.datetime.combine(datetime.date.today(), datetime.time(0,0,0)).to_utc().strftime('%Y-%m-%d %H:%M:%S') and date_planned &lt;= datetime.datetime.combine(datetime.date.today(), datetime.time(23,59,59)).to_utc().strftime('%Y-%m-%d %H:%M:%S') and receipt_status!='full'" />
+                    decoration-success="date_planned and (date_planned &gt; datetime.datetime.combine(datetime.date.today(), datetime.time(23,59,59)).to_utc().strftime('%Y-%m-%d %H:%M:%S') or transfer_state=='done' and date_effective &lt;= date_planned)"
+                    decoration-danger="date_planned and (date_planned &lt; date_effective or date_planned &lt; datetime.datetime.combine(datetime.date.today(), datetime.time(0,0,0)).to_utc().strftime('%Y-%m-%d %H:%M:%S') and transfer_state!='done' and date_effective &lt;= date_planned)"
+                    decoration-warning="date_planned and date_planned &gt;= datetime.datetime.combine(datetime.date.today(), datetime.time(0,0,0)).to_utc().strftime('%Y-%m-%d %H:%M:%S') and date_planned &lt;= datetime.datetime.combine(datetime.date.today(), datetime.time(23,59,59)).to_utc().strftime('%Y-%m-%d %H:%M:%S') and transfer_state!='done'" />
             </field>
         </field>
     </record>
@@ -83,7 +83,7 @@
                 <field name="move_ids" />
             </xpath>
             <xpath expr="//group[@name='invoice_info']/field[@name='invoice_state']" position="before">
-                <field name="receipt_status" invisible="state != 'purchase'" />
+                <field name="transfer_state" invisible="state != 'purchase'" />
             </xpath>
             <xpath expr="//field[@name='order_line_ids']/form//field[@name='analytic_distribution']"
                 position="before">
