@@ -284,23 +284,18 @@ class SaleOrder(models.Model):
             dates_list = [date for date in pickings.mapped("date_done") if date]
             order.date_effective = min(dates_list, default=False)
 
-    @api.depends("picking_ids", "picking_ids.state")
+    @api.depends("picking_ids", "picking_ids.state", "order_line_ids.qty_transfered")
     def _compute_transfer_state(self):
         for order in self:
-            if not order.picking_ids or all(
-                p.state == "cancel" for p in order.picking_ids
-            ):
-                order.transfer_state = False
+            transfer_state = "to do"
+            if not order.picking_ids or all(p.state == "cancel" for p in order.picking_ids):
+                transfer_state = "no" 
             elif all(p.state in ["done", "cancel"] for p in order.picking_ids):
-                order.transfer_state = "full"
+                transfer_state = "done"  
             elif any(p.state == "done" for p in order.picking_ids) and any(
-                l.qty_transfered for l in order.order_line_ids
-            ):
-                order.transfer_state = "partial"
-            elif any(p.state == "done" for p in order.picking_ids):
-                order.transfer_state = "started"
-            else:
-                order.transfer_state = "pending"
+                    l.qty_transfered for l in order.order_line):
+                transfer_state = "partially"
+            order.transfer_state = transfer_state
 
     @api.depends("picking_ids", "picking_ids.state")
     def _compute_json_popover(self):
