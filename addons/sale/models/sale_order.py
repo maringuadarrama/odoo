@@ -967,21 +967,28 @@ class SaleOrder(models.Model):
     @api.depends("state", "order_line_ids.invoice_state")
     def _compute_invoice_state(self):
         """Compute the invoice status of a SO. Possible statuses:
-        - no: if the SO is not in status 'sale' or 'done', we consider that there is nothing to
-          invoice. This is also the default value if the conditions of no other status is met.
-        - to invoice: if any SO line is 'to invoice', the whole SO is 'to invoice'
-        - invoiced: if all SO lines are invoiced, the SO is invoiced.
-        - upselling: if all SO lines are invoiced or upselling, the status is upselling.
+        - no: If the SO is not in status 'sale' or 'done', we consider that there is nothing to
+          invoice. This is also the default value if all lines are in 'no' state.
+        - to do: If any SO line is 'to invoice', the whole SO is 'to invoice'.
+        - partially: If some SO lines are invoiced and others are pending, the SO is 'partially invoiced'.
+        - done: If all SO lines are in 'no' or 'done' state, and at least one is 'done', the SO is 'fully invoiced'.
+        - over done: If all SO lines are invoiced and at least one is 'over invoiced', the status is 'over invoiced'.
+        - upselling: If all SO lines are invoiced or upselling, the status is 'upselling'.
         """
+        # Set default status for non-confirmed orders
         confirmed_orders = self.filtered(lambda o: o.state == "sale")
         (self - confirmed_orders).invoice_state = "no"
+
         if not confirmed_orders:
             return
 
+        # Define domain to filter relevant lines
         lines_domain = [
             ("is_downpayment", "=", False),
             ("display_type", "=", False),
         ]
+
+        # Get grouped invoice states for all confirmed orders
         line_invoice_state_all = [
             (order.id, invoice_state)
             for order, invoice_state in self.env["sale.order.line"]._read_group(
@@ -989,12 +996,20 @@ class SaleOrder(models.Model):
                 ["order_id", "invoice_state"],
             )
         ]
+
+        # Process each confirmed order
         for order in confirmed_orders:
             states = [d[1] for d in line_invoice_state_all if d[0] == order.id]
+
+            # No line states found, set to 'no'
+            if not states:
+                order.invoice_state = "no"
+                continue
+
+            # If any line is 'to do', the whole order is 'to do'
             if any(state == "to do" for state in states):
+                # Special case: check if only discount/delivery/promotion lines can be invoiced
                 if any(state == "no" for state in states):
-                    # If only discount/delivery/promotion lines can be invoiced, the SO should not
-                    # be invoiceable.
                     invoiceable_domain = lines_domain + [
                         ("invoice_state", "=", "to do")
                     ]
@@ -1004,16 +1019,32 @@ class SaleOrder(models.Model):
                     special_lines = invoiceable_lines.filtered(
                         lambda sol: not sol._can_be_invoiced_alone()
                     )
+                    # If only special lines can be invoiced, the order is not invoiceable
                     if invoiceable_lines == special_lines:
                         order.invoice_state = "no"
                     else:
                         order.invoice_state = "to do"
                 else:
                     order.invoice_state = "to do"
-            elif states and all(state == "done" for state in states):
+            # If any line is 'partially', the whole order is 'partially' invoiced
+            elif any(state == "partially" for state in states):
+                order.invoice_state = "partially"
+            # If all lines are 'done' or 'no', and at least one is 'done', the order is fully invoiced
+            elif all(state in ("done", "no") for state in states) and any(
+                state == "done" for state in states
+            ):
                 order.invoice_state = "done"
-            elif states and all(state in ("done", "over done") for state in states):
+            # If all lines are 'done' or 'over done' and at least one is 'over done', the order is 'over done'
+            elif all(state in ("done", "over done") for state in states) and any(
+                state == "over done" for state in states
+            ):
                 order.invoice_state = "over done"
+            # If all lines are 'done' or 'upselling' and at least one is 'upselling', the order is 'upselling'
+            elif all(state in ("done", "upselling") for state in states) and any(
+                state == "upselling" for state in states
+            ):
+                order.invoice_state = "upselling"
+            # Default status if no other conditions are met
             else:
                 order.invoice_state = "no"
 
@@ -2488,9 +2519,7 @@ class SaleOrder(models.Model):
                 _(
                     "Unable to cancel purchase order(s): %s. "
                     "You must first cancel their related vendor bills.",
-                    format_list(
-                        self.env, orders_with_invoices.mapped("display_name")
-                    ),
+                    format_list(self.env, orders_with_invoices.mapped("display_name")),
                 )
             )
 
