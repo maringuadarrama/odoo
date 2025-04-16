@@ -2,7 +2,17 @@ from odoo import models
 
 
 class SaleOrderLine(models.Model):
+    """Inherit SaleOrderLine"""
+
     inherit = "sale.order.line"
+
+    # ------------------------------------------------------------
+    # ACTION METHODS
+    # ------------------------------------------------------------
+
+    def action_add_from_catalog(self):
+        order = self.env["sale.order"].browse(self.env.context.get("order_id"))
+        return order.action_add_from_catalog()
 
     # ------------------------------------------------------------
     # HELPERS
@@ -76,11 +86,3 @@ class SaleOrderLine(models.Model):
                 "quantity": 0,
                 # price will be computed in batch with pricelist utils so not given here
             }
-
-    # ------------------------------------------------------------
-    # ACTION METHODS
-    # ------------------------------------------------------------
-
-    def action_add_from_catalog(self):
-        order = self.env["sale.order"].browse(self.env.context.get("order_id"))
-        return order.action_add_from_catalog()

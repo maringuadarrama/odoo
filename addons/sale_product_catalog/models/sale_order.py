@@ -6,6 +6,8 @@ from odoo.osv import expression
 
 
 class SaleOrder(models.Model):
+    """Inherit SaleOrder"""
+
     _inherit = ["sale.order", "product.catalog.mixin"]
 
     # ------------------------------------------------------------

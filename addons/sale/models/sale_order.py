@@ -1445,7 +1445,7 @@ class SaleOrder(models.Model):
             if order.partner_id not in order.message_partner_ids:
                 order.message_subscribe([order.partner_id.id])
 
-            order.write(order._prepare_action_confirm_vals())
+            order.write(order._prepare_action_confirm_write_vals())
 
             # Context key 'default_name' is sometimes propagated up to here.
             # We don't need it and it creates issues in the creation of linked records.
@@ -2307,7 +2307,7 @@ class SaleOrder(models.Model):
             "partner_id": self.partner_id.id,
         }
 
-    def _prepare_action_confirm_vals(self):
+    def _prepare_action_confirm_write_vals(self):
         """Prepare the sales order confirmation values.
 
         Note: self can contain multiple records.

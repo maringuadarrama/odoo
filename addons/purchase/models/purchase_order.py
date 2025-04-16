@@ -952,7 +952,7 @@ class PurchaseOrder(models.Model):
 
     def button_approve(self, force=False):
         if self._can_be_approved() or force:
-            self.write(self._prepare_action_confirm_vals())
+            self.write(self._prepare_action_confirm_write_vals())
             self.filtered(
                 lambda order: order.company_id.po_lock == "lock"
             ).action_lock()
@@ -1660,7 +1660,7 @@ class PurchaseOrder(models.Model):
         update_param = url_encode({"update": "True"})
         return self.get_portal_url(query_string="&%s" % update_param)
 
-    def _prepare_action_confirm_vals(self):
+    def _prepare_action_confirm_write_vals(self):
         """Prepare the purchase order confirmation values.
 
         Note: self can contain multiple records.

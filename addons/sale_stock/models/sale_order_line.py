@@ -421,7 +421,7 @@ class SaleOrderLine(models.Model):
             line = line.with_company(line.company_id)
             if (
                 line.state != "sale"
-                or line.order_id.locked
+                or line.locked
                 or line.product_id.type != "consu"
             ):
                 continue
@@ -511,17 +511,7 @@ class SaleOrderLine(models.Model):
 
     def _hook_on_written_confirmed_lines(self, write_vals, previous_vals):
         super()._hook_on_written_confirmed_lines(write_vals, previous_vals)
-        precision = self.env["decimal.precision"].precision_get("Product Unit")
         if "product_uom_qty" in write_vals:
-        # if "product_uom_qty" in write_vals and any(
-        #     float_compare(
-        #         previous_vals[line.id].get("product_uom_qty"),
-        #         line.product_uom_qty,
-        #         precision_digits=precision,
-        #     )
-        #     != 0
-        #     for line in self
-        # ):
             self._action_launch_stock_rule(previous_vals=previous_vals)
 
     def _get_action_add_from_catalog_extra_context(self, order):
