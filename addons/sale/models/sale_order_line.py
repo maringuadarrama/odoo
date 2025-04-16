@@ -949,31 +949,48 @@ class SaleOrderLine(models.Model):
     )
     def _compute_invoice_state(self):
         """Compute the invoice status of a SO line. Possible statuses:
-        - no: if the SO is not in status 'sale', we consider that there is nothing to
-          invoice. This is also the default value if the conditions of no other status is met.
-        - to invoice: we refer to the quantity to invoice of the line. Refer to method
-          `_compute_qty_to_invoice()` for more information on how this quantity is calculated.
-        - upselling: this is possible only for a product invoiced on ordered quantities for which
-          we delivered more than expected. This could arise if, for example, a project took more
-          time than expected but we decided not to invoice the extra cost to the client. This
-          occurs only in state 'sale', the upselling opportunity is removed from the list.
-        - invoiced: the quantity invoiced is equal to the quantity ordered.
-        - over invoiced: the quantity invoiced is larger to the quantity ordered."""
+        - no: When the line is not confirmed or there are no ordered quantities.
+        - to do: When the line is confirmed and nothing has been invoiced yet.
+        - partially: When the line is confirmed and partially invoiced, but not fully.
+        - done: When the line is confirmed and fully invoiced.
+        - over done: In case of a product invoiced based on delivered quantities, when
+          the line is confirmed and invoiced beyond its totality.
+        - upselling: In case of a product invoiced based on ordered quantities for which
+          we delivered more than expected. This status only applies in state 'sale'.
+        """
         precision = self.env["decimal.precision"].precision_get("Product Unit")
         for line in self.filtered(lambda l: not l.display_type):
+            # Default state: if the line is not in 'sale' state or has zero quantity
             if line.state != "sale" or float_is_zero(
                 line.product_uom_qty, precision_digits=precision
             ):
                 line.invoice_state = "no"
                 continue
 
+            # Handle downpayments with nothing left to invoice
             if line.is_downpayment and line.amount_to_invoice_taxexc == 0:
                 line.invoice_state = "done"
+                continue
+
+            # Check if there's still quantity to invoice
             if not float_is_zero(line.qty_to_invoice, precision_digits=precision):
                 if float_is_zero(line.qty_invoiced, precision_digits=precision):
+                    # Nothing invoiced yet
                     line.invoice_state = "to do"
-                elif not float_is_zero(line.qty_invoiced, precision_digits=precision):
+                else:
+                    # Some quantity already invoiced
                     line.invoice_state = "partially"
+            # Check for upselling opportunity
+            elif (
+                line.state == "sale"
+                and line.product_id.invoice_policy == "order"
+                and float_compare(
+                    line.qty_transfered, line.product_uom_qty, precision_digits=precision
+                )
+                > 0
+            ):
+                line.invoice_state = "upselling"
+            # All quantity invoiced, check if equal to ordered or more
             elif float_is_zero(line.qty_to_invoice, precision_digits=precision):
                 compare = float_compare(
                     line.qty_invoiced, line.product_uom_qty, precision_digits=precision
