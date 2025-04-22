@@ -1456,7 +1456,7 @@ class WebsiteSale(payment_portal.PaymentPortal):
         if not order_sudo.amount_total and not tx_sudo:
             if order_sudo.state != 'sale':
                 # Only confirm the order if it wasn't already confirmed.
-                order_sudo.action_confirm(send_email=True)
+                order_sudo.with_context(send_email=True).action_confirm()
 
             # clean context and session, then redirect to the portal page
             request.website.sale_reset()

@@ -1460,7 +1460,7 @@ class SaleOrder(models.Model):
         self.write({"state": "cancel"})
         return True
 
-    def action_confirm(self, send_email=False):
+    def action_confirm(self):
         """Confirm the given quotation(s) and set their confirmation date.
 
         If the corresponding setting is enabled, also locks the Sale Order.
@@ -1490,7 +1490,7 @@ class SaleOrder(models.Model):
                 # Public user can confirm SO, so we check the group on any record creator.
                 order.action_lock()
 
-            if send_email:
+            if self.env.context.get("send_email"):
                 order._send_order_confirmation_mail()
 
         return True
