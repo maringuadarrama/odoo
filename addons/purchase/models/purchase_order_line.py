@@ -914,6 +914,15 @@ class PurchaseOrderLine(models.Model):
                     self.product_id.with_context(product_ctx)
                 )
             )
+
+        seller = self.product_id._select_seller(
+            partner_id=self.partner_id,
+            quantity=self.product_qty if hasattr(self, 'product_qty') else 0,
+            date=self.order_id.date_order and self.order_id.date_order.date() if hasattr(self, 'order_id') else fields.Date.context_today(self),
+            uom_id=self.product_uom_id if hasattr(self, 'product_uom_id') else None,
+            params=params
+        )
+
         if not self.name or self.name in default_names:
             product_ctx = {
                 "seller_id": seller.id or None,
