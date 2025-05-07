@@ -1,9 +1,8 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from datetime import timedelta
 
 from odoo import api, fields, tools, models, _
 from odoo.exceptions import UserError
+from odoo.tools import float_round
 
 
 class UomUom(models.Model):
@@ -12,7 +11,6 @@ class UomUom(models.Model):
     _parent_name = "relative_uom_id"
     _parent_store = True
     _order = "relative_uom_id, name, id"
-
 
     name = fields.Char(
         string="Unit Name",
@@ -48,11 +46,11 @@ class UomUom(models.Model):
     factor = fields.Float(
         string="Absolute Quantity",
         digits=0,
-        compute="_compute_factor", store=True,
-        recursive=True
+        compute="_compute_factor",
+        store=True,
+        recursive=True,
     )
     parent_path = fields.Char(index=True)
-
 
     # ------------------------------------------------------------
     # CONSTRAINT METHODS
@@ -69,7 +67,6 @@ class UomUom(models.Model):
             if not uom.relative_uom_id and uom.relative_factor != 1.0:
                 raise UserError(_("Reference unit of measure is missing."))
 
-
     # ------------------------------------------------------------
     # CRUD METHODS
     # ------------------------------------------------------------
@@ -78,12 +75,13 @@ class UomUom(models.Model):
     def _unlink_except_master_data(self):
         locked_uoms = self._filter_protected_uoms()
         if locked_uoms:
-            raise UserError(_(
-                "The following units of measure are used by the system and cannot be deleted: %s\n"
-                "You can archive them instead.",
-                ", ".join(locked_uoms.mapped("name")),
-            ))
-
+            raise UserError(
+                _(
+                    "The following units of measure are used by the system and cannot be deleted: %s\n"
+                    "You can archive them instead.",
+                    ", ".join(locked_uoms.mapped("name")),
+                )
+            )
 
     # ------------------------------------------------------------
     # COMPUTE METHODS
@@ -98,11 +96,11 @@ class UomUom(models.Model):
                 uom.factor = uom.relative_factor
 
     def _compute_rounding(self):
-        """ All Units of Measure share the same rounding precision defined in "Product Unit".
-            Set in a compute to ensure compatibility with previous calls to `uom.rounding`.
+        """All Units of Measure share the same rounding precision defined in "Product Unit".
+        Set in a compute to ensure compatibility with previous calls to `uom.rounding`.
         """
         decimal_precision = self.env["decimal.precision"].precision_get("Product Unit")
-        self.rounding = 10 ** -decimal_precision
+        self.rounding = 10**-decimal_precision
 
     # ------------------------------------------------------------
     # ONCHANGE METHODS
@@ -110,7 +108,9 @@ class UomUom(models.Model):
 
     @api.onchange("relative_factor")
     def _onchange_critical_fields(self):
-        if self._filter_protected_uoms() and self.create_date < (fields.Datetime.now() - timedelta(days=1)):
+        if self._filter_protected_uoms() and self.create_date < (
+            fields.Datetime.now() - timedelta(days=1)
+        ):
             return {
                 "warning": {
                     "title": _("Warning for %s", self.name),
@@ -120,14 +120,34 @@ class UomUom(models.Model):
                         "As units of measure impact the whole system, this may cause critical issues.\n"
                         "Therefore, changing core units of measure in a running database is not recommended.",
                         self.name,
-                    )
+                    ),
                 }
             }
-
 
     # ------------------------------------------------------------
     # HELPERS
     # ------------------------------------------------------------
+
+    def _check_qty(self, product_qty, uom_id, rounding_method="HALF-UP"):
+        """Check if product_qty in given uom is a multiple of the packaging qty.
+        If not, rounding the product_qty to closest multiple of the packaging qty
+        according to the rounding_method "UP", "HALF-UP or "DOWN"."""
+        self.ensure_one()
+        packaging_qty = self._compute_quantity(1, uom_id)
+        # We do not use the modulo operator to check if qty is a mltiple of q. Indeed the quantity
+        # per package might be a float, leading to incorrect results. For example:
+        # 8 % 1.6 = 1.5999999999999996
+        # 5.4 % 1.8 = 2.220446049250313e-16
+        if product_qty and packaging_qty:
+            product_qty = (
+                float_round(
+                    product_qty / packaging_qty,
+                    precision_rounding=1.0,
+                    rounding_method=rounding_method,
+                )
+                * packaging_qty
+            )
+        return product_qty
 
     def _unprotected_uom_xml_ids(self):
         return [
@@ -138,19 +158,25 @@ class UomUom(models.Model):
 
     def _filter_protected_uoms(self):
         """Verifies self does not contain protected uoms."""
-        linked_model_data = self.env["ir.model.data"].sudo().search([
-            ("model", "=", self._name),
-            ("res_id", "in", self.ids),
-            ("module", "=", "uom"),
-            ("name", "not in", self._unprotected_uom_xml_ids()),
-        ])
+        linked_model_data = (
+            self.env["ir.model.data"]
+            .sudo()
+            .search(
+                [
+                    ("model", "=", self._name),
+                    ("res_id", "in", self.ids),
+                    ("module", "=", "uom"),
+                    ("name", "not in", self._unprotected_uom_xml_ids()),
+                ]
+            )
+        )
         if not linked_model_data:
             return self.browse()
         else:
             return self.browse(set(linked_model_data.mapped("res_id")))
 
     def _has_common_reference(self, other_uom):
-        """ Check if `self` and `other_uom` have a common reference unit """
+        """Check if `self` and `other_uom` have a common reference unit"""
         self.ensure_one()
         other_uom.ensure_one()
         self_path = self.parent_path.split("/")
@@ -167,7 +193,9 @@ class UomUom(models.Model):
     # HOOKS
     # ------------------------------------------------------------
 
-    def _compute_quantity(self, qty, to_unit, round=True, rounding_method="UP", raise_if_failure=True):
+    def _compute_quantity(
+        self, qty, to_unit, round=True, rounding_method="UP", raise_if_failure=True
+    ):
         """Convert the given quantity from the current UoM `self` into a given one
         :param qty: the quantity to convert
         :param to_unit: the destination UomUom record (uom.uom)
@@ -188,7 +216,7 @@ class UomUom(models.Model):
             amount = tools.float_round(
                 amount,
                 precision_rounding=to_unit.rounding,
-                rounding_method=rounding_method
+                rounding_method=rounding_method,
             )
         return amount
 

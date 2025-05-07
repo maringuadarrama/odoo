@@ -149,7 +149,7 @@ class StockScrap(models.Model):
                     if scrap.picking_id.state == "done"
                     else scrap.picking_id.location_id
                 )
-            else:
+            elif scrap.company_id:
                 scrap.location_id = locations_per_company[scrap.company_id.id]
 
     @api.depends("company_id")
@@ -163,7 +163,8 @@ class StockScrap(models.Model):
             company.id: stock_warehouse_id for company, stock_warehouse_id in groups
         }
         for scrap in self:
-            scrap.scrap_location_id = locations_per_company[scrap.company_id.id]
+            if scrap.company_id:
+                scrap.scrap_location_id = locations_per_company[scrap.company_id.id]
 
     @api.depends("move_ids", "move_ids.move_line_ids.quantity", "product_id")
     def _compute_scrap_qty(self):

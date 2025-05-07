@@ -600,7 +600,6 @@ class FleetVehicle(models.Model):
             "view_mode": "form",
             "context": {
                 "default_vehicle_ids": self.ids,
-                "default_render_model": "fleet.vehicle",
             }
         }
 

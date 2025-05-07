@@ -250,7 +250,7 @@ class SaleReport(models.Model):
             t.categ_id AS categ_id,
             t.uom_id AS product_uom_id,
             CASE WHEN l.product_id IS NOT NULL
-                THEN SUM(l.product_uom_qty / line_uom.factor * product_uom.factor)
+                THEN SUM(l.product_uom_qty * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS product_uom_qty,
             CASE WHEN l.product_id IS NOT NULL
@@ -271,19 +271,19 @@ class SaleReport(models.Model):
                 ELSE 0
             END AS discount_amount,
             CASE WHEN l.product_id IS NOT NULL
-                THEN SUM(l.qty_transfered / line_uom.factor * product_uom.factor)
+                THEN SUM(l.qty_transfered * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS qty_transfered,
             CASE WHEN l.product_id IS NOT NULL
-                THEN SUM((l.product_uom_qty - l.qty_transfered) / line_uom.factor * product_uom.factor)
+                THEN SUM((l.product_uom_qty - l.qty_transfered) * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS qty_to_transfer,
             CASE WHEN l.product_id IS NOT NULL
-                THEN SUM(l.qty_invoiced / line_uom.factor * product_uom.factor)
+                THEN SUM(l.qty_invoiced * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS qty_invoiced,
             CASE WHEN l.product_id IS NOT NULL
-                THEN SUM(l.qty_to_invoice / line_uom.factor * product_uom.factor)
+                THEN SUM(l.qty_to_invoice * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS qty_to_invoice,
             CASE WHEN l.product_id IS NOT NULL OR l.is_downpayment
@@ -295,11 +295,11 @@ class SaleReport(models.Model):
                 ELSE 0
             END AS amount_to_invoice_taxexc,
             CASE WHEN l.product_id IS NOT NULL
-                THEN SUM(p.weight * l.product_uom_qty / line_uom.factor * product_uom.factor)
+                THEN SUM(p.weight * l.product_uom_qty * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS weight,
             CASE WHEN l.product_id IS NOT NULL
-                THEN SUM(p.volume * l.product_uom_qty / line_uom.factor * product_uom.factor)
+                THEN SUM(p.volume * l.product_uom_qty * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS volume,
             COUNT(*) AS nbr

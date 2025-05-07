@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import logging
 from pytz import timezone, UTC
 from collections import defaultdict
@@ -980,14 +977,16 @@ class StockWarehouseOrderpoint(models.Model):
         domain = [
             ("create_uid", "=", SUPERUSER_ID),
             ("trigger", "=", "manual"),
-            ("qty_to_order", "<=", 0),
         ]
         if self.ids:
             expression.AND([domain, [("ids", "in", self.ids)]])
-        orderpoints_to_remove = (
+        manual_orderpoints = (
             self.env["stock.warehouse.orderpoint"]
             .with_context(active_test=False)
             .search(domain)
+        )
+        orderpoints_to_remove = manual_orderpoints.filtered(
+            lambda o: o.qty_to_order <= 0.0
         )
         # Remove previous automatically created orderpoint that has been refilled.
         orderpoints_to_remove.unlink()

@@ -466,6 +466,7 @@ class StockMoveLine(models.Model):
                     )._get_putaway_strategy(
                         sml.product_id,
                         quantity=sml.quantity,
+                        packaging=sml.move_id.packaging_uom_id,
                     )
                     if putaway_loc_id != sml.location_dest_id:
                         sml.location_dest_id = putaway_loc_id
@@ -1360,6 +1361,7 @@ class StockMoveLine(models.Model):
     def _get_aggregated_properties(self, move_line=False, move=False):
         move = move or move_line.move_id
         uom = move.product_uom or move_line.product_uom_id
+        packaging_uom = move.packaging_uom_id
         name = move.product_id.display_name
         description = move.description_picking or ""
         product = move.product_id
@@ -1373,6 +1375,7 @@ class StockMoveLine(models.Model):
             "name": name,
             "description": description,
             "product_uom": uom,
+            "packaging_uom_id": packaging_uom,
             "move": move,
         }
 
@@ -1406,8 +1409,12 @@ class StockMoveLine(models.Model):
             quantity = move_line.product_uom_id._compute_quantity(
                 move_line.quantity, uom
             )
+            packaging_quantity = move_line.product_uom_id._compute_quantity(
+                quantity, move_line.move_id.packaging_uom_id
+            )
             if line_key not in aggregated_move_lines:
                 qty_ordered = None
+                packaging_qty_ordered = None
                 if backorders and not kwargs.get("strict"):
                     qty_ordered = move_line.move_id.product_uom_qty
                     # Filters on the aggregation key (product, description and uom) to add the
@@ -1435,6 +1442,9 @@ class StockMoveLine(models.Model):
                             for m in previous_move_lines
                         ]
                     )
+                    packaging_qty_ordered = move_line.product_uom_id._compute_quantity(
+                        qty_ordered, move_line.move_id.packaging_uom_id
+                    )
                 aggregated_move_lines[line_key] = {
                     **aggregated_properties,
                     "quantity": quantity,
@@ -1443,7 +1453,13 @@ class StockMoveLine(models.Model):
                 }
             else:
                 aggregated_move_lines[line_key]["qty_ordered"] += quantity
+                aggregated_move_lines[line_key][
+                    "packaging_qty_ordered"
+                ] += packaging_quantity
                 aggregated_move_lines[line_key]["quantity"] += quantity
+                aggregated_move_lines[line_key][
+                    "packaging_quantity"
+                ] += packaging_quantity
 
         # Does the same for empty move line to retrieve the ordered qty. for partially done moves
         # (as they are splitted when the transfer is done and empty moves don't have move lines).
