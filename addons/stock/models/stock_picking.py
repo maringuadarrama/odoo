@@ -2252,7 +2252,7 @@ class StockPicking(models.Model):
         start_day_2 = start_today + timedelta(days=2)
         start_day_3 = start_today + timedelta(days=3)
 
-        date_category = "none"
+        date_category = ""
 
         if datetime:
             datetime = datetime.astimezone(pytz.UTC)

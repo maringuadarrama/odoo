@@ -584,7 +584,8 @@ class StockPickingType(models.Model):
                 date_category = self.env["stock.picking"].calculate_date_category(
                     p_date
                 )
-                summaries[picking_type_id]["total_" + date_category] += 1
+                if date_category:
+                    summaries[picking_type_id]["total_" + date_category] += 1
 
         self._prepare_graph_data(summaries)
 
