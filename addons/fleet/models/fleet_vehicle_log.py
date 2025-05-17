@@ -10,12 +10,6 @@ class FleetVehicleLog(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "Logs for vehicles"
 
-
-    def compute_next_year_date(self, strdate):
-        start_date = fields.Date.from_string(strdate)
-        return fields.Date.to_string(start_date + relativedelta(years=1))
-
-
     company_id = fields.Many2one(
         comodel_name="res.company",
         string="Company",
@@ -46,10 +40,19 @@ class FleetVehicleLog(models.Model):
         comodel_name="res.partner",
         string="Vendor",
     )
+    product_category_id = fields.Many2one(
+        comodel_name="product.category",
+        string="Product Category",
+        domain=lambda self: [('parent_id', '=', self.env.ref('fleet.product_category_vehicle_services').id)],
+        ondelete="restrict",
+        required=True,
+    )
     product_id = fields.Many2one(
         comodel_name="product.product",
         string="Product",
+        domain=[('vehicle_service', '=', True)],
         ondelete="restrict",
+        required=True,
     )
     service_ids = fields.Many2many(
         comodel_name="product.product",
@@ -57,17 +60,6 @@ class FleetVehicleLog(models.Model):
         help="When the log is of type \"Contract\" here the included services can be specified"
     )
     active = fields.Boolean(default=True)
-    type = fields.Selection(
-        [
-            ("service", "Service"),
-            ("contract", "Contract"),
-            ("driver", "driver change"),
-        ],
-        string="Type",
-        default="service",
-        tracking=True,
-        help="Technical name used to classify the log types",
-    )
     state = fields.Selection(
         [
             ("new", "New"),
@@ -115,7 +107,6 @@ class FleetVehicleLog(models.Model):
         compute="_compute_days_left",
     )
 
-
     @api.depends("date_end")
     def _compute_days_left(self):
         today = fields.Date.from_string(fields.Date.today())
@@ -126,3 +117,7 @@ class FleetVehicleLog(models.Model):
                 log.days_left = diff_time if diff_time > 0 else 0
             else:
                 log.days_left = -1
+
+    def compute_next_year_date(self, strdate):
+        start_date = fields.Date.from_string(strdate)
+        return fields.Date.to_string(start_date + relativedelta(years=1))

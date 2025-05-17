@@ -36,8 +36,9 @@ class Employee(models.Model):
                 employee.license_plate = " ".join(employee.vehicle_ids.filtered("license_plate").mapped("license_plate")) or employee.private_car_plate
 
     def _compute_vehicle_count(self):
+        driver_assignation_product = self.env.ref("fleet.product_product_driver_assignation")
         logs = self.env["fleet.vehicle.log"]._read_group(
-            [("driver_id", "in", self.ids), ("type", "=", "driver")],
+            [("driver_id", "in", self.ids), ("product_id", "=", driver_assignation_product.id)],
             ["driver_id"],
             ["__count"]
         )
@@ -55,20 +56,26 @@ class Employee(models.Model):
 
     def action_open_employee_vehicles(self):
         self.ensure_one()
-        return {
-            "name": "Employee's cars history",
-            "type": "ir.actions.act_window",
-            "res_model": "fleet.vehicle.log",
-            "views": [
-                [self.env.ref("fleet.view_list_fleet_vehicle_log").id, "list"],
-                [False, "form"]
-            ],
-            "domain": [("driver_id", "in", self.ids), ("type", "=", "driver")],
-            "context": dict(
-                self._context,
-                default_driver_id=self.id
-            ),
-        }
+        driver_assignation_product = self.env.ref("fleet.product_product_driver_assignation")
+        action = self.env['ir.actions.act_window']._for_xml_id('fleet.action_fleet_vehicle_log')
+        action["name"] = self.env._("Employee's cars history")
+        action["views"] = [
+            [self.env.ref("fleet.view_list_fleet_vehicle_log").id, "list"],
+            [False, "form"]
+        ],
+        action["domain"] = [
+            ("driver_id", "=", self.id),
+            ("product_id", "=", driver_assignation_product.id),
+        ]
+        action["context"] = dict(
+            self._context,
+            default_driver_id=self.id,
+            default_product_id=driver_assignation_product.id,
+            search_default_groupby_product_category_id=False,
+            hide_product=True,
+            show_driver=True,
+        )
+        return action
 
 
 class EmployeePublic(models.Model):
