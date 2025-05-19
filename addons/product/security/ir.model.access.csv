@@ -7,6 +7,16 @@ access_product_attribute_value,product.attribute value,model_product_attribute_v
 access_product_attribute_value_manager,product.attribute value manager,model_product_attribute_value,group_product_manager,1,1,1,1
 access_product_category_user,product.category.user,model_product_category,base.group_user,1,0,0,0
 access_product_category_manager,product.category.manager,model_product_category,group_product_manager,1,1,1,1
+access_sale_product_category_user,sale.product.category.user,model_sale_product_category,base.group_user,1,0,0,0
+access_sale_product_category_manager,sale.product.category.manager,model_sale_product_category,group_product_manager,1,1,1,1
+access_stock_product_category_user,stock.product.category.user,model_stock_product_category,base.group_user,1,0,0,0
+access_stock_product_category_manager,stock.product.category.manager,model_stock_product_category,group_product_manager,1,1,1,1
+access_account_product_category_user,account.product.category.user,model_account_product_category,base.group_user,1,0,0,0
+access_account_product_category_manager,account.product.category.manager,model_account_product_category,group_product_manager,1,1,1,1
+access_mrp_product_category_user,mrp.product.category.user,model_mrp_product_category,base.group_user,1,0,0,0
+access_mrp_product_category_manager,mrp.product.category.manager,model_mrp_product_category,group_product_manager,1,1,1,1
+access_purchase_product_category_user,purchase.product.category.user,model_purchase_product_category,base.group_user,1,0,0,0
+access_purchase_product_category_manager,purchase.product.category.manager,model_purchase_product_category,group_product_manager,1,1,1,1
 access_product_combo_user,product.combo.user,model_product_combo,base.group_user,1,0,0,0
 access_product_combo_manager,product.combo.manager,model_product_combo,group_product_manager,1,1,1,1
 access_product_combo_item_user,product.combo.item.user,model_product_combo_item,base.group_user,1,0,0,0

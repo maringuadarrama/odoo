@@ -52,6 +52,26 @@ class ProductTemplate(models.Model):
         group_expand="_read_group_categ_id",
         tracking=True,
     )
+    account_product_category_id = fields.Many2one(
+        comodel_name="account.product.category",
+        tracking=True,
+    )
+    sale_product_category_id = fields.Many2one(
+        comodel_name="sale.product.category",
+        tracking=True,
+    )
+    stock_product_category_id = fields.Many2one(
+        comodel_name="stock.product.category",
+        tracking=True,
+    )
+    mrp_product_category_id = fields.Many2one(
+        comodel_name="mrp.product.category",
+        tracking=True,
+    )
+    purchase_product_category_id = fields.Many2one(
+        comodel_name="purchase.product.category",
+        tracking=True,
+    )
     uom_id = fields.Many2one(
         comodel_name="uom.uom",
         string="Unit",
