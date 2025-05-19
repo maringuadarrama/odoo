@@ -94,10 +94,10 @@
 
     <menuitem
         id="fleet_vehicle_service_types_menu"
-        name="Products"
+        name="Services"
         parent="fleet_services_configuration"
         sequence="1"
-        action="product.product_template_action"
+        action="fleet.product_template_action_vehicle_services"
         groups="base.group_no_one" />
 
     <menuitem

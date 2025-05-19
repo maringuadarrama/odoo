@@ -7,14 +7,17 @@
             <search string="Services Logs">
                 <field name="vehicle_id" />
                 <field name="product_id" />
+		<field name="product_category_id" />
                 <separator />
                 <filter name="inactive" string="Archived"
                     domain="[('active', '=', False)]" />
                 <group expand="1" string="Group By">
-                    <filter name="groupby_product_id" string="Service Type"
-                        context="{'group_by': 'product_id'}" />
+                    <filter name="groupby_product_category_id" string="Service Type"
+                        context="{'group_by': 'product_category_id'}" />
                     <filter name="groupby_manager_id" string="Fleet Manager"
                         context="{'group_by': 'manager_id'}" />
+                    <filter name="groupby_vehicle_id" string="Vehicle"
+                        context="{'group_by': 'vehicle_id'}" />
                 </group>
             </search>
         </field>
@@ -28,10 +31,11 @@
                 <field name="currency_id" column_invisible="True" />
                 <field name="date" readonly="1" />
                 <field name="vehicle_id" readonly="1" widget="many2one_avatar" />
-                <field name="driver_id" readonly="1" widget="many2one_avatar" optional="show" />
-                <field name="vendor_id" optional="show" />
-                <field name="product_id" optional="show" />
-                <field name="amount" sum="Total" widget="monetary" optional="show" />
+                <field name="driver_id" widget="many2one_avatar" invisible="not context.get('show_driver')" />
+		<field name="product_category_id" invisible="context.get('hide_product_category')"/>
+                <field name="product_id" domain="[('categ_id', 'child_of', product_category_id)]" invisible="context.get('hide_product')" />
+                <field name="vendor_id" invisible="not context.get('show_vendor')" />
+                <field name="amount" sum="Total" widget="monetary" />
                 <field name="odometer" optional="show" />
                 <field name="state"
                     widget="badge"
@@ -129,7 +133,7 @@
                         <group string="Vendor">
                             <field name="vendor_id" widget="many2one_avatar" />
                             <field name="date" />
-                            <field name="type" />
+                            <field name="product_category_id" />
                             <field name="product_id" />
                             <field name="service_ids" widget="many2many_tags" />
                         </group>
@@ -190,49 +194,16 @@
         <field name="name">Logs</field>
         <field name="res_model">fleet.vehicle.log</field>
         <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
-        <field name="context">{'search_default_groupby_product_id': 1}</field>
+        <field name="context">{'search_default_groupby_product_category_id': 1, 'search_default_groupby_vehicle_id': 1, 'create': 0, 'edit': 0}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Create a new service entry
+                Create a new log entry
             </p>
             <p>
-                Track all the services done on your vehicle.
-                Services can be of many types: occasional repair, fixed maintenance, etc.
+                Track all the logs done on your vehicle.
+                Logs can be of many types according to product assigned.
             </p>
         </field>
     </record>
 
-    <record id="action_fleet_vehicle_log_contract" model="ir.actions.act_window">
-        <field name="name">Contract Logs</field>
-        <field name="res_model">fleet.vehicle.log</field>
-        <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
-	<field name="domain">[('type', '=', 'contract')]</field>
-        <field name="context">{'search_default_groupby_product_id': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Create a new service entry
-            </p>
-            <p>
-                Track all the services done on your vehicle.
-                Services can be of many types: occasional repair, fixed maintenance, etc.
-            </p>
-        </field>
-    </record>
-
-    <record id="action_fleet_vehicle_log_service" model="ir.actions.act_window">
-        <field name="name">Service Logs</field>
-        <field name="res_model">fleet.vehicle.log</field>
-        <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
-	<field name="domain">[('type', '=', 'service')]</field>
-        <field name="context">{'search_default_groupby_product_id': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Create a new service entry
-            </p>
-            <p>
-                Track all the services done on your vehicle.
-                Services can be of many types: occasional repair, fixed maintenance, etc.
-            </p>
-        </field>
-    </record>
 </odoo>

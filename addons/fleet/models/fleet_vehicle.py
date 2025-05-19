@@ -391,10 +391,11 @@ class FleetVehicle(models.Model):
 
     @api.depends("log_ids")
     def _compute_service_activity(self):
+        service_category = self.env.ref("fleet.product_category_vehicle_maintenance")
         for vehicle in self:
             activities_state = set(
                 state
-                for state in vehicle.log_ids.mapped("activity_state")
+                for state in vehicle.log_ids.filtered(lambda x: x.product_category_id == service_category).mapped("activity_state")
                 if state and state != "planned"
             )
             vehicle.service_activity = (
@@ -403,6 +404,7 @@ class FleetVehicle(models.Model):
 
     @api.depends("log_ids")
     def _compute_contract_reminder(self):
+        contract_product_category = self.env.ref("fleet.product_category_vehicle_contracts")
         params = self.env["ir.config_parameter"].sudo()
         delay_alert_contract = int(
             params.get_param("hr_fleet.delay_alert_contract", default=30)
@@ -412,7 +414,7 @@ class FleetVehicle(models.Model):
             domain=[
                 ("date_end", "!=", False),
                 ("vehicle_id", "in", self.ids),
-                ("type", "=", "contract"),
+                ("product_category_id", "=", contract_product_category.id),
                 ("state", "!=", "closed"),
             ],
             groupby=["vehicle_id", "state"],
@@ -454,22 +456,26 @@ class FleetVehicle(models.Model):
 
     def _compute_count_all(self):
         Log = self.env["fleet.vehicle.log"].with_context(active_test=False)
+        service_product_category = self.env.ref("fleet.product_category_vehicle_maintenance")
+        contract_product_category = self.env.ref("fleet.product_category_vehicle_contracts")
+        driver_assignation_product = self.env.ref("fleet.product_product_driver_assignation")
+
         contract_data = Log._read_group(
             [
                 ("vehicle_id", "in", self.ids),
-                ("type", "=", "contract"),
+                ("product_category_id", "=", contract_product_category.id),
                 ("state", "!=", "closed"),
             ],
             ["vehicle_id", "active"],
             ["__count"],
         )
         service_data = Log._read_group(
-            [("vehicle_id", "in", self.ids), ("type", "=", "service")],
+            [("vehicle_id", "in", self.ids), ("product_category_id", "=", service_product_category.id)],
             ["vehicle_id", "active"],
             ["__count"],
         )
         history_data = Log._read_group(
-            [("vehicle_id", "in", self.ids), ("type", "=", "driver")],
+            [("vehicle_id", "in", self.ids), ("product_id", "=", driver_assignation_product.id)],
             ["vehicle_id"],
             ["__count"],
         )
@@ -495,6 +501,7 @@ class FleetVehicle(models.Model):
         delay_alert_contract = int(
             params.get_param("hr_fleet.delay_alert_contract", default=30)
         )
+        contract_product_category = self.env.ref("fleet.product_category_vehicle_contracts")
         res = []
         assert operator in ("=", "!=", "<>") and value in (
             True,
@@ -517,7 +524,7 @@ class FleetVehicle(models.Model):
                 [
                     ("date_end", ">", today),
                     ("date_end", "<", limit_date),
-                    ("type", "=", "contract"),
+                    ("product_category_id", "=", contract_product_category.id),
                     ("state", "in", ["open", "expired"]),
                 ]
             )
@@ -584,10 +591,12 @@ class FleetVehicle(models.Model):
 
     def _get_driver_history_data(self, vals):
         self.ensure_one()
+        driver_assignation_product = self.env.ref("fleet.product_product_driver_assignation")
         return {
             "vehicle_id": self.id,
             "driver_id": vals["driver_id"],
-            "type": "driver",
+            "product_id": driver_assignation_product.id,
+            "product_category_id": driver_assignation_product.categ_id.id,
             "date_start": fields.Date.today(),
             "odometer": self.odometer,
         }
@@ -610,81 +619,56 @@ class FleetVehicle(models.Model):
             vehicle.driver_id = vehicle.future_driver_id
             vehicle.future_driver_id = False
 
-    def return_action_to_open(self):
-        """
-        This opens the xml view specified in xml_id for the current vehicle
-        """
+    def action_view_assignation_logs(self):
         self.ensure_one()
-        xml_id = self.env.context.get("xml_id")
-        if xml_id:
-            res = self.env["ir.actions.act_window"]._for_xml_id(f"fleet.{xml_id}")
-            res.update(
-                context=dict(
-                    self.env.context, default_vehicle_id=self.id, group_by=False
-                ),
-                domain=[("vehicle_id", "=", self.id)],
-            )
-            return res
-        return False
-
-    def act_show_log_cost(self):
-        """
-        This opens log view to view and add new log for this vehicle, groupby default to only show effective costs
-        @return: the costs log view
-        """
-        self.ensure_one()
-        copy_context = dict(self.env.context)
-        copy_context.pop("group_by", None)
-        res = self.env["ir.actions.act_window"]._for_xml_id(
-            "fleet.fleet_vehicle_costs_action"
-        )
-        res.update(
-            context=dict(
-                copy_context,
-                default_vehicle_id=self.id,
-                search_default_parent_false=True,
-            ),
-            domain=[("vehicle_id", "=", self.id)],
-        )
-        return res
-
-    def action_open_assignation_logs(self):
-        self.ensure_one()
-        return {
-            "name": _("Assignment Logs"),
-            "type": "ir.actions.act_window",
-            "res_model": "fleet.vehicle.log",
-            "view_mode": "list",
-            "domain": [("vehicle_id", "=", self.id)],
-            "context": {
-                "default_driver_id": self.driver_id.id,
-                "default_vehicle_id": self.id,
-            },
+        driver_assignation_product = self.env.ref("fleet.product_product_driver_assignation")
+        action = self.env['ir.actions.act_window']._for_xml_id('fleet.action_fleet_vehicle_log')
+        action["domain"] = [
+            ("vehicle_id", "=", self.id),
+            ("product_id", "=", driver_assignation_product.id),
+        ]
+        action['context'] = {
+            "default_driver_id": self.driver_id.id,
+            "default_vehicle_id": self.id,
+            "default_product_category_id": driver_assignation_product.categ_id.id,
+            "default_product_id": driver_assignation_product.id,
+            "hide_product_category": True,
+            "hide_product": True,
+            "show_driver": True,
+            "search_default_groupby_product_category_id": False,
         }
+        return action
 
-    def action_send_email(self):
-        return {
-            "name": _("Send Email"),
-            "type": "ir.actions.act_window",
-            "res_model": "fleet.vehicle.send.mail",
-            "target": "new",
-            "view_mode": "form",
-            "context": {
-                "default_vehicle_ids": self.ids,
-            },
-        }
-
-    def action_view_bills(self):
+    def action_view_contract_logs(self):
         self.ensure_one()
-        form_view_ref = self.env.ref("account.view_move_form", False)
-        list_view_ref = self.env.ref("account_fleet.account_move_view_tree", False)
-        result = self.env["ir.actions.act_window"]._for_xml_id(
-            "account.action_move_in_invoice_type"
-        )
-        result.update(
-            {
-                "domain": [("id", "in", self.account_move_ids.ids)],
-                "views": [(list_view_ref.id, "list"), (form_view_ref.id, "form")],
-            }
-        )
-        return result
+        contract_product_category = self.env.ref("fleet.product_category_vehicle_contracts")
+        action = self.env['ir.actions.act_window']._for_xml_id('fleet.action_fleet_vehicle_log')
+        action["domain"] = [
+            ("vehicle_id", "=", self.id),
+            ("product_category_id", "=", contract_product_category.id),
+        ]
+        action['context'] = {
+            "default_vehicle_id": self.id,
+            "default_product_category_id": contract_product_category.id,
+            "hide_product_category": True,
+            "show_vendor": True,
+            "search_default_groupby_product_category_id": False,
+        }
+        return action
+
+    def action_view_service_logs(self):
+        self.ensure_one()
+        service_product_category = self.env.ref("fleet.product_category_vehicle_maintenance")
+        action = self.env['ir.actions.act_window']._for_xml_id('fleet.action_fleet_vehicle_log')
+        action["domain"] = [
+            ("vehicle_id", "=", self.id),
+            ("product_category_id", "=", service_product_category.id),
+        ]
+        action['context'] = {
+            "default_vehicle_id": self.id,
+            "default_product_category_id": service_product_category.id,
+            "hide_product_category": True,
+            "show_vendor": True,
+            "search_default_groupby_product_category_id": False,
+        }
+        return action

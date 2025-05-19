@@ -121,8 +121,8 @@
                             <footer class="pt-0 mt-0" t-if="!selection_mode">
                                 <div class="d-flex fs-6">
                                     <a t-if="record.contract_count.raw_value>0" type="object"
-                                        name="return_action_to_open" href="#"
-                                        data-context='{"xml_id":"action_fleet_vehicle_log_contract"}'>
+                                        name="action_view_fleet_vehicle_log" href="#"
+                                        data-context='{"search_default_product_category_id":"fleet.product_category_vehicle_contracts"}'>
                                         <field name="contract_count" /> Contract(s) <span
                                             t-if="record.contract_renewal_due_soon.raw_value and !record.contract_renewal_overdue.raw_value"
                                             class="fa fa-exclamation-triangle text-warning"
@@ -175,38 +175,34 @@
                     <field name="active" invisible="1" />
                     <field name="vehicle_type" invisible="1" />
                     <div name="button_box" class="oe_button_box">
-                        <button name="action_open_assignation_logs"
+                        <button name="action_view_assignation_logs"
                             type="object" class="oe_stat_button"
                             icon="fa-history">
-                            <field name="assignment_count" string="Drivers History" widget="statinfo" />
+                            <field name="assignment_count" string="Drivers" widget="statinfo" />
                         </button>
-                        <button name="return_action_to_open"
+                        <button name="action_view_contract_logs"
                             type="object" class="oe_stat_button"
                             icon="fa-book"
-                            context="{'xml_id':'action_fleet_vehicle_log_contract', 'search_default_inactive': not active}"
                             help="show the contract for this vehicle">
                             <field name="contract_count" string="Contracts" widget="statinfo" />
                         </button>
-                        <button name="return_action_to_open"
+                        <button name="action_view_service_logs"
                             type="object" class="oe_stat_button"
                             icon="fa-wrench"
-                            context="{'xml_id':'action_fleet_vehicle_log_service', 'search_default_inactive': not active}"
-                            invisible="service_activity != 'none'"
+			    invisible="service_activity != 'none'"
                             help="show the services logs for this vehicle">
                             <field name="service_count" string="Services" widget="statinfo" />
                         </button>
-                        <button name="return_action_to_open"
+                        <button name="action_view_service_logs"
                             type="object" class="oe_stat_button text-danger"
                             icon="fa-wrench"
-                            context="{'xml_id':'action_fleet_vehicle_log_service', 'search_default_inactive': not active}"
                             invisible="service_activity != 'overdue'"
                             help="show the services logs for this vehicle">
                             <field name="service_count" string="Services" widget="statinfo" />
                         </button>
-                        <button name="return_action_to_open"
+                        <button name="action_view_service_logs"
                             type="object" class="oe_stat_button text-warning"
                             icon="fa-wrench"
-                            context="{'xml_id':'action_fleet_vehicle_log_service', 'search_default_inactive': not active}"
                             invisible="service_activity != 'today'"
                             help="show the services logs for this vehicle">
                             <field name="service_count" string="Services" widget="statinfo" />
@@ -379,14 +375,5 @@
                 Let's create your first vehicle.
             </p>
         </field>
-    </record>
-
-    <record id="action_fleet_vehicle_send_mail" model="ir.actions.server">
-        <field name="name">Mail to Driver</field>
-        <field name="model_id" ref="fleet.model_fleet_vehicle" />
-        <field name="binding_model_id" ref="fleet.model_fleet_vehicle" />
-        <field name="binding_view_types">list</field>
-        <field name="state">code</field>
-        <field name="code">action = records.action_send_email()</field>
     </record>
 </odoo>
