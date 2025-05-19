@@ -377,6 +377,9 @@
                                 </group>
                             </group>
                         </page>
+                        <page name="accounting" string="Accounting"
+                            invisible="1">
+                        </page>
                     </notebook>
                 </sheet>
                 <chatter />
