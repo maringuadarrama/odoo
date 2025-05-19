@@ -283,6 +283,7 @@ class ProductTemplate(models.Model):
         compute="_compute_is_dynamically_created",
     )
     is_favorite = fields.Boolean(string="Favorite")
+
     _is_favorite_index = models.Index("(is_favorite) WHERE is_favorite IS TRUE")
 
     # ------------------------------------------------------------
