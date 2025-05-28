@@ -166,7 +166,7 @@ class PurchaseOrder(models.Model):
         comodel_name="approval.request",
         string="Approval",
     )
-    approval_state = fields.Selection(
+    approval_state = fields.Char(
         compute="_compute_approval_state",
     )
     state = fields.Selection(
@@ -481,7 +481,7 @@ class PurchaseOrder(models.Model):
                 order.date_approve if order.state == "purchase" else order.date_order
             )
 
-    @api.depends("approval_state_id")
+    @api.depends("approval_request_id")
     def _compute_approval_state(self):
         for order in self:
             if order.approval_state_id:
