@@ -16,7 +16,6 @@ class StockLot(models.Model):
         comodel_name="purchase.order",
         string="Purchase Orders",
         compute="_compute_purchase_order_ids",
-        store=False,
         readonly=True,
     )
     count_purchase_order = fields.Integer(

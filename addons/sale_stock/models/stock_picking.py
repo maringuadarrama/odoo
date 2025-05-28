@@ -7,14 +7,9 @@ class StockPicking(models.Model):
 
     _inherit = "stock.picking"
 
-    sale_id = fields.Many2one(
-        comodel_name="sale.order",
-        string="Sales Order",
-        compute="_compute_sale_id",
-        store=True,
-        inverse="_set_sale_id",
-        index="btree_not_null",
-    )
+    # ------------------------------------------------------------
+    # INIT
+    # ------------------------------------------------------------
 
     def _auto_init(self):
         """
@@ -28,10 +23,31 @@ class StockPicking(models.Model):
             create_column(self.env.cr, "stock_picking", "sale_id", "int4")
         return super()._auto_init()
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    sale_id = fields.Many2one(
+        comodel_name="sale.order",
+        string="Sales Order",
+        compute="_compute_sale_id",
+        store=True,
+        inverse="_set_sale_id",
+        index="btree_not_null",
+    )
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
     @api.depends("group_id")
     def _compute_sale_id(self):
         for picking in self:
             picking.sale_id = picking.group_id.sale_id
+
+    # ------------------------------------------------------------
+    # INVERSE METHODS
+    # ------------------------------------------------------------
 
     def _set_sale_id(self):
         if self.group_id:
@@ -47,6 +63,10 @@ class StockPicking(models.Model):
 
             pg = self.env["procurement.group"].create(vals)
             self.group_id = pg
+
+    # ------------------------------------------------------------
+    # ACTIONS
+    # ------------------------------------------------------------
 
     def _action_done(self):
         res = super()._action_done()
@@ -102,6 +122,10 @@ class StockPicking(models.Model):
             )
         return res
 
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
+
     def _log_less_quantities_than_expected(self, moves):
         """Log an activity on sale order that are linked to moves. The
         note summarize the real processed quantity and promote a
@@ -149,6 +173,10 @@ class StockPicking(models.Model):
         self._log_activity(_render_note_exception_quantity, documents)
 
         return super()._log_less_quantities_than_expected(moves)
+
+    # ------------------------------------------------------------
+    # VALIDATIONS
+    # ------------------------------------------------------------
 
     def _can_return(self):
         self.ensure_one()

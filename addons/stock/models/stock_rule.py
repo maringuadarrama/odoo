@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import logging
 from collections import defaultdict, namedtuple, OrderedDict
 from dateutil.relativedelta import relativedelta
@@ -41,6 +38,74 @@ class StockRule(models.Model):
             res["company_id"] = self.env.company.id
         return res
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    route_id = fields.Many2one(
+        "stock.route",
+        "Route",
+        required=True,
+        ondelete="cascade",
+        index=True,
+    )
+    route_company_id = fields.Many2one(
+        related="route_id.company_id",
+        string="Route Company",
+    )
+    route_sequence = fields.Integer(
+        "Route Sequence",
+        related="route_id.sequence",
+        store=True,
+        compute_sudo=True,
+    )
+    company_id = fields.Many2one(
+        "res.company",
+        "Company",
+        default=lambda self: self.env.company,
+        domain="[('id', '=?', route_company_id)]",
+    )
+    picking_type_id = fields.Many2one(
+        "stock.picking.type",
+        "Operation Type",
+        required=True,
+        check_company=True,
+        domain="[('code', '=?', picking_type_code_domain)]",
+    )
+    location_src_id = fields.Many2one(
+        "stock.location",
+        "Source Location",
+        check_company=True,
+        index=True,
+    )
+    location_dest_id = fields.Many2one(
+        "stock.location",
+        "Destination Location",
+        required=True,
+        check_company=True,
+        index=True,
+    )
+    warehouse_id = fields.Many2one(
+        "stock.warehouse",
+        "Warehouse",
+        check_company=True,
+        index=True,
+    )
+    propagate_warehouse_id = fields.Many2one(
+        "stock.warehouse",
+        "Warehouse to Propagate",
+        help="The warehouse to propagate on the created move/procurement, which can be different of the warehouse this rule is for (e.g for resupplying rules from another warehouse)",
+    )
+    partner_address_id = fields.Many2one(
+        "res.partner",
+        "Partner Address",
+        check_company=True,
+        help="Address where goods should be delivered. Optional.",
+    )
+    group_id = fields.Many2one(
+        "procurement.group",
+        "Fixed Procurement Group",
+    )
     name = fields.Char(
         "Name",
         required=True,
@@ -52,52 +117,7 @@ class StockRule(models.Model):
         default=True,
         help="If unchecked, it will allow you to hide the rule without removing it.",
     )
-    group_propagation_option = fields.Selection(
-        [("none", "Leave Empty"), ("propagate", "Propagate"), ("fixed", "Fixed")],
-        string="Propagation of Procurement Group",
-        default="propagate",
-    )
-    group_id = fields.Many2one("procurement.group", "Fixed Procurement Group")
-    action = fields.Selection(
-        selection=[
-            ("pull", "Pull From"),
-            ("push", "Push To"),
-            ("pull_push", "Pull & Push"),
-        ],
-        string="Action",
-        default="pull",
-        required=True,
-        index=True,
-    )
     sequence = fields.Integer("Sequence", default=20)
-    company_id = fields.Many2one(
-        "res.company",
-        "Company",
-        default=lambda self: self.env.company,
-        domain="[('id', '=?', route_company_id)]",
-    )
-    location_dest_id = fields.Many2one(
-        "stock.location",
-        "Destination Location",
-        required=True,
-        check_company=True,
-        index=True,
-    )
-    location_src_id = fields.Many2one(
-        "stock.location", "Source Location", check_company=True, index=True
-    )
-    location_dest_from_rule = fields.Boolean(
-        "Destination location origin from rule",
-        default=False,
-        help="When set to True the destination location of the stock.move will be the rule."
-        "Otherwise, it takes it from the picking type.",
-    )
-    route_id = fields.Many2one(
-        "stock.route", "Route", required=True, ondelete="cascade", index=True
-    )
-    route_company_id = fields.Many2one(
-        related="route_id.company_id", string="Route Company"
-    )
     procure_method = fields.Selection(
         [
             ("make_to_stock", "Take From Stock"),
@@ -112,27 +132,43 @@ class StockRule(models.Model):
         "Take From Stock, if Unavailable, Trigger Another Rule: the products will be taken from the available stock of the source location."
         "If there is no stock available, the system will try to find a  rule to bring the products in the source location.",
     )
-    route_sequence = fields.Integer(
-        "Route Sequence", related="route_id.sequence", store=True, compute_sudo=True
+    group_propagation_option = fields.Selection(
+        [("none", "Leave Empty"), ("propagate", "Propagate"), ("fixed", "Fixed")],
+        string="Propagation of Procurement Group",
+        default="propagate",
     )
-    picking_type_id = fields.Many2one(
-        "stock.picking.type",
-        "Operation Type",
+    action = fields.Selection(
+        selection=[
+            ("pull", "Pull From"),
+            ("push", "Push To"),
+            ("pull_push", "Pull & Push"),
+        ],
+        string="Action",
         required=True,
-        check_company=True,
-        domain="[('code', '=?', picking_type_code_domain)]",
+        default="pull",
+        index=True,
     )
-    picking_type_code_domain = fields.Char(compute="_compute_picking_type_code_domain")
+    auto = fields.Selection(
+        [("manual", "Manual Operation"), ("transparent", "Automatic No Step Added")],
+        string="Automatic Move",
+        default="manual",
+        required=True,
+        help="The 'Manual Operation' value will create a stock move after the current one. "
+        "With 'Automatic No Step Added', the location is replaced in the original move.",
+    )
     delay = fields.Integer(
         "Lead Time",
         default=0,
         help="The expected date of the created transfer will be computed based on this lead time.",
     )
-    partner_address_id = fields.Many2one(
-        "res.partner",
-        "Partner Address",
-        check_company=True,
-        help="Address where goods should be delivered. Optional.",
+    push_domain = fields.Char("Push Applicability")
+    picking_type_code_domain = fields.Char(compute="_compute_picking_type_code_domain")
+    rule_message = fields.Html(compute="_compute_action_message")
+    location_dest_from_rule = fields.Boolean(
+        "Destination location origin from rule",
+        default=False,
+        help="When set to True the destination location of the stock.move will be the rule."
+        "Otherwise, it takes it from the picking type.",
     )
     propagate_cancel = fields.Boolean(
         "Cancel Next Move",
@@ -144,32 +180,10 @@ class StockRule(models.Model):
         default=False,
         help="When ticked, carrier of shipment will be propagated.",
     )
-    warehouse_id = fields.Many2one(
-        "stock.warehouse", "Warehouse", check_company=True, index=True
-    )
-    propagate_warehouse_id = fields.Many2one(
-        "stock.warehouse",
-        "Warehouse to Propagate",
-        help="The warehouse to propagate on the created move/procurement, which can be different of the warehouse this rule is for (e.g for resupplying rules from another warehouse)",
-    )
-    auto = fields.Selection(
-        [("manual", "Manual Operation"), ("transparent", "Automatic No Step Added")],
-        string="Automatic Move",
-        default="manual",
-        required=True,
-        help="The 'Manual Operation' value will create a stock move after the current one. "
-        "With 'Automatic No Step Added', the location is replaced in the original move.",
-    )
-    rule_message = fields.Html(compute="_compute_action_message")
-    push_domain = fields.Char("Push Applicability")
 
-    def copy_data(self, default=None):
-        default = dict(default or {})
-        vals_list = super().copy_data(default=default)
-        if "name" not in default:
-            for rule, vals in zip(self, vals_list):
-                vals["name"] = _("%s (copy)", rule.name)
-        return vals_list
+    # ------------------------------------------------------------
+    # CONSTRAINTS
+    # ------------------------------------------------------------
 
     @api.constrains("company_id")
     def _check_company_consistency(self):
@@ -184,6 +198,50 @@ class StockRule(models.Model):
                         route_company=route.company_id.display_name,
                     )
                 )
+
+    # ------------------------------------------------------------
+    # CRUD METHODS
+    # ------------------------------------------------------------
+
+    def copy_data(self, default=None):
+        default = dict(default or {})
+        vals_list = super().copy_data(default=default)
+        if "name" not in default:
+            for rule, vals in zip(self, vals_list):
+                vals["name"] = _("%s (copy)", rule.name)
+        return vals_list
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
+    @api.depends(
+        "action",
+        "location_dest_id",
+        "location_src_id",
+        "picking_type_id",
+        "procure_method",
+        "location_dest_from_rule",
+    )
+    def _compute_action_message(self):
+        """Generate dynamicaly a message that describe the rule purpose to the
+        end user."""
+        action_rules = self.filtered(lambda rule: rule.action)
+        for rule in action_rules:
+            message_dict = rule._get_message_dict()
+            message = message_dict.get(rule.action) and message_dict[rule.action] or ""
+            if rule.action == "pull_push":
+                message = message_dict["pull"] + "<br/><br/>" + message_dict["push"]
+            rule.rule_message = message
+        (self - action_rules).rule_message = None
+
+    @api.depends("action")
+    def _compute_picking_type_code_domain(self):
+        self.picking_type_code_domain = False
+
+    # ------------------------------------------------------------
+    # ONCHANGE METHODS
+    # ------------------------------------------------------------
 
     @api.onchange("picking_type_id")
     def _onchange_picking_type(self):
@@ -200,6 +258,10 @@ class StockRule(models.Model):
             self.company_id = self.route_id.company_id
         if self.picking_type_id.warehouse_id.company_id != self.route_id.company_id:
             self.picking_type_id = False
+
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
 
     def _get_message_values(self):
         """Return the source, destination and picking_type applied on a stock
@@ -270,30 +332,6 @@ class StockRule(models.Model):
                 ),
             }
         return message_dict
-
-    @api.depends(
-        "action",
-        "location_dest_id",
-        "location_src_id",
-        "picking_type_id",
-        "procure_method",
-        "location_dest_from_rule",
-    )
-    def _compute_action_message(self):
-        """Generate dynamicaly a message that describe the rule purpose to the
-        end user."""
-        action_rules = self.filtered(lambda rule: rule.action)
-        for rule in action_rules:
-            message_dict = rule._get_message_dict()
-            message = message_dict.get(rule.action) and message_dict[rule.action] or ""
-            if rule.action == "pull_push":
-                message = message_dict["pull"] + "<br/><br/>" + message_dict["push"]
-            rule.rule_message = message
-        (self - action_rules).rule_message = None
-
-    @api.depends("action")
-    def _compute_picking_type_code_domain(self):
-        self.picking_type_code_domain = False
 
     def _run_push(self, move):
         """Apply a push rule on a move.
@@ -614,19 +652,34 @@ class ProcurementGroup(models.Model):
             "values",
         ],
     )
-    partner_id = fields.Many2one("res.partner", "Partner")
+
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
+    partner_id = fields.Many2one(
+        "res.partner",
+        "Partner",
+    )
     name = fields.Char(
         "Reference",
+        required=True,
         default=lambda self: self.env["ir.sequence"].next_by_code("procurement.group")
         or "",
-        required=True,
     )
     move_type = fields.Selection(
-        [("direct", "Partial"), ("one", "All at once")], string="Delivery Type"
+        [("direct", "Partial"), ("one", "All at once")],
+        string="Delivery Type",
     )
     stock_move_ids = fields.One2many(
-        "stock.move", "group_id", string="Related Stock Moves"
+        "stock.move",
+        "group_id",
+        string="Related Stock Moves",
     )
+
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
 
     @api.model
     def _skip_procurement(self, procurement):
@@ -703,49 +756,6 @@ class ProcurementGroup(models.Model):
             raise_exception(procurement_errors)
         return True
 
-    @api.model
-    def _search_rule_for_warehouses(
-        self, route_ids, packaging_uom_id, product_id, warehouse_ids, domain
-    ):
-        if warehouse_ids:
-            domain = expression.AND(
-                [
-                    [
-                        "|",
-                        ("warehouse_id", "in", warehouse_ids.ids),
-                        ("warehouse_id", "=", False),
-                    ],
-                    domain,
-                ]
-            )
-        valid_route_ids = set()
-        if route_ids:
-            valid_route_ids |= set(route_ids.ids)
-        if packaging_uom_id:
-            packaging_routes = packaging_uom_id.package_type_id.route_ids
-            valid_route_ids |= set(packaging_routes.ids)
-        valid_route_ids |= set(
-            (product_id.route_ids | product_id.categ_id.total_route_ids).ids
-        )
-        if warehouse_ids:
-            valid_route_ids |= set(warehouse_ids.route_ids.ids)
-        if valid_route_ids:
-            domain = expression.AND(
-                [[("route_id", "in", list(valid_route_ids))], domain]
-            )
-        res = self.env["stock.rule"]._read_group(
-            domain,
-            groupby=["location_dest_id", "warehouse_id", "route_id"],
-            aggregates=["id:recordset"],
-            order="route_sequence:min, sequence:min",
-        )
-        rule_dict = defaultdict(OrderedDict)
-        for group in res:
-            rule_dict[group[0].id, group[2].id][group[1].id] = group[3].sorted(
-                lambda rule: (rule.route_sequence, rule.sequence)
-            )[0]
-        return rule_dict
-
     def _search_rule(
         self, route_ids, packaging_uom_id, product_id, warehouse_id, domain
     ):
@@ -800,6 +810,81 @@ class ProcurementGroup(models.Model):
                     limit=1,
                 )
         return res
+
+    @api.model
+    def _search_rule_for_warehouses(
+        self, route_ids, packaging_uom_id, product_id, warehouse_ids, domain
+    ):
+        if warehouse_ids:
+            domain = expression.AND(
+                [
+                    [
+                        "|",
+                        ("warehouse_id", "in", warehouse_ids.ids),
+                        ("warehouse_id", "=", False),
+                    ],
+                    domain,
+                ]
+            )
+        valid_route_ids = set()
+        if route_ids:
+            valid_route_ids |= set(route_ids.ids)
+        if packaging_uom_id:
+            packaging_routes = packaging_uom_id.package_type_id.route_ids
+            valid_route_ids |= set(packaging_routes.ids)
+        valid_route_ids |= set(
+            (product_id.route_ids | product_id.categ_id.total_route_ids).ids
+        )
+        if warehouse_ids:
+            valid_route_ids |= set(warehouse_ids.route_ids.ids)
+        if valid_route_ids:
+            domain = expression.AND(
+                [[("route_id", "in", list(valid_route_ids))], domain]
+            )
+        res = self.env["stock.rule"]._read_group(
+            domain,
+            groupby=["location_dest_id", "warehouse_id", "route_id"],
+            aggregates=["id:recordset"],
+            order="route_sequence:min, sequence:min",
+        )
+        rule_dict = defaultdict(OrderedDict)
+        for group in res:
+            rule_dict[group[0].id, group[2].id][group[1].id] = group[3].sorted(
+                lambda rule: (rule.route_sequence, rule.sequence)
+            )[0]
+        return rule_dict
+
+    @api.model
+    def _check_intercomp_location(self, locations):
+        if self.env.user.has_group("base.group_multi_company") and locations.filtered(
+            lambda location: location.usage == "transit"
+        ):
+            inter_comp_location = self.env.ref(
+                "stock.stock_location_inter_company", raise_if_not_found=False
+            )
+            return inter_comp_location and inter_comp_location.id in locations.ids
+
+    @api.model
+    def _get_moves_to_assign_domain(self, company_id):
+        moves_domain = [
+            ("state", "in", ["confirmed", "partially_available"]),
+            ("product_uom_qty", "!=", 0.0),
+            "|",
+            ("date_reservation", "<=", fields.Date.today()),
+            ("picking_type_id.reservation_method", "=", "at_confirm"),
+        ]
+        if company_id:
+            moves_domain = expression.AND(
+                [[("company_id", "=", company_id)], moves_domain]
+            )
+        return moves_domain
+
+    @api.model
+    def _get_orderpoint_domain(self, company_id=False):
+        domain = [("trigger", "=", "auto"), ("product_id.active", "=", True)]
+        if company_id:
+            domain += [("company_id", "=", company_id)]
+        return domain
 
     @api.model
     def _get_rule(self, product_id, location_id, values):
@@ -900,14 +985,26 @@ class ProcurementGroup(models.Model):
         return result
 
     @api.model
-    def _check_intercomp_location(self, locations):
-        if self.env.user.has_group("base.group_multi_company") and locations.filtered(
-            lambda location: location.usage == "transit"
-        ):
-            inter_comp_location = self.env.ref(
-                "stock.stock_location_inter_company", raise_if_not_found=False
+    def _get_push_rule(self, product_id, location_dest_id, values):
+        """Find a push rule for the location_dest_id, with a fallback to the parent locations if none could be found."""
+        found_rule = self.env["stock.rule"]
+        location = location_dest_id
+        while (not found_rule) and location:
+            domain = [
+                ("location_src_id", "=", location.id),
+                ("action", "in", ("push", "pull_push")),
+            ]
+            if values.get("domain"):
+                domain = expression.AND([domain, values["domain"]])
+            found_rule = self._search_rule(
+                values.get("route_ids"),
+                values.get("packaging_uom_id"),
+                product_id,
+                values.get("warehouse_id"),
+                domain,
             )
-            return inter_comp_location and inter_comp_location.id in locations.ids
+            location = location.location_id
+        return found_rule
 
     @api.model
     def _get_rule_domain(self, locations, values):
@@ -941,41 +1038,25 @@ class ProcurementGroup(models.Model):
         return domain
 
     @api.model
-    def _get_push_rule(self, product_id, location_dest_id, values):
-        """Find a push rule for the location_dest_id, with a fallback to the parent locations if none could be found."""
-        found_rule = self.env["stock.rule"]
-        location = location_dest_id
-        while (not found_rule) and location:
-            domain = [
-                ("location_src_id", "=", location.id),
-                ("action", "in", ("push", "pull_push")),
-            ]
-            if values.get("domain"):
-                domain = expression.AND([domain, values["domain"]])
-            found_rule = self._search_rule(
-                values.get("route_ids"),
-                values.get("packaging_uom_id"),
-                product_id,
-                values.get("warehouse_id"),
-                domain,
-            )
-            location = location.location_id
-        return found_rule
+    def _get_scheduler_tasks_to_do(self):
+        """Number of task to be executed by the stock scheduler. This number will be given in log
+        message to know how many tasks succeeded."""
+        return 3
 
     @api.model
-    def _get_moves_to_assign_domain(self, company_id):
-        moves_domain = [
-            ("state", "in", ["confirmed", "partially_available"]),
-            ("product_uom_qty", "!=", 0.0),
-            "|",
-            ("date_reservation", "<=", fields.Date.today()),
-            ("picking_type_id.reservation_method", "=", "at_confirm"),
-        ]
-        if company_id:
-            moves_domain = expression.AND(
-                [[("company_id", "=", company_id)], moves_domain]
+    def run_scheduler(self, use_new_cursor=False, company_id=False):
+        """Call the scheduler in order to check the running procurements (super method), to check the minimum stock rules
+        and the availability of moves. This function is intended to be run for all the companies at the same time, so
+        we run functions as SUPERUSER to avoid intercompanies and access rights issues.
+        """
+        try:
+            self._run_scheduler_tasks(
+                use_new_cursor=use_new_cursor, company_id=company_id
             )
-        return moves_domain
+        except Exception:
+            _logger.error("Error during stock scheduler", exc_info=True)
+            raise
+        return {}
 
     @api.model
     def _run_scheduler_tasks(self, use_new_cursor=False, company_id=False):
@@ -1027,31 +1108,3 @@ class ProcurementGroup(models.Model):
             )
             self._cr.commit()
         self._context.get("scheduler_task_done", {})["task_done"] = task_done
-
-    @api.model
-    def _get_scheduler_tasks_to_do(self):
-        """Number of task to be executed by the stock scheduler. This number will be given in log
-        message to know how many tasks succeeded."""
-        return 3
-
-    @api.model
-    def run_scheduler(self, use_new_cursor=False, company_id=False):
-        """Call the scheduler in order to check the running procurements (super method), to check the minimum stock rules
-        and the availability of moves. This function is intended to be run for all the companies at the same time, so
-        we run functions as SUPERUSER to avoid intercompanies and access rights issues.
-        """
-        try:
-            self._run_scheduler_tasks(
-                use_new_cursor=use_new_cursor, company_id=company_id
-            )
-        except Exception:
-            _logger.error("Error during stock scheduler", exc_info=True)
-            raise
-        return {}
-
-    @api.model
-    def _get_orderpoint_domain(self, company_id=False):
-        domain = [("trigger", "=", "auto"), ("product_id.active", "=", True)]
-        if company_id:
-            domain += [("company_id", "=", company_id)]
-        return domain

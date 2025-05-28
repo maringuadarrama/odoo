@@ -6,6 +6,10 @@ class StockMove(models.Model):
 
     _inherit = "stock.move"
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
     sale_line_id = fields.Many2one(
         comodel_name="sale.order.line",
         string="Sale Line",
@@ -13,12 +17,20 @@ class StockMove(models.Model):
         index="btree_not_null",
     )
 
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
+
     @api.depends("sale_line_id", "sale_line_id.product_uom_id")
     def _compute_packaging_uom_id(self):
         super()._compute_packaging_uom_id()
         for move in self:
             if move.sale_line_id:
                 move.packaging_uom_id = move.sale_line_id.product_uom_id
+
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
 
     def _assign_picking_post_process(self, new=False):
         super()._assign_picking_post_process(new=new)
@@ -31,6 +43,18 @@ class StockMove(models.Model):
                     render_values={"self": picking_id, "origin": sale_order_id},
                     subtype_xmlid="mail.mt_note",
                 )
+
+    def _get_all_related_sm(self, product):
+        return super()._get_all_related_sm(product) | self.filtered(
+            lambda m: m.sale_line_id.product_id == product
+        )
+
+    def _get_sale_order_lines(self):
+        """Return all possible sale order lines for one stock move."""
+        self.ensure_one()
+        return (
+            self + self.browse(self._rollup_move_origs() | self._rollup_move_dests())
+        ).sale_line_id
 
     def _get_related_invoices(self):
         """Overridden from stock_account to return the customer invoices
@@ -46,18 +70,6 @@ class StockMove(models.Model):
     def _get_source_document(self):
         res = super()._get_source_document()
         return self.sudo().sale_line_id.order_id or res
-
-    def _get_sale_order_lines(self):
-        """Return all possible sale order lines for one stock move."""
-        self.ensure_one()
-        return (
-            self + self.browse(self._rollup_move_origs() | self._rollup_move_dests())
-        ).sale_line_id
-
-    def _get_all_related_sm(self, product):
-        return super()._get_all_related_sm(product) | self.filtered(
-            lambda m: m.sale_line_id.product_id == product
-        )
 
     @api.model
     def _prepare_merge_moves_distinct_fields(self):

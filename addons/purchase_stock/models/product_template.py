@@ -19,7 +19,9 @@ class ProductTemplate(models.Model):
         "record the price difference between a purchase order "
         "and its related vendor bill when validating this vendor bill.",
     )
-    route_ids = fields.Many2many(default=lambda self: self._get_buy_route())
+    route_ids = fields.Many2many(
+        default=lambda self: self._get_buy_route(),
+    )
 
     # ------------------------------------------------------------
     # HELPERS

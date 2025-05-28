@@ -6,6 +6,10 @@ class ProductTemplate(models.Model):
 
     _inherit = "product.template"
 
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
+
     @api.depends("type")
     def _compute_expense_policy(self):
         super()._compute_expense_policy()

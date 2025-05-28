@@ -82,7 +82,6 @@ class PurchaseOrder(models.Model):
         copy=False,
         help="Completion date of the first receipt order.",
     )
-
     is_shipped = fields.Boolean(compute="_compute_is_shipped")
 
     # --------------------------------------------------
@@ -559,4 +558,5 @@ class PurchaseOrder(models.Model):
         return {
             "name": self.name,
             "partner_id": self.partner_id.id,
+            "purchase_id": self.id,
         }

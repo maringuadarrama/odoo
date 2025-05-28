@@ -10,6 +10,10 @@ class ProcurementGroup(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
+    purchase_id = fields.Many2one(
+        "purchase.order",
+        "Purchase Order",
+    )
     purchase_line_ids = fields.One2many(
         comodel_name="purchase.order.line",
         inverse_name="procurement_group_id",

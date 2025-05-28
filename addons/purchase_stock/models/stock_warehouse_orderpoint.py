@@ -12,6 +12,12 @@ class StockWarehouseOrderpoint(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
+    product_supplier_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Product Supplier",
+        compute="_compute_product_supplier_id",
+        store=True,
+    )
     show_supplier = fields.Boolean(
         string="Show supplier column",
         compute="_compute_show_suppplier",
@@ -32,12 +38,6 @@ class StockWarehouseOrderpoint(models.Model):
     purchase_visibility_days = fields.Float(
         default=0.0,
         help="Visibility Days applied on the purchase routes.",
-    )
-    product_supplier_id = fields.Many2one(
-        comodel_name="res.partner",
-        string="Product Supplier",
-        compute="_compute_product_supplier_id",
-        store=True,
     )
 
     # ------------------------------------------------------------

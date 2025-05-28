@@ -15,16 +15,16 @@ class StockPicking(models.Model):
         string="Purchase Orders",
         readonly=True,
     )
-    days_to_arrive = fields.Datetime(
-        compute="_compute_date_effective",
-        search="_search_days_to_arrive",
-        copy=False,
-    )
     delay_pass = fields.Datetime(
         compute="_compute_date_order",
         search="_search_delay_pass",
         copy=False,
         index=True,
+    )
+    days_to_arrive = fields.Datetime(
+        compute="_compute_date_effective",
+        search="_search_days_to_arrive",
+        copy=False,
     )
 
     # ------------------------------------------------------------

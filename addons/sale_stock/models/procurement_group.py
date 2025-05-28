@@ -10,4 +10,7 @@ class ProcurementGroup(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
-    sale_id = fields.Many2one("sale.order", "Sale Order")
+    sale_id = fields.Many2one(
+        "sale.order",
+        "Sale Order",
+    )

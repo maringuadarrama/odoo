@@ -8,6 +8,10 @@ class StockLot(models.Model):
 
     _inherit = "stock.lot"
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
     sale_order_ids = fields.Many2many(
         comodel_name="sale.order",
         string="Sales Orders",
@@ -18,6 +22,10 @@ class StockLot(models.Model):
         string="Sale order count",
         compute="_compute_sale_order_ids",
     )
+
+    # ------------------------------------------------------------
+    # COMPUTE METHODS
+    # ------------------------------------------------------------
 
     @api.depends("name")
     def _compute_sale_order_ids(self):
@@ -35,6 +43,10 @@ class StockLot(models.Model):
         for lot in self:
             lot.sale_order_ids = sale_orders[lot.id]
             lot.count_sale_order = len(lot.sale_order_ids)
+
+    # ------------------------------------------------------------
+    # ACTIONS
+    # ------------------------------------------------------------
 
     def action_view_so(self):
         self.ensure_one()
