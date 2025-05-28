@@ -11,7 +11,7 @@ class StockPicking(models.Model):
     # ------------------------------------------------------------
 
     purchase_id = fields.Many2one(
-        related="move_ids.purchase_line_id.order_id",
+        comodel_name="purchase.order",
         string="Purchase Orders",
         readonly=True,
     )
