@@ -9,7 +9,7 @@
                     filter_domain="['|', ('name', 'ilike', self), ('license_plate', 'ilike', self)]" />
                 <field name="model_id" string="Model" />
                 <field name="license_plate" string="License Plate" />
-                <field name="mobility_card" invisible="1"/>
+                <field name="mobility_card" invisible="1" />
                 <field name="tag_ids" />
                 <field name="vehicle_properties" string="Properties" />
                 <filter name="available" string="Available"
@@ -57,26 +57,29 @@
                 decoration-danger="contract_renewal_overdue">
                 <field name="active" column_invisible="True" />
                 <field name="license_plate" readonly="1" />
-                <field name="category_id" />
+                <field name="category_id" optional="hide" />
                 <field name="model_id" widget="many2one_avatar" readonly="1" />
                 <field name="driver_id" widget="many2one_avatar_user" readonly="1" optional="show" />
-                <field name="future_driver_id" widget="many2one_avatar_user" readonly="1" optional="hide" />
+                <field name="future_driver_id" widget="many2one_avatar_user" readonly="1"
+                    optional="hide" />
                 <field name="manager_id" widget="many2one_avatar_user" optional="hide" />
                 <field name="odometer" readonly="1" optional="hide" />
                 <field name="vin_sn" readonly="1" optional="hide" />
                 <field name="engine_sn" readonly="1" optional="hide" />
-                <field name="acquisition_date" readonly="1" />
-                <field name="tag_ids" widget="many2many_tags"
-                    readonly="1"
-                    options="{'color_field': 'color'}" />
-                <field name="contract_renewal_due_soon" invisible="1" />
-                <field name="contract_renewal_overdue" invisible="1" />
+                <field name="acquisition_date" readonly="1" optional="hide" />
                 <field name="vehicle_properties" />
                 <field name="contract_state" widget="badge"
                     decoration-info="contract_state == 'open'"
                     decoration-danger="contract_state == 'expired'"
                     optional="hide" />
-                <field name="activity_exception_decoration" widget="activity_exception" />
+                <field name="contract_renewal_due_soon" column_invisible="1" />
+                <field name="contract_renewal_overdue" column_invisible="1" />
+                <field name="activity_exception_decoration" widget="activity_exception"
+                    optional="hide" />
+                <field name="tag_ids" widget="many2many_tags"
+                    readonly="1"
+                    options="{'color_field': 'color'}"
+                    optional="hide" />
             </list>
         </field>
     </record>
@@ -189,7 +192,7 @@
                         <button name="action_view_service_logs"
                             type="object" class="oe_stat_button"
                             icon="fa-wrench"
-			    invisible="service_activity != 'none'"
+                            invisible="service_activity != 'none'"
                             help="show the services logs for this vehicle">
                             <field name="service_count" string="Services" widget="statinfo" />
                         </button>
@@ -245,7 +248,7 @@
                         <group string="Vehicle">
                             <field name="category_id" />
                             <field name="location" />
-                            <field name="mobility_card" readonly="1" invisible="1"/>
+                            <field name="mobility_card" readonly="1" invisible="1" />
                             <label for="odometer" invisible="vehicle_type != 'car'" />
                             <div invisible="vehicle_type != 'car'">
                                 <field name="odometer" class="oe_inline" />
@@ -294,12 +297,14 @@
                                     <field name="fuel_type" />
                                     <label for="fuel_tank_capacity" />
                                     <div class="o_row">
-                                        <field name="fuel_tank_capacity" /><span>L</span>
+                                        <field name="fuel_tank_capacity" />
+                                        <span>L</span>
                                     </div>
                                     <field name="cilinders" />
                                     <label for="fuel_efficiency" />
                                     <div class="o_row">
-                                        <field name="fuel_efficiency" /><span>km/L</span>
+                                        <field name="fuel_efficiency" />
+                                        <span>km/L</span>
                                     </div>
                                     <label for="co2" />
                                     <div class="o_row" name="co2">

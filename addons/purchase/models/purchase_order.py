@@ -162,6 +162,13 @@ class PurchaseOrder(models.Model):
         copy=False,
         index="trigram",
     )
+    approval_request_id = fields.Many2one(
+        comodel_name="approval.request",
+        string="Approval",
+    )
+    approval_state = fields.Selection(
+        compute="_compute_approval_state",
+    )
     state = fields.Selection(
         selection=[
             ("draft", "RFQ"),
@@ -474,6 +481,14 @@ class PurchaseOrder(models.Model):
                 order.date_approve if order.state == "purchase" else order.date_order
             )
 
+    @api.depends("approval_state_id")
+    def _compute_approval_state(self):
+        for order in self:
+            if order.approval_state_id:
+                order.approval_state = order.approval_state_id.state
+            else:
+                order.approval_state = "pending"
+
     @api.depends("partner_id")
     def _compute_payment_term_id(self):
         for order in self:
@@ -603,9 +618,7 @@ class PurchaseOrder(models.Model):
     def _compute_amounts(self):
         AccountTax = self.env["account.tax"]
         for order in self:
-            order_lines = order.line_ids.filtered(
-                lambda line: not line.display_type
-            )
+            order_lines = order.line_ids.filtered(lambda line: not line.display_type)
             base_lines = [
                 line._prepare_base_line_for_taxes_computation() for line in order_lines
             ]
@@ -625,9 +638,7 @@ class PurchaseOrder(models.Model):
     def _compute_tax_totals(self):
         AccountTax = self.env["account.tax"]
         for order in self:
-            order_lines = order.line_ids.filtered(
-                lambda line: not line.display_type
-            )
+            order_lines = order.line_ids.filtered(lambda line: not line.display_type)
             base_lines = [
                 line._prepare_base_line_for_taxes_computation() for line in order_lines
             ]
@@ -675,9 +686,7 @@ class PurchaseOrder(models.Model):
         for order in confirmed_orders:
             if any(
                 not float_is_zero(line.qty_to_invoice, precision_digits=precision)
-                for line in order.line_ids.filtered(
-                    lambda line: not line.display_type
-                )
+                for line in order.line_ids.filtered(lambda line: not line.display_type)
             ):
                 order.invoice_state = "to do"
             elif (
@@ -744,9 +753,9 @@ class PurchaseOrder(models.Model):
     @api.onchange("date_planned")
     def _onchange_date_planned(self):
         if self.date_planned:
-            self.line_ids.filtered(
-                lambda line: not line.display_type
-            ).date_planned = self.date_planned
+            self.line_ids.filtered(lambda line: not line.display_type).date_planned = (
+                self.date_planned
+            )
 
     @api.onchange("company_id", "fiscal_position_id")
     def _onchange_fiscal_position_id(self):
@@ -903,6 +912,17 @@ class PurchaseOrder(models.Model):
 
     def action_acknowledge(self):
         self.write({"acknowledged": True})
+
+    def action_approval_request(self, force=False):
+        self.write({"approval_state": "approved", "date_approve": fields.Datetime.now()})
+        self.filtered(lambda p: p.lock_confirmed_po == "lock").write({"locked": True})
+        return {}
+
+    def action_approve(self, force=False):
+        self = self.filtered(lambda order: order._approval_allowed())
+        self.write({"approval_state": "approved", "date_approve": fields.Datetime.now()})
+        self.filtered(lambda p: p.lock_confirmed_po == "lock").write({"locked": True})
+        return {}
 
     def action_cancel(self):
         self._can_cancel_except_locked()
@@ -1111,9 +1131,7 @@ class PurchaseOrder(models.Model):
                  purchase order and the quantity selected.
         :rtype: float"""
         self.ensure_one()
-        pol = self.line_ids.filtered(
-            lambda line: line.product_id.id == product_id
-        )
+        pol = self.line_ids.filtered(lambda line: line.product_id.id == product_id)
         if pol:
             if quantity != 0:
                 pol.product_qty = quantity
@@ -1131,8 +1149,7 @@ class PurchaseOrder(models.Model):
                     "product_id": product_id,
                     "product_qty": quantity,
                     "sequence": (
-                        (self.line_ids and self.line_ids[-1].sequence + 1)
-                        or 10
+                        (self.line_ids and self.line_ids[-1].sequence + 1) or 10
                     ),  # put it at the end of the order
                 }
             )
@@ -1155,9 +1172,9 @@ class PurchaseOrder(models.Model):
             "display_uom": self.env.user.has_group("uom.group_uom"),
             "precision": self.env["decimal.precision"].precision_get("Product Unit"),
             "product_catalog_currency_id": self.currency_id.id,
-            "product_catalog_digits": self.line_ids._fields[
-                "price_unit"
-            ].get_digits(self.env),
+            "product_catalog_digits": self.line_ids._fields["price_unit"].get_digits(
+                self.env
+            ),
             "search_default_seller_ids": self.partner_id.name,
         }
 
@@ -1196,9 +1213,7 @@ class PurchaseOrder(models.Model):
 
     def _create_downpayments(self, line_vals):
         self.ensure_one()
-        if not any(
-            line.display_type and line.is_downpayment for line in self.line_ids
-        ):
+        if not any(line.display_type and line.is_downpayment for line in self.line_ids):
             section_line = self.line_ids.create(
                 self._prepare_down_payment_section_values()
             )
@@ -1215,9 +1230,7 @@ class PurchaseOrder(models.Model):
         ]
         downpayment_lines = self.env["purchase.order.line"].create(vals)
         # a simple concatenation would cause all line_ids to recompute, we do not want it to happen
-        self.line_ids = [
-            Command.link(line_id) for line_id in downpayment_lines.ids
-        ]
+        self.line_ids = [Command.link(line_id) for line_id in downpayment_lines.ids]
         return downpayment_lines
 
     def create_invoice(self):
@@ -1876,6 +1889,24 @@ class PurchaseOrder(models.Model):
     # ------------------------------------------------------------
     # VALIDATIONS
     # ------------------------------------------------------------
+
+    def _approval_allowed(self):
+        """Returns whether the order qualifies to be approved by the current user"""
+        self.ensure_one()
+        return (
+            self.company_id.po_double_validation == "one_step"
+            or (
+                self.company_id.po_double_validation == "two_step"
+                and self.amount_total
+                < self.env.company.currency_id._convert(
+                    self.company_id.po_double_validation_amount,
+                    self.currency_id,
+                    self.company_id,
+                    self.date_order or fields.Date.today(),
+                )
+            )
+            or self.env.user.has_group("purchase.group_purchase_manager")
+        )
 
     def _can_confirm_has_lines(self):
         self.ensure_one()

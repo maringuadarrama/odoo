@@ -17,12 +17,12 @@ class SaleOrderLine(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
+    is_storable = fields.Boolean(related="product_id.is_storable")
     warehouse_id = fields.Many2one(
         comodel_name="stock.warehouse",
         compute="_compute_warehouse_id",
         store=True,
     )
-    is_storable = fields.Boolean(related="product_id.is_storable")
     customer_lead = fields.Float(
         compute="_compute_customer_lead",
         store=True,

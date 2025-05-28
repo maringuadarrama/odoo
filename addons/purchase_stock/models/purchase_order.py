@@ -50,23 +50,15 @@ class PurchaseOrder(models.Model):
         copy=False,
     )
     incoterm_location = fields.Char(string="Incoterm Location")
-    picking_ids = fields.Many2many(
+    picking_ids = fields.One2many(
         comodel_name="stock.picking",
+        inverse_name="purchase_id",
         string="Receptions",
-        compute="_compute_picking_ids",
-        store=True,
         copy=False,
     )
     count_picking_ids = fields.Integer(
         string="Incoming Shipment count",
         compute="_compute_count_picking_ids",
-    )
-    date_effective = fields.Datetime(
-        string="Arrival",
-        compute="_compute_date_effective",
-        store=True,
-        copy=False,
-        help="Completion date of the first receipt order.",
     )
     transfer_state = fields.Selection(
         selection=[
@@ -83,6 +75,14 @@ class PurchaseOrder(models.Model):
             Orange: To process today\n\
             Green: On time",
     )
+    date_effective = fields.Datetime(
+        string="Arrival",
+        compute="_compute_date_effective",
+        store=True,
+        copy=False,
+        help="Completion date of the first receipt order.",
+    )
+
     is_shipped = fields.Boolean(compute="_compute_is_shipped")
 
     # --------------------------------------------------
@@ -129,11 +129,6 @@ class PurchaseOrder(models.Model):
         self.filtered(
             lambda po: po.picking_type_id.default_location_dest_id.usage != "customer"
         ).dest_address_id = False
-
-    @api.depends("line_ids.move_ids.picking_id")
-    def _compute_picking_ids(self):
-        for order in self:
-            order.picking_ids = order.line_ids.move_ids.picking_id
 
     @api.depends("picking_ids")
     def _compute_count_picking_ids(self):
@@ -194,6 +189,9 @@ class PurchaseOrder(models.Model):
     # --------------------------------------------------
     # ACTIONS
     # --------------------------------------------------
+
+    def action_view_picking(self):
+        return self._get_action_view_picking(self.picking_ids)
 
     def action_confirm(self):
         result = super().action_confirm()
@@ -276,9 +274,6 @@ class PurchaseOrder(models.Model):
             order_lines.write({"move_dest_ids": [(5, 0, 0)]})
 
         return super().action_cancel()
-
-    def action_view_picking(self):
-        return self._get_action_view_picking(self.picking_ids)
 
     # --------------------------------------------------
     # CATALOGUE MIXIN

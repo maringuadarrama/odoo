@@ -53,6 +53,7 @@ class SaleOrder(models.Model):
         comodel_name="stock.picking",
         inverse_name="sale_id",
         string="Transfers",
+        copy=False,
     )
     count_picking_ids = fields.Integer(
         string="Delivery Orders",
@@ -85,12 +86,12 @@ class SaleOrder(models.Model):
         store=True,
         help="Completion date of the first delivery order.",
     )
-    json_popover = fields.Char(
-        string="JSON data for the popover widget",
-        compute="_compute_json_popover",
-    )
     show_json_popover = fields.Boolean(
         string="Has late picking",
+        compute="_compute_json_popover",
+    )
+    json_popover = fields.Char(
+        string="JSON data for the popover widget",
         compute="_compute_json_popover",
     )
 
@@ -297,22 +298,6 @@ class SaleOrder(models.Model):
             dates_list = [date for date in pickings.mapped("date_done") if date]
             order.date_effective = min(dates_list, default=False)
 
-    @api.depends("picking_ids", "picking_ids.state", "line_ids.qty_transfered")
-    def _compute_transfer_state(self):
-        for order in self:
-            transfer_state = "to do"
-            if not order.picking_ids or all(
-                p.state == "cancel" for p in order.picking_ids
-            ):
-                transfer_state = "no"
-            elif all(p.state in ["done", "cancel"] for p in order.picking_ids):
-                transfer_state = "done"
-            elif any(p.state == "done" for p in order.picking_ids) and any(
-                l.qty_transfered for l in order.order_line
-            ):
-                transfer_state = "partially"
-            order.transfer_state = transfer_state
-
     @api.depends("picking_ids", "picking_ids.state")
     def _compute_json_popover(self):
         for order in self:
@@ -333,6 +318,22 @@ class SaleOrder(models.Model):
                 }
             )
             order.show_json_popover = bool(late_stock_picking)
+
+    @api.depends("line_ids.qty_transfered", "picking_ids", "picking_ids.state")
+    def _compute_transfer_state(self):
+        for order in self:
+            transfer_state = "to do"
+            if not order.picking_ids or all(
+                p.state == "cancel" for p in order.picking_ids
+            ):
+                transfer_state = "no"
+            elif all(p.state in ["done", "cancel"] for p in order.picking_ids):
+                transfer_state = "done"
+            elif any(p.state == "done" for p in order.picking_ids) and any(
+                l.qty_transfered for l in order.order_line
+            ):
+                transfer_state = "partially"
+            order.transfer_state = transfer_state
 
     # --------------------------------------------------
     # ONCHANGE METHODS

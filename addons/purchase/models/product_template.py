@@ -14,20 +14,8 @@ class ProductTemplate(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
+    # purchase_method
     bill_policy = fields.Selection(
-        selection=[
-            ("purchase", "On ordered quantities"),
-            ("receive", "On received quantities"),
-        ],
-        string="Control Policy",
-        compute="_compute_bill_policy",
-        store=True,
-        precompute=True,
-        readonly=False,
-        help="On ordered quantities: Control bills based on ordered quantities.\n"
-        "On received quantities: Control bills based on received quantities.",
-    )
-    purchase_method = fields.Selection(
         selection=[
             ("purchase", "On ordered quantities"),
             ("receive", "On received quantities"),
