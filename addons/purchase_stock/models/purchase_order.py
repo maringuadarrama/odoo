@@ -542,6 +542,7 @@ class PurchaseOrder(models.Model):
             )
 
         return {
+            "purchase_id": self.id,
             "picking_type_id": self.picking_type_id.id,
             "partner_id": self.partner_id.id,
             "user_id": False,
