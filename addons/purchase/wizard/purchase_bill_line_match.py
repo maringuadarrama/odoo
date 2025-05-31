@@ -168,7 +168,6 @@ class PurchaseBillLineMatch(models.Model):
         residual_purchase_order_lines = self.pol_id
         residual_account_move_lines = self.aml_id
         residual_bill = self.aml_id.move_id
-
         # Match all matchable POL-AML lines and remove them from the residual group
         for product, po_line in pol_by_product.items():
             po_line = po_line[
@@ -185,7 +184,8 @@ class PurchaseBillLineMatch(models.Model):
             residual_account_move_lines.unlink()
 
         # Add all remaining POL to the residual bill
-        residual_bill._add_purchase_order_lines(residual_purchase_order_lines)
+        if residual_purchase_order_lines:
+            residual_bill._add_purchase_order_lines(residual_purchase_order_lines)
 
     def action_add_to_po(self):
         if not self or not self.aml_id:
