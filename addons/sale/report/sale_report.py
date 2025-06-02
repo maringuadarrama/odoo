@@ -112,7 +112,6 @@ class SaleReport(models.Model):
         aggregator="count_distinct",
     )
 
-
     # sale.order.line fields
     product_id = fields.Many2one(
         comodel_name="product.product",
@@ -313,16 +312,6 @@ class SaleReport(models.Model):
 
         return select_
 
-    def _case_value_or_one(self, value):
-        return f"""CASE COALESCE({value}, 0) WHEN 0 THEN 1.0 ELSE {value} END"""
-
-    def _select_additional_fields(self):
-        """Hook to return additional fields SQL specification for select part of the table query.
-
-        :returns: mapping field -> SQL computation of field, will be converted to '_ AS _field' in the final table definition
-        :rtype: dict"""
-        return {}
-
     def _from_sale(self):
         currency_table = self.env["res.currency"]._get_simple_currency_table(
             self.env.companies
@@ -376,3 +365,13 @@ class SaleReport(models.Model):
             l.discount,
             o.id,
             account_currency_table.rate"""
+
+    def _case_value_or_one(self, value):
+        return f"""CASE COALESCE({value}, 0) WHEN 0 THEN 1.0 ELSE {value} END"""
+
+    def _select_additional_fields(self):
+        """Hook to return additional fields SQL specification for select part of the table query.
+
+        :returns: mapping field -> SQL computation of field, will be converted to '_ AS _field' in the final table definition
+        :rtype: dict"""
+        return {}
