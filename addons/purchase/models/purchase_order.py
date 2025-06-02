@@ -951,6 +951,7 @@ class PurchaseOrder(models.Model):
                     order.approval_request_id = self.env["approval.request"].create(
                         order._prepare_approval_request_vals()
                     )
+                    order.approval_request_id.action_confirm()
                 else:
                     raise UserError(
                         _(
