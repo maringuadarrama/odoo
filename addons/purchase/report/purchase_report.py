@@ -70,8 +70,15 @@ class PurchaseReport(models.Model):
     weight = fields.Float("Gross Weight", readonly=True)
     volume = fields.Float("Volume", readonly=True)
 
+    # ------------------------------------------------------------
+    # HELPERS
+    # ------------------------------------------------------------
+
     @property
     def _table_query(self) -> SQL:
+        return self._query()
+
+    def _query(self) -> SQL:
         return SQL(
             "SELECT %s FROM %s WHERE %s GROUP BY %s",
             self._select(),
