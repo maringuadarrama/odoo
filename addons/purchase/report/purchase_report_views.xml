@@ -80,12 +80,11 @@
         <field name="model">purchase.report</field>
         <field name="arch" type="xml">
             <list string="Purchase Analysis">
-                <field name="date_order" />
+                <field name="date_order" optional="show" />
                 <field name="order_id" optional="show" />
                 <field name="partner_id" optional="show" />
                 <field name="product_category_id" optional="show" />
                 <field name="product_id" optional="show" />
-                <field name="user_id" widget="many2one_avatar_user" optional="show" />
                 <field name="qty_ordered" sum="Sum of Qty Ordered" optional="hide" />
                 <field name="qty_transfered" sum="Sum of Qty Received" optional="hide" />
                 <field name="qty_invoiced" sum="Sum of Qty Billed" optional="hide" />
@@ -93,8 +92,9 @@
                     optional="hide" />
                 <field name="price_total" widget="monetary" sum="Sum of Total"
                     optional="show" />
+                <field name="state" widget="badge" optional="show" />
+                <field name="user_id" widget="many2one_avatar_user" optional="show" />
                 <field name="currency_id" optional="show" column_invisible="True" />
-                <field name="state" optional="show" />
                 <field name="company_id" optional="show" groups="base.group_multi_company" />
             </list>
         </field>

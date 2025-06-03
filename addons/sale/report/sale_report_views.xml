@@ -77,7 +77,7 @@
             <pivot string="Sales Analysis" sample="1">
                 <field name="team_id" type="col" />
                 <field name="date_order" interval="month" type="row" />
-                <field name="product_uom_qty" type="measure" />
+                <field name="price_subtotal" type="measure" />
             </pivot>
         </field>
     </record>
@@ -87,8 +87,8 @@
         <field name="model">sale.report</field>
         <field name="arch" type="xml">
             <graph string="Sales Analysis" type="line" sample="1">
-                <field name="date_order" interval="month" />
-                <field name="product_uom_qty" type="measure" />
+                <field name="date_order" interval="day" />
+                <field name="price_subtotal" type="measure" />
             </graph>
         </field>
     </record>
@@ -123,19 +123,22 @@
         <field name="model">sale.report</field>
         <field name="arch" type="xml">
             <list string="Sales Analysis" action="action_open_order" type="object">
-                <field name="date_order" />
+                <field name="date_order" optional="show" />
                 <field name="order_reference" optional="show" />
-                <field name="partner_id" />
+                <field name="partner_id" optional="show" />
+                <field name="product_category_id" optional="show" />
                 <field name="product_id" string="Product" optional="show" />
-                <field name="user_id" widget="many2one_avatar_user" optional="show" />
-                <field name="team_id" optional="hide" />
                 <field name="product_uom_qty" string="Quantity" sum="Sum of Quantity" />
                 <field name="price_unit" widget="monetary" avg="Average" />
+                <field name="qty_transfered" sum="Sum of Qty Received" optional="hide" />
+                <field name="qty_invoiced" sum="Sum of Qty Invoiced" optional="hide" />
                 <field name="price_subtotal" optional="hide" sum="Sum of Untaxed Total" />
                 <field name="price_total" optional="show" sum="Sum of Total" />
                 <field name="pricelist_id" optional="hide" />
-                <field name="state" optional="hide" />
-                <field name="line_invoice_state" optional="hide" />
+                <field name="state" widget="badge" optional="hide" />
+                <field name="line_invoice_state" widget="badge" optional="hide" />
+                <field name="user_id" widget="many2one_avatar_user" optional="show" />
+                <field name="team_id" optional="hide" />
                 <field name="currency_id" column_invisible="True" />
                 <field name="company_id" optional="show" groups="base.group_multi_company" />
             </list>
