@@ -36,7 +36,7 @@ class ProductProduct(models.Model):
         domain = [
             ("state", "in", done_states),
             ("product_id", "in", self.ids),
-            ("date", ">=", date_from),
+            ("date_order", ">=", date_from),
         ]
         for product, product_uom_qty in self.env["sale.report"]._read_group(
             domain, ["product_id"], ["product_uom_qty:sum"],
