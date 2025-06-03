@@ -10,7 +10,7 @@
                 <field name="team_id" />
                 <field name="product_id" />
                 <field name="product_tmpl_id" />
-                <field name="categ_id" />
+                <field name="product_category_id" />
                 <field name="partner_id" />
                 <field name="country_id" />
                 <field name="industry_id" />
@@ -35,8 +35,8 @@
                 <filter name="fully_invoiced" string="Fully Invoiced"
                     domain="[('line_invoice_state', '=', 'done')]" />
                 <group expand="0" string="Extended Filters">
-                    <field name="categ_id"
-                        filter_domain="[('categ_id', 'child_of', self)]" />
+                    <field name="product_category_id"
+                        filter_domain="[('product_category_id', 'child_of', self)]" />
                     <field name="company_id"
                         groups="base.group_multi_company" />
                 </group>
@@ -57,7 +57,7 @@
                         context="{'group_by': 'product_id'}"
                         groups="product.group_product_variant" />
                     <filter name="Category" string="Product Category"
-                        context="{'group_by': 'categ_id'}" />
+                        context="{'group_by': 'product_category_id'}" />
                     <filter name="status" string="Status"
                         context="{'group_by': 'state'}" />
                     <filter name="company" string="Company"

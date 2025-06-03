@@ -28,12 +28,12 @@ class SaleReport(models.Model):
         comodel_name="res.currency",
         compute="_compute_currency_id",
     )
+    # res.partner fields
     partner_id = fields.Many2one(
         comodel_name="res.partner",
         string="Customer",
         readonly=True,
     )
-    # res.partner fields
     commercial_partner_id = fields.Many2one(
         comodel_name="res.partner",
         string="Customer Entity",
@@ -72,6 +72,7 @@ class SaleReport(models.Model):
         string="Salesperson",
         readonly=True,
     )
+    # utm fields
     campaign_id = fields.Many2one(
         comodel_name="utm.campaign",
         string="Campaign",
@@ -123,7 +124,7 @@ class SaleReport(models.Model):
         string="Product",
         readonly=True,
     )
-    categ_id = fields.Many2one(
+    product_category_id = fields.Many2one(
         comodel_name="product.category",
         string="Product Category",
         readonly=True,
@@ -246,7 +247,7 @@ class SaleReport(models.Model):
             l.invoice_state AS line_invoice_state,
             l.product_id AS product_id,
             p.product_tmpl_id,
-            t.categ_id AS categ_id,
+            t.categ_id AS product_category_id,
             t.uom_id AS product_uom_id,
             CASE WHEN l.product_id IS NOT NULL
                 THEN SUM(l.product_uom_qty * line_uom.factor / product_uom.factor)
