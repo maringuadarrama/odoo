@@ -4,12 +4,6 @@ from odoo.addons.sale.models.sale_order import SALE_ORDER_STATE
 
 
 class SaleReport(models.Model):
-    """Provides detailed sales analysis and reporting.
-
-    Handles sales data, including order details, product information, and customer data,
-    to generate comprehensive sales reports. It supports filtering and grouping by various fields such
-    as sales team, product category, and customer country."""
-
     _name = "sale.report"
     _description = "Sales Analysis Report"
     _auto = False
@@ -27,6 +21,11 @@ class SaleReport(models.Model):
     currency_id = fields.Many2one(
         comodel_name="res.currency",
         compute="_compute_currency_id",
+    )
+    order_reference = fields.Reference(
+        string="Order",
+        selection=[("sale.order", "Sales Order")],
+        aggregator="count_distinct",
     )
     # res.partner fields
     partner_id = fields.Many2one(
@@ -107,13 +106,18 @@ class SaleReport(models.Model):
         string="Order Invoice Status",
         readonly=True,
     )
-    order_reference = fields.Reference(
-        string="Order",
-        selection=[("sale.order", "Sales Order")],
-        aggregator="count_distinct",
+    line_invoice_state = fields.Selection(
+        selection=[
+            ("no", "Nothing to invoice"),
+            ("to do", "To invoice"),
+            ("partially", "Partially invoiced"),
+            ("upselling", "Upselling Opportunity"),
+            ("done", "Fully invoiced"),
+            ("over done", "Upselling"),
+        ],
+        string="Invoice Status",
+        readonly=True,
     )
-
-    # sale.order.line fields
     product_id = fields.Many2one(
         comodel_name="product.product",
         string="Product Variant",
@@ -139,6 +143,8 @@ class SaleReport(models.Model):
     qty_transfered = fields.Float(string="Qty Delivered", readonly=True)
     qty_to_invoice = fields.Float(string="Qty To Invoice", readonly=True)
     qty_invoiced = fields.Float(string="Qty Invoiced", readonly=True)
+    nbr_lines = fields.Integer(string="# of Lines", readonly=True)
+    # price_average = fields.Monetary("Average Cost", readonly=True, aggregator="avg")
     price_unit = fields.Float(string="Unit Price", aggregator="avg", readonly=True)
     discount = fields.Float(string="Discount %", readonly=True, aggregator="avg")
     discount_amount = fields.Monetary(string="Discount Amount", readonly=True)
@@ -152,24 +158,9 @@ class SaleReport(models.Model):
         string="Untaxed Amount Invoiced",
         readonly=True,
     )
-    line_invoice_state = fields.Selection(
-        selection=[
-            ("no", "Nothing to invoice"),
-            ("to do", "To invoice"),
-            ("partially", "Partially invoiced"),
-            ("upselling", "Upselling Opportunity"),
-            ("done", "Fully invoiced"),
-            ("over done", "Upselling"),
-        ],
-        string="Invoice Status",
-        readonly=True,
-    )
 
     weight = fields.Float(string="Gross Weight", readonly=True)
     volume = fields.Float(string="Volume", readonly=True)
-
-    # aggregates or computed fields
-    nbr = fields.Integer(string="# of Lines", readonly=True)
 
     # ------------------------------------------------------------
     # COMPUTE METHODS
@@ -226,23 +217,23 @@ class SaleReport(models.Model):
     def _select_sale(self):
         select_ = f"""
             o.company_id AS company_id,
+            CONCAT('sale.order', ',', o.id) AS order_reference,
             MIN(l.id) AS id,
             o.partner_id AS partner_id,
             partner.commercial_partner_id AS commercial_partner_id,
             partner.country_id AS country_id,
-            partner.industry_id AS industry_id,
             partner.state_id AS state_id,
             partner.zip AS partner_zip,
+            partner.industry_id AS industry_id,
+            o.pricelist_id AS pricelist_id,
             o.team_id AS team_id,
             o.user_id AS user_id,
-            o.pricelist_id AS pricelist_id,
             o.campaign_id AS campaign_id,
             o.medium_id AS medium_id,
             o.source_id AS source_id,
             o.date_order AS date,
-            o.state AS state,
             o.name AS name,
-            CONCAT('sale.order', ',', o.id) AS order_reference,
+            o.state AS state,
             o.invoice_state as invoice_state,
             l.invoice_state AS line_invoice_state,
             l.product_id AS product_id,
@@ -302,15 +293,13 @@ class SaleReport(models.Model):
                 THEN SUM(p.volume * l.product_uom_qty * line_uom.factor / product_uom.factor)
                 ELSE 0
             END AS volume,
-            COUNT(*) AS nbr
+            COUNT(*) AS nbr_lines
         """
-
         additional_fields_info = self._select_additional_fields()
         template = """,
             %s AS %s"""
         for fname, query_info in additional_fields_info.items():
             select_ += template % (query_info, fname)
-
         return select_
 
     def _from_sale(self):

@@ -22,8 +22,8 @@
                         groups="base.group_multi_company" />
                     <field name="date_order" />
                     <field name="date_approve" />
-                    <field name="category_id"
-                        filter_domain="[('category_id', 'child_of', self)]" />
+                    <field name="product_category_id"
+                        filter_domain="[('product_category_id', 'child_of', self)]" />
                 </group>
                 <group expand="1" string="Group By">
                     <filter name="group_partner_id" string="Vendor"
@@ -34,8 +34,8 @@
                         context="{'group_by': 'user_id'}" />
                     <filter name="group_product_id" string="Product"
                         context="{'group_by': 'product_id'}" />
-                    <filter name="group_category_id" string="Product Category"
-                        context="{'group_by': 'category_id'}" />
+                    <filter name="group_product_category_id" string="Product Category"
+                        context="{'group_by': 'product_category_id'}" />
                     <filter name="status" string="Status"
                         context="{'group_by': 'state'}" />
                     <filter name="company" string="Company"
@@ -60,14 +60,14 @@
                 <field name="order_id" optional="show" />
                 <field name="partner_id" optional="show" />
                 <field name="product_id" optional="show" />
-                <field name="category_id" optional="show" />
+                <field name="product_category_id" optional="show" />
                 <field name="user_id" widget="many2one_avatar_user" optional="show" />
                 <field name="company_id" optional="show" groups="base.group_multi_company" />
                 <field name="qty_ordered" sum="Sum of Qty Ordered" optional="hide" />
                 <field name="qty_transfered" sum="Sum of Qty Received" optional="hide" />
-                <field name="qty_billed" sum="Sum of Qty Billed" optional="hide" />
+                <field name="qty_invoiced" sum="Sum of Qty Billed" optional="hide" />
                 <field name="currency_id" optional="show" column_invisible="True" />
-                <field name="untaxed_total" widget="monetary" sum="Sum of Untaxed Total"
+                <field name="price_subtotal" widget="monetary" sum="Sum of Untaxed Total"
                     optional="hide" />
                 <field name="price_total" widget="monetary" sum="Sum of Total"
                     optional="show" />
@@ -81,9 +81,9 @@
         <field name="model">purchase.report</field>
         <field name="arch" type="xml">
             <pivot string="Purchase Analysis" display_quantity="1" sample="1">
-                <field name="category_id" type="row" />
+                <field name="product_category_id" type="row" />
                 <field name="order_id" type="row" />
-                <field name="untaxed_total" type="measure" />
+                <field name="price_subtotal" type="measure" />
                 <field name="price_total" type="measure" />
             </pivot>
         </field>
@@ -95,7 +95,7 @@
         <field name="arch" type="xml">
             <graph string="Purchase Analysis" type="line" sample="1">
                 <field name="date_approve" interval="day" />
-                <field name="untaxed_total" type="measure" />
+                <field name="price_subtotal" type="measure" />
             </graph>
         </field>
     </record>

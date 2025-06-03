@@ -13,18 +13,52 @@ class PurchaseReport(models.Model):
     # FIELDS
     # ------------------------------------------------------------
 
-    company_id = fields.Many2one("res.company", "Company", readonly=True)
-    currency_id = fields.Many2one("res.currency", "Currency", readonly=True)
-    order_id = fields.Many2one("purchase.order", "Order", readonly=True)
-    partner_id = fields.Many2one("res.partner", "Vendor", readonly=True)
+    company_id = fields.Many2one(
+        comodel_name="res.company",
+        string="Company",
+        readonly=True,
+    )
+    currency_id = fields.Many2one(
+        comodel_name="res.currency",
+        string="Currency",
+        readonly=True,
+    )
+    order_id = fields.Many2one(
+        comodel_name="purchase.order",
+        string="Order",
+        readonly=True,
+    )
+    # res.partner fields
+    partner_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Vendor",
+        readonly=True,
+    )
     commercial_partner_id = fields.Many2one(
-        "res.partner", "Commercial Entity", readonly=True
+        comodel_name="res.partner",
+        string="Commercial Entity",
+        readonly=True,
     )
-    country_id = fields.Many2one("res.country", "Partner Country", readonly=True)
+    dest_address_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Delivery Address",
+        readonly=True,
+    )
+    country_id = fields.Many2one(
+        comodel_name="res.country",
+        string="Partner Country",
+        readonly=True,
+    )
     fiscal_position_id = fields.Many2one(
-        "account.fiscal.position", string="Fiscal Position", readonly=True
+        comodel_name="account.fiscal.position",
+        string="Fiscal Position",
+        readonly=True,
     )
-    user_id = fields.Many2one("res.users", "Buyer", readonly=True)
+    user_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Buyer",
+        readonly=True,
+    )
     date_order = fields.Datetime("Order Date", readonly=True)
     date_approve = fields.Datetime("Confirmation Date", readonly=True)
     delay = fields.Float(
@@ -44,31 +78,43 @@ class PurchaseReport(models.Model):
     state = fields.Selection(
         selection=[
             ("draft", "Draft RFQ"),
-            ("to approve", "To Approve"),
             ("purchase", "Purchase Order"),
             ("cancel", "Cancelled"),
         ],
         string="Status",
         readonly=True,
     )
-    product_id = fields.Many2one("product.product", "Product", readonly=True)
+    product_id = fields.Many2one(
+        comodel_name="product.product",
+        string="Product",
+        readonly=True,
+    )
     product_tmpl_id = fields.Many2one(
-        "product.template", "Product Template", readonly=True
+        comodel_name="product.template",
+        string="Product Template",
+        readonly=True,
     )
-    category_id = fields.Many2one("product.category", "Product Category", readonly=True)
+    product_category_id = fields.Many2one(
+        comodel_name="product.category",
+        string="Product Category",
+        readonly=True,
+    )
     product_uom_id = fields.Many2one(
-        "uom.uom", "Reference Unit of Measure", readonly=True
+        comodel_name="uom.uom",
+        string="Reference Unit of Measure",
+        readonly=True,
     )
-    nbr_lines = fields.Integer("# of Lines", readonly=True)
-    price_average = fields.Monetary("Average Cost", readonly=True, aggregator="avg")
-    untaxed_total = fields.Monetary("Untaxed Total", readonly=True)
-    price_total = fields.Monetary("Total", readonly=True)
     qty_ordered = fields.Float("Qty Ordered", readonly=True)
     qty_transfered = fields.Float("Qty Received", readonly=True)
-    qty_to_be_billed = fields.Float("Qty to be Billed", readonly=True)
-    qty_billed = fields.Float("Qty Billed", readonly=True)
-    weight = fields.Float("Gross Weight", readonly=True)
-    volume = fields.Float("Volume", readonly=True)
+    qty_to_invoice = fields.Float("Qty to be Billed", readonly=True)
+    qty_invoiced = fields.Float("Qty Billed", readonly=True)
+    nbr_lines = fields.Integer("# of Lines", readonly=True)
+    price_average = fields.Monetary("Average Cost", readonly=True, aggregator="avg")
+    price_subtotal = fields.Monetary("Untaxed Total", readonly=True)
+    price_total = fields.Monetary("Total", readonly=True)
+
+    weight = fields.Float(string="Gross Weight", readonly=True)
+    volume = fields.Float(string="Volume", readonly=True)
 
     # ------------------------------------------------------------
     # HELPERS
@@ -90,15 +136,15 @@ class PurchaseReport(models.Model):
     def _select(self) -> SQL:
         return SQL(
             """
+            MIN(l.id) AS id,
             o.company_id AS company_id,
             c.currency_id,
             o.id AS order_id,
-            MIN(l.id) AS id,
             o.partner_id AS partner_id,
             partner.commercial_partner_id AS commercial_partner_id,
+            o.dest_address_id AS dest_address_id,
             partner.country_id AS country_id,
             o.fiscal_position_id AS fiscal_position_id,
-            o.dest_address_id,
             o.user_id AS user_id,
             o.date_order AS date_order,
             o.date_approve,
@@ -113,24 +159,15 @@ class PurchaseReport(models.Model):
             o.state,
             l.product_id,
             p.product_tmpl_id,
-            t.categ_id AS category_id,
+            t.categ_id AS product_category_id,
             t.uom_id AS product_uom_id,
             SUM(
                 l.product_qty * line_uom.factor / product_uom.factor
             ) AS qty_ordered,
-            COUNT(*) AS nbr_lines,
             (
                 SUM(l.product_qty * l.price_unit / COALESCE(o.currency_rate, 1.0))
                 / NULLIF(SUM(l.product_qty / line_uom.factor * product_uom.factor), 0.0)
             )::decimal(16,2) * account_currency_table.rate AS price_average,
-            (
-                SUM(l.price_subtotal / COALESCE(o.currency_rate, 1.0))::decimal(16,2)
-                * account_currency_table.rate
-            ) AS untaxed_total,
-            (
-                SUM(l.price_total / COALESCE(o.currency_rate, 1.0))::decimal(16,2)
-                * account_currency_table.rate
-            ) AS price_total,
             SUM(
                 l.qty_transfered * line_uom.factor / product_uom.factor
             ) AS qty_transfered,
@@ -141,10 +178,19 @@ class PurchaseReport(models.Model):
                 ELSE
                     SUM(l.qty_transfered / line_uom.factor * product_uom.factor)
                     - SUM(l.qty_invoiced / line_uom.factor * product_uom.factor)
-            END AS qty_to_be_billed,
+            END AS qty_to_invoice,
             SUM(
                 l.qty_invoiced * line_uom.factor / product_uom.factor
-            ) AS qty_billed,
+            ) AS qty_invoiced,
+            COUNT(*) AS nbr_lines,
+            (
+                SUM(l.price_subtotal / COALESCE(o.currency_rate, 1.0))::decimal(16,2)
+                * account_currency_table.rate
+            ) AS price_subtotal,
+            (
+                SUM(l.price_total / COALESCE(o.currency_rate, 1.0))::decimal(16,2)
+                * account_currency_table.rate
+            ) AS price_total,
             SUM(
                 p.weight * l.product_qty / line_uom.factor * product_uom.factor
             ) AS weight,
