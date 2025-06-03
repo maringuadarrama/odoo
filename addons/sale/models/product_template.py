@@ -251,7 +251,7 @@ class ProductTemplate(models.Model):
             "active_model": "sale.report",
             "pivot_measures": ["product_uom_qty"],
             "search_default_Sales": 1,
-            "search_default_filter_order_date": 1,
+            "search_default_filter_order_date_365": 1,
             "search_default_group_by_date": 1,
         }
         return action

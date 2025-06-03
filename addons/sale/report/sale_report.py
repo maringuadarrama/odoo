@@ -7,8 +7,8 @@ class SaleReport(models.Model):
     _name = "sale.report"
     _description = "Sales Analysis Report"
     _auto = False
-    _order = "date desc"
-    _rec_name = "date"
+    _order = "date_order desc"
+    _rec_name = "date_order"
 
     # ------------------------------------------------------------
     # FIELDS
@@ -87,7 +87,7 @@ class SaleReport(models.Model):
         string="Source",
         readonly=True,
     )
-    date = fields.Datetime(string="Order Date", readonly=True)
+    date_order = fields.Datetime(string="Order Date", readonly=True)
     name = fields.Char(string="Order Reference", readonly=True)
     state = fields.Selection(
         selection=SALE_ORDER_STATE,
@@ -231,7 +231,7 @@ class SaleReport(models.Model):
             o.campaign_id AS campaign_id,
             o.medium_id AS medium_id,
             o.source_id AS source_id,
-            o.date_order AS date,
+            o.date_order AS date_order,
             o.name AS name,
             o.state AS state,
             o.invoice_state as invoice_state,

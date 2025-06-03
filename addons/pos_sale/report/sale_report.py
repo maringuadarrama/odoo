@@ -26,28 +26,28 @@ class SaleReport(models.Model):
     def _select_pos(self):
         select_ = f"""
             pos.company_id AS company_id,
+            CONCAT('pos.order', ',', pos.id) AS order_reference,
             -MIN(l.id) AS id,
             pos.partner_id AS partner_id,
             partner.commercial_partner_id AS commercial_partner_id,
             partner.country_id AS country_id,
-            partner.industry_id AS industry_id,
             partner.state_id AS state_id,
             partner.zip AS partner_zip,
+            partner.industry_id AS industry_id,
+            pos.pricelist_id AS pricelist_id,
             pos.crm_team_id AS team_id,
             pos.user_id AS user_id,
-            pos.pricelist_id AS pricelist_id,
             NULL AS campaign_id,
             NULL AS medium_id,
             NULL AS source_id,
-            pos.date_order AS date,
-            (CASE WHEN pos.state = 'done' THEN 'sale' ELSE pos.state END) AS state,
+            pos.date_order AS date_order,
             pos.name AS name,
-            CONCAT('pos.order', ',', pos.id) AS order_reference,
+            (CASE WHEN pos.state = 'done' THEN 'sale' ELSE pos.state END) AS state,
             NULL as invoice_state,
             NULL AS line_invoice_state,
             l.product_id AS product_id,
             p.product_tmpl_id,
-            t.categ_id AS categ_id,
+            t.categ_id AS product_category_id,
             t.uom_id AS product_uom_id,
             SUM(l.qty) AS product_uom_qty,
             (AVG(l.price_unit) / MIN({self._case_value_or_one('pos.currency_rate')}) * {self._case_value_or_one('account_currency_table.rate')}
@@ -76,7 +76,7 @@ class SaleReport(models.Model):
             (CASE WHEN pos.account_move IS NULL THEN SUM(l.price_subtotal) ELSE 0 END)
                 / MIN({self._case_value_or_one('pos.currency_rate')})
                 * {self._case_value_or_one('account_currency_table.rate')}
-            AS amount_to_invoice_taxinc,
+            AS amount_to_invoice_taxexc,
             (SUM(p.weight) * l.qty) AS weight,
             (SUM(p.volume) * l.qty) AS volume,
             count(*) AS nbr

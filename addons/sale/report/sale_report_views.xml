@@ -1,11 +1,12 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <record id="view_order_product_search" model="ir.ui.view">
         <field name="name">sale.report.search</field>
         <field name="model">sale.report</field>
         <field name="arch" type="xml">
             <search string="Sales Analysis">
-                <field name="date" />
+                <field name="date_order" />
                 <field name="user_id" />
                 <field name="team_id" />
                 <field name="product_id" />
@@ -19,16 +20,16 @@
                 <filter name="Sales" string="Sales Orders"
                     domain="[('state', 'not in', ('draft', 'cancel'))]" />
                 <separator />
-                <filter name="year" string="Date"
-                    date="date"
+                <filter name="filter_year" string="Year"
+                    date="date_order"
                     default_period="year"
                     invisible="1" />
-                <filter name="filter_date"
-                    date="date"
+                <filter name="filter_month" string="Month"
+                    date="date_order"
                     default_period="month" />
-                <filter name="filter_order_date" string="Order Date: Last 365 Days"
-                    domain="[('date', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]"
-                    invisible="1"/>
+                <filter name="filter_order_date_365" string="Order Date: Last 365 days"
+                    domain="[('date_order', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]"
+                    invisible="1" />
                 <separator />
                 <filter name="to_invoice" string="To Invoice"
                     domain="[('line_invoice_state', '=', 'to do')]" />
@@ -65,10 +66,10 @@
                         groups="base.group_multi_company" />
                     <separator />
                     <filter name="group_by_date" string="Order Date"
-                        context="{'group_by': 'date'}"
+                        context="{'group_by': 'date_order'}"
                         invisible="context.get('sale_report_view_hide_date')" />
                     <filter name="group_by_date_day" string="Order Date"
-                        context="{'group_by': 'date:day'}"
+                        context="{'group_by': 'date_order:day'}"
                         invisible="not context.get('sale_report_view_hide_date')" />
                 </group>
             </search>
@@ -76,51 +77,51 @@
     </record>
 
     <record id="view_order_product_pivot" model="ir.ui.view">
-         <field name="name">sale.report.pivot</field>
-         <field name="model">sale.report</field>
-         <field name="arch" type="xml">
-             <pivot string="Sales Analysis" sample="1">
-                 <field name="team_id" type="col" />
-                 <field name="date" interval="month" type="row" />
-                 <field name="product_uom_qty" type="measure" />
-             </pivot>
-         </field>
+        <field name="name">sale.report.pivot</field>
+        <field name="model">sale.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Sales Analysis" sample="1">
+                <field name="team_id" type="col" />
+                <field name="date_order" interval="month" type="row" />
+                <field name="product_uom_qty" type="measure" />
+            </pivot>
+        </field>
     </record>
 
     <record id="view_order_product_graph" model="ir.ui.view">
-         <field name="name">sale.report.graph</field>
-         <field name="model">sale.report</field>
-         <field name="arch" type="xml">
-             <graph string="Sales Analysis" type="line" sample="1">
-                 <field name="date" interval="month" />
-                 <field name="product_uom_qty" type="measure" />
-             </graph>
-         </field>
+        <field name="name">sale.report.graph</field>
+        <field name="model">sale.report</field>
+        <field name="arch" type="xml">
+            <graph string="Sales Analysis" type="line" sample="1">
+                <field name="date_order" interval="month" />
+                <field name="product_uom_qty" type="measure" />
+            </graph>
+        </field>
     </record>
 
     <record id="sale_report_graph_pie" model="ir.ui.view">
-         <field name="name">sale.report.graph.pie</field>
-         <field name="model">sale.report</field>
-         <field name="mode">primary</field>
-         <field name="inherit_id" ref="view_order_product_graph" />
-         <field name="arch" type="xml">
+        <field name="name">sale.report.graph.pie</field>
+        <field name="model">sale.report</field>
+        <field name="mode">primary</field>
+        <field name="inherit_id" ref="view_order_product_graph" />
+        <field name="arch" type="xml">
             <graph position="attributes">
                 <attribute name="type">pie</attribute>
             </graph>
-         </field>
+        </field>
     </record>
 
-     <record id="sale_report_graph_bar" model="ir.ui.view">
-         <field name="name">sale.report.graph.bar</field>
-         <field name="model">sale.report</field>
-         <field name="mode">primary</field>
-         <field name="inherit_id" ref="view_order_product_graph" />
-         <field name="arch" type="xml">
+    <record id="sale_report_graph_bar" model="ir.ui.view">
+        <field name="name">sale.report.graph.bar</field>
+        <field name="model">sale.report</field>
+        <field name="mode">primary</field>
+        <field name="inherit_id" ref="view_order_product_graph" />
+        <field name="arch" type="xml">
             <graph position="attributes">
                 <attribute name="type">bar</attribute>
                 <attribute name="order">DESC</attribute>
             </graph>
-         </field>
+        </field>
     </record>
 
     <record id="sale_report_view_tree" model="ir.ui.view">
@@ -128,7 +129,7 @@
         <field name="model">sale.report</field>
         <field name="arch" type="xml">
             <list string="Sales Analysis" action="action_open_order" type="object">
-                <field name="date" />
+                <field name="date_order" />
                 <field name="order_reference" optional="show" />
                 <field name="product_id" string="Product" optional="show" />
                 <field name="partner_id" />
@@ -156,12 +157,16 @@
         <field name="domain">[('state', '!=', 'cancel')]</field>
         <field name="context">{
             'search_default_Sales':1,
+            'search_default_filter_order_date_365': 1,
             'group_by': [],
-            'search_default_filter_order_date': 1
         }</field>
         <field
             name="help"
-        >This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
+        >This report performs analysis on your quotations and sales orders. Analysis
+            check your sales revenues and sort it by different group criteria (salesman, partner,
+            product, etc.) Use this report to perform analysis on sales not having invoiced yet. If
+            you want to analyse your turnover, you should use the Invoice Analysis report in the
+            Accounting application.</field>
     </record>
 
     <record id="action_order_report_salesperson" model="ir.actions.act_window">
@@ -172,12 +177,16 @@
         <field name="search_view_id" ref="view_order_product_search" />
         <field name="context">{
             'search_default_User': 1,
+            'search_default_filter_order_date_365': 1,
             'group_by': 'user_id',
-            'search_default_filter_order_date': 1
         }</field>
         <field
             name="help"
-        >This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
+        >This report performs analysis on your quotations and sales orders. Analysis
+            check your sales revenues and sort it by different group criteria (salesman, partner,
+            product, etc.) Use this report to perform analysis on sales not having invoiced yet. If
+            you want to analyse your turnover, you should use the Invoice Analysis report in the
+            Accounting application.</field>
     </record>
 
     <record id="action_order_report_products" model="ir.actions.act_window">
@@ -189,12 +198,16 @@
         <field name="context">{
             'search_default_Sales': 1,
             'search_default_Product': 1,
+            'search_default_filter_order_date_365': 1,
             'group_by': 'product_id',
-            'search_default_filter_order_date': 1
         }</field>
         <field
             name="help"
-        >This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
+        >This report performs analysis on your quotations and sales orders. Analysis
+            check your sales revenues and sort it by different group criteria (salesman, partner,
+            product, etc.) Use this report to perform analysis on sales not having invoiced yet. If
+            you want to analyse your turnover, you should use the Invoice Analysis report in the
+            Accounting application.</field>
     </record>
 
     <record id="action_order_report_customers" model="ir.actions.act_window">
@@ -205,12 +218,16 @@
         <field name="search_view_id" ref="view_order_product_search" />
         <field name="context">{
             'search_default_Customer': 1,
+            'search_default_filter_order_date_365': 1,
             'group_by': 'partner_id',
-            'search_default_filter_order_date': 1
         }</field>
         <field
             name="help"
-        >This report performs analysis on your quotations and sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
+        >This report performs analysis on your quotations and sales orders. Analysis
+            check your sales revenues and sort it by different group criteria (salesman, partner,
+            product, etc.) Use this report to perform analysis on sales not having invoiced yet. If
+            you want to analyse your turnover, you should use the Invoice Analysis report in the
+            Accounting application.</field>
     </record>
 
     <record id="report_all_channels_sales_action" model="ir.actions.act_window">
@@ -223,11 +240,14 @@
         <field name="name">Quotations Analysis</field>
         <field name="res_model">sale.report</field>
         <field name="view_mode">graph,list</field>
-        <field name="domain">[('state','=','draft'),('team_id', '=', active_id)]</field>
+        <field name="domain">[('state','=','draft'), ('team_id', '=', active_id)]</field>
         <field name="context">{'search_default_order_month': 1}</field>
         <field
             name="help"
-        >This report performs analysis on your quotations. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
+        >This report performs analysis on your quotations. Analysis check your sales
+            revenues and sort it by different group criteria (salesman, partner, product, etc.) Use
+            this report to perform analysis on sales not having invoiced yet. If you want to analyse
+            your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
     </record>
 
     <record id="action_order_report_so_salesteam" model="ir.actions.act_window">
@@ -237,11 +257,15 @@
         <field name="domain">[('state', 'not in', ('draft','cancel'))]</field>
         <field name="context">{
             'search_default_Sales': 1,
-            'search_default_filter_date': 1,
+            'search_default_filter_month': 1,
             'search_default_team_id': [active_id]
         }</field>
         <field
             name="help"
-        >This report performs analysis on your sales orders. Analysis check your sales revenues and sort it by different group criteria (salesman, partner, product, etc.) Use this report to perform analysis on sales not having invoiced yet. If you want to analyse your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
+        >This report performs analysis on your sales orders. Analysis check your sales
+            revenues and sort it by different group criteria (salesman, partner, product, etc.) Use
+            this report to perform analysis on sales not having invoiced yet. If you want to analyse
+            your turnover, you should use the Invoice Analysis report in the Accounting application.</field>
     </record>
+
 </odoo>

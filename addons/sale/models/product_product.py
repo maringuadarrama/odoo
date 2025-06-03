@@ -101,7 +101,7 @@ class ProductProduct(models.Model):
             "active_id": self._context.get("active_id"),
             "search_default_Sales": 1,
             "active_model": "sale.report",
-            "search_default_filter_order_date": 1,
+            "search_default_filter_order_date_365": 1,
         }
         return action
 
