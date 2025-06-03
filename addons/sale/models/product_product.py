@@ -75,6 +75,7 @@ class ProductProduct(models.Model):
     def _search_product_is_in_sale_order(self, operator, value):
         if operator not in ["=", "!="] or not isinstance(value, bool):
             raise UserError(_("Operation not supported"))
+
         product_ids = (
             self.env["sale.order.line"]
             .search(
@@ -125,6 +126,7 @@ class ProductProduct(models.Model):
                         uom=product.product_tmpl_id.uom_id.display_name,
                     )
                 )
+
             so_lines.product_uom_id = to_uom_id
         return super()._update_uom(to_uom_id)
 
@@ -152,6 +154,7 @@ class ProductProduct(models.Model):
         res = super()._check_uom_used()
         if res:
             return res
+
         so_lines = (
             self.env["sale.order.line"]
             .sudo()

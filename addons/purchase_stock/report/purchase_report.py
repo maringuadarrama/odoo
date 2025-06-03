@@ -23,13 +23,13 @@ class PurchaseReport(models.Model):
             """
             %s,
             spt.warehouse_id AS picking_type_id,
-            po.date_effective AS date_effective,
+            o.date_effective AS date_effective,
             EXTRACT(
                 epoch from age(
                     l.date_planned,
                     COALESCE(
                         order_date_effective.date_done,
-                        po.date_order
+                        o.date_order
                     )
                 )
             ) / (24*60*60)::decimal(16,2) AS days_to_arrival
@@ -42,7 +42,7 @@ class PurchaseReport(models.Model):
             """
             %s
             LEFT JOIN stock_picking_type spt
-                ON po.picking_type_id = spt.id
+                ON o.picking_type_id = spt.id
             LEFT JOIN (
                 SELECT
                     MIN(picking.date_done) AS date_done,

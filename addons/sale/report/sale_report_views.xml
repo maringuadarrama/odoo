@@ -6,15 +6,20 @@
         <field name="model">sale.report</field>
         <field name="arch" type="xml">
             <search string="Sales Analysis">
-                <field name="date_order" />
-                <field name="user_id" />
-                <field name="team_id" />
+                <field name="partner_id" />
                 <field name="product_id" />
                 <field name="product_tmpl_id" />
                 <field name="product_category_id" />
-                <field name="partner_id" />
+                <field name="user_id" />
+                <field name="team_id" />
                 <field name="country_id" />
                 <field name="industry_id" />
+                <group expand="0" string="Extended Filters">
+                    <field name="product_category_id"
+                        filter_domain="[('product_category_id', 'child_of', self)]" />
+                    <field name="company_id"
+                        groups="base.group_multi_company" />
+                </group>
                 <filter name="Quotations" string="Quotations"
                     domain="[('state', '=', 'draft')]" />
                 <filter name="Sales" string="Sales Orders"
@@ -24,41 +29,30 @@
                     date="date_order"
                     default_period="year"
                     invisible="1" />
-                <filter name="filter_month" string="Month"
+                <filter name="filter_month" string="Order Date"
                     date="date_order"
                     default_period="month" />
                 <filter name="filter_order_date_365" string="Order Date: Last 365 days"
-                    domain="[('date_order', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]"
-                    invisible="1" />
+                    domain="[('date_order', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]" />
                 <separator />
                 <filter name="to_invoice" string="To Invoice"
                     domain="[('line_invoice_state', '=', 'to do')]" />
                 <filter name="fully_invoiced" string="Fully Invoiced"
                     domain="[('line_invoice_state', '=', 'done')]" />
-                <group expand="0" string="Extended Filters">
-                    <field name="product_category_id"
-                        filter_domain="[('product_category_id', 'child_of', self)]" />
-                    <field name="company_id"
-                        groups="base.group_multi_company" />
-                </group>
                 <group expand="1" string="Group By">
+                    <filter name="Customer" string="Customer"
+                        context="{'group_by': 'partner_id'}" />
+                    <filter name="product_id" string="Product Variant"
+                        context="{'group_by': 'product_id'}"
+                        groups="product.group_product_variant" />
+                    <filter name="product_tmpl_id" string="Product"
+                        context="{'group_by': 'product_tmpl_id'}" />
+                    <filter name="Category" string="Product Category"
+                        context="{'group_by': 'product_category_id'}" />
                     <filter name="User" string="Salesperson"
                         context="{'group_by': 'user_id'}" />
                     <filter name="sales_channel" string="Sales Team"
                         context="{'group_by': 'team_id'}" />
-                    <filter name="Customer" string="Customer"
-                        context="{'group_by': 'partner_id'}" />
-                    <filter name="country_id" string="Customer Country"
-                        context="{'group_by': 'country_id'}" />
-                    <filter name="industry_id" string="Customer Industry"
-                        context="{'group_by': 'industry_id'}" />
-                    <filter name="product_tmpl_id" string="Product"
-                        context="{'group_by': 'product_tmpl_id'}" />
-                    <filter name="product_id" string="Product Variant"
-                        context="{'group_by': 'product_id'}"
-                        groups="product.group_product_variant" />
-                    <filter name="Category" string="Product Category"
-                        context="{'group_by': 'product_category_id'}" />
                     <filter name="status" string="Status"
                         context="{'group_by': 'state'}" />
                     <filter name="company" string="Company"
@@ -131,19 +125,19 @@
             <list string="Sales Analysis" action="action_open_order" type="object">
                 <field name="date_order" />
                 <field name="order_reference" optional="show" />
-                <field name="product_id" string="Product" optional="show" />
                 <field name="partner_id" />
+                <field name="product_id" string="Product" optional="show" />
                 <field name="user_id" widget="many2one_avatar_user" optional="show" />
                 <field name="team_id" optional="hide" />
-                <field name="company_id" optional="show" groups="base.group_multi_company" />
                 <field name="product_uom_qty" string="Quantity" sum="Sum of Quantity" />
-                <field name="price_subtotal" optional="hide" sum="Sum of Untaxed Total" />
                 <field name="price_unit" widget="monetary" avg="Average" />
+                <field name="price_subtotal" optional="hide" sum="Sum of Untaxed Total" />
                 <field name="price_total" optional="show" sum="Sum of Total" />
-                <field name="state" optional="hide" />
                 <field name="pricelist_id" optional="hide" />
+                <field name="state" optional="hide" />
                 <field name="line_invoice_state" optional="hide" />
                 <field name="currency_id" column_invisible="True" />
+                <field name="company_id" optional="show" groups="base.group_multi_company" />
             </list>
         </field>
     </record>
@@ -240,7 +234,7 @@
         <field name="name">Quotations Analysis</field>
         <field name="res_model">sale.report</field>
         <field name="view_mode">graph,list</field>
-        <field name="domain">[('state','=','draft'), ('team_id', '=', active_id)]</field>
+        <field name="domain">[('state', '=', 'draft'), ('team_id', '=', active_id)]</field>
         <field name="context">{'search_default_order_month': 1}</field>
         <field
             name="help"
@@ -254,7 +248,7 @@
         <field name="name">Sales Analysis</field>
         <field name="res_model">sale.report</field>
         <field name="view_mode">graph,list</field>
-        <field name="domain">[('state', 'not in', ('draft','cancel'))]</field>
+        <field name="domain">[('state', 'not in', ('draft', 'cancel'))]</field>
         <field name="context">{
             'search_default_Sales': 1,
             'search_default_filter_month': 1,

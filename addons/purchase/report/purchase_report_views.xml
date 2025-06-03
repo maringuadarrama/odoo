@@ -6,36 +6,36 @@
         <field name="model">purchase.report</field>
         <field name="arch" type="xml">
             <search string="Purchase Analysis">
-                <filter name="quotes" string="Requests for Quotation"
-                    domain="[('state', 'in', ('draft','sent'))]" />
-                <filter name="orders" string="Purchase Orders"
-                    domain="[('state', '!=', 'draft'), ('state', '!=', 'sent'), ('state', '!=', 'cancel')]" />
-                <filter name="later_than_a_year_ago" string="Confirmation Date Last Year"
-                    domain="[('date_approve', '&gt;=', ((context_today() - relativedelta(years=1)).strftime('%Y-%m-%d')))]" />
-                <filter name="filter_date_order" date="date_order" />
-                <filter name="filter_date_approve" date="date_approve" default_period="month" />
                 <field name="partner_id" />
                 <field name="product_id" />
                 <group expand="0" string="Extended Filters">
+                    <field name="product_category_id"
+                        filter_domain="[('product_category_id', 'child_of', self)]" />
                     <field name="user_id" />
                     <field name="company_id"
                         groups="base.group_multi_company" />
-                    <field name="date_order" />
-                    <field name="date_approve" />
-                    <field name="product_category_id"
-                        filter_domain="[('product_category_id', 'child_of', self)]" />
                 </group>
+                <filter name="quotes" string="Requests for Quotation"
+                    domain="[('state', '=', 'draft')]" />
+                <filter name="orders" string="Purchase Orders"
+                    domain="[('state', 'not in', ('draft', 'cancel'))]" />
+                <separator />
+                <filter name="filter_date_order"
+                    date="date_order" />
+                <filter name="filter_date_approve"
+                    date="date_approve"
+                    default_period="month" />
+                <filter name="later_than_a_year_ago" string="Confirmation Date: Last 365 days"
+                    domain="[('date_approve', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]" />
                 <group expand="1" string="Group By">
                     <filter name="group_partner_id" string="Vendor"
                         context="{'group_by': 'partner_id'}" />
-                    <filter name="country_id" string="Vendor Country"
-                        context="{'group_by': 'country_id'}" />
-                    <filter name="user_id" string="Buyer"
-                        context="{'group_by': 'user_id'}" />
                     <filter name="group_product_id" string="Product"
                         context="{'group_by': 'product_id'}" />
                     <filter name="group_product_category_id" string="Product Category"
                         context="{'group_by': 'product_category_id'}" />
+                    <filter name="user_id" string="Buyer"
+                        context="{'group_by': 'user_id'}" />
                     <filter name="status" string="Status"
                         context="{'group_by': 'state'}" />
                     <filter name="company" string="Company"
@@ -83,19 +83,19 @@
                 <field name="date_order" />
                 <field name="order_id" optional="show" />
                 <field name="partner_id" optional="show" />
-                <field name="product_id" optional="show" />
                 <field name="product_category_id" optional="show" />
+                <field name="product_id" optional="show" />
                 <field name="user_id" widget="many2one_avatar_user" optional="show" />
-                <field name="company_id" optional="show" groups="base.group_multi_company" />
                 <field name="qty_ordered" sum="Sum of Qty Ordered" optional="hide" />
                 <field name="qty_transfered" sum="Sum of Qty Received" optional="hide" />
                 <field name="qty_invoiced" sum="Sum of Qty Billed" optional="hide" />
-                <field name="currency_id" optional="show" column_invisible="True" />
                 <field name="price_subtotal" widget="monetary" sum="Sum of Untaxed Total"
                     optional="hide" />
                 <field name="price_total" widget="monetary" sum="Sum of Total"
                     optional="show" />
+                <field name="currency_id" optional="show" column_invisible="True" />
                 <field name="state" optional="show" />
+                <field name="company_id" optional="show" groups="base.group_multi_company" />
             </list>
         </field>
     </record>
@@ -103,12 +103,12 @@
     <record id="action_purchase_order_report_all" model="ir.actions.act_window">
         <field name="name">Purchase Analysis</field>
         <field name="res_model">purchase.report</field>
-        <field name="view_mode">graph,pivot</field>
+        <field name="view_mode">graph,pivot,list</field>
         <field name="view_id"></field>  <!-- force empty -->
         <field name="target">current</field>
         <field name="context">{
             'search_default_orders': 1,
-            'search_default_filter_date_approve': 1,
+            'search_default_later_than_a_year_ago': 1,
         }</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">

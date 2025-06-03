@@ -195,7 +195,7 @@ class CrmTeam(models.Model):
 
     def _graph_date_column(self):
         if self._in_sale_scope():
-            return SQL("date")
+            return SQL("date_order")
         return super()._graph_date_column()
 
     def _graph_get_model(self):
