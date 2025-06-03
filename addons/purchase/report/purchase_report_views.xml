@@ -5,7 +5,7 @@
         <field name="name">report.purchase.order.search</field>
         <field name="model">purchase.report</field>
         <field name="arch" type="xml">
-            <search string="Purchase Orders">
+            <search string="Purchase Analysis">
                 <filter name="quotes" string="Requests for Quotation"
                     domain="[('state', 'in', ('draft','sent'))]" />
                 <filter name="orders" string="Purchase Orders"
@@ -51,6 +51,30 @@
         </field>
     </record>
 
+    <record id="view_purchase_order_pivot" model="ir.ui.view">
+        <field name="name">product.month.pivot</field>
+        <field name="model">purchase.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Purchase Analysis" display_quantity="1" sample="1">
+                <field name="product_category_id" type="row" />
+                <field name="order_id" type="row" />
+                <field name="price_subtotal" type="measure" />
+                <field name="price_total" type="measure" />
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_purchase_order_graph" model="ir.ui.view">
+        <field name="name">product.month.graph</field>
+        <field name="model">purchase.report</field>
+        <field name="arch" type="xml">
+            <graph string="Purchase Analysis" type="line" sample="1">
+                <field name="date_approve" interval="day" />
+                <field name="price_subtotal" type="measure" />
+            </graph>
+        </field>
+    </record>
+
     <record id="purchase_report_view_tree" model="ir.ui.view">
         <field name="name">purchase.report.view.list</field>
         <field name="model">purchase.report</field>
@@ -73,30 +97,6 @@
                     optional="show" />
                 <field name="state" optional="show" />
             </list>
-        </field>
-    </record>
-
-    <record id="view_purchase_order_pivot" model="ir.ui.view">
-        <field name="name">product.month.pivot</field>
-        <field name="model">purchase.report</field>
-        <field name="arch" type="xml">
-            <pivot string="Purchase Analysis" display_quantity="1" sample="1">
-                <field name="product_category_id" type="row" />
-                <field name="order_id" type="row" />
-                <field name="price_subtotal" type="measure" />
-                <field name="price_total" type="measure" />
-            </pivot>
-        </field>
-    </record>
-
-    <record id="view_purchase_order_graph" model="ir.ui.view">
-        <field name="name">product.month.graph</field>
-        <field name="model">purchase.report</field>
-        <field name="arch" type="xml">
-            <graph string="Purchase Analysis" type="line" sample="1">
-                <field name="date_approve" interval="day" />
-                <field name="price_subtotal" type="measure" />
-            </graph>
         </field>
     </record>
 
