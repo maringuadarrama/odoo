@@ -12,7 +12,6 @@ class AccountInvoiceReport(models.Model):
     _order = "invoice_date desc"
     _rec_name = "invoice_date"
 
-    # ==== Invoice fields ====
     company_id = fields.Many2one(
         comodel_name="res.company",
         string="Company",
@@ -23,13 +22,18 @@ class AccountInvoiceReport(models.Model):
         string="Company Currency",
         readonly=True,
     )
-    move_id = fields.Many2one("account.move", readonly=True)
     currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
     journal_id = fields.Many2one("account.journal", string="Journal", readonly=True)
     partner_id = fields.Many2one("res.partner", string="Partner", readonly=True)
     commercial_partner_id = fields.Many2one("res.partner", string="Main Partner")
     country_id = fields.Many2one("res.country", string="Country")
     invoice_user_id = fields.Many2one("res.users", string="Salesperson", readonly=True)
+    fiscal_position_id = fields.Many2one(
+        comodel_name="account.fiscal.position",
+        string="Fiscal Position",
+        readonly=True,
+    )
+    move_id = fields.Many2one("account.move", readonly=True)
     move_type = fields.Selection(
         selection=[
             ("out_invoice", "Customer Invoice"),
@@ -49,21 +53,10 @@ class AccountInvoiceReport(models.Model):
         string="Payment Status",
         readonly=True,
     )
-    fiscal_position_id = fields.Many2one(
-        comodel_name="account.fiscal.position",
-        string="Fiscal Position",
-        readonly=True,
-    )
+
     invoice_date = fields.Date(string="Invoice Date", readonly=True)
     invoice_date_due = fields.Date(string="Due Date", readonly=True)
 
-    # ==== Invoice line fields ====
-    account_id = fields.Many2one(
-        comodel_name="account.account",
-        string="Revenue/Expense Account",
-        domain=[("deprecated", "=", False)],
-        readonly=True,
-    )
     product_id = fields.Many2one(
         comodel_name="product.product",
         string="Product",
@@ -74,7 +67,19 @@ class AccountInvoiceReport(models.Model):
         string="Product Category",
         readonly=True,
     )
-    product_uom_id = fields.Many2one("uom.uom", string="Unit", readonly=True)
+    product_uom_id = fields.Many2one(
+        comodel_name="uom.uom",
+        string="Unit",
+        readonly=True,
+    )
+
+    account_id = fields.Many2one(
+        comodel_name="account.account",
+        string="Revenue/Expense Account",
+        domain=[("deprecated", "=", False)],
+        readonly=True,
+    )
+
     quantity = fields.Float(string="Product Quantity", readonly=True)
     price_subtotal = fields.Float(string="Untaxed Amount", readonly=True)
     price_subtotal_currency = fields.Float(
@@ -140,7 +145,10 @@ class AccountInvoiceReport(models.Model):
 
     def _query(self) -> SQL:
         return SQL(
-            "SELECT %s FROM %s WHERE %s", self._select(), self._from(), self._where()
+            "SELECT %s FROM %s WHERE %s",
+            self._select(),
+            self._from(),
+            self._where(),
         )
 
     @api.model
@@ -148,24 +156,26 @@ class AccountInvoiceReport(models.Model):
         return SQL(
             """
             line.id,
-            line.move_id,
-            line.product_id,
-            line.account_id,
-            line.journal_id,
             line.company_id,
             line.company_currency_id,
+            line.currency_id AS currency_id,
             line.partner_id AS commercial_partner_id,
-            account.account_type AS user_type,
-            move.state,
-            move.move_type,
             move.partner_id,
-            move.invoice_user_id,
+            COALESCE(partner.country_id, commercial_partner.country_id) AS country_id,
+            line.journal_id,
             move.fiscal_position_id,
+            move.invoice_user_id,
             move.payment_state,
-            move.invoice_date,
+            line.invoice_date,
             move.invoice_date_due,
-            uom_template.id AS product_uom_id,
+            line.move_id,
+            move.move_type,
+            move.state,
+            line.account_id,
+            account.account_type AS user_type,
+            line.product_id,
             template.categ_id AS product_category_id,
+            uom_template.id AS product_uom_id,
             (
                 line.quantity / NULLIF(COALESCE(uom_line.factor, 1)
                 / COALESCE(uom_template.factor, 1), 0.0)
@@ -233,8 +243,34 @@ class AccountInvoiceReport(models.Model):
                 WHEN move.move_type NOT IN ('out_invoice', 'out_receipt', 'out_refund')
                     THEN 0.0
                 WHEN move.move_type = 'out_refund'
-                    THEN account_currency_table.rate * (-line.balance + (line.quantity / NULLIF(COALESCE(uom_line.factor, 1) / COALESCE(uom_template.factor, 1), 0.0)) * COALESCE(product.standard_price -> line.company_id::text, to_jsonb(0.0))::float)
-                    ELSE account_currency_table.rate * (-line.balance - (line.quantity / NULLIF(COALESCE(uom_line.factor, 1) / COALESCE(uom_template.factor, 1), 0.0)) * COALESCE(product.standard_price -> line.company_id::text, to_jsonb(0.0))::float)
+                    THEN
+                        account_currency_table.rate
+                        * (
+                            -line.balance
+                            + (
+                                line.quantity
+                                / NULLIF(
+                                    COALESCE(uom_line.factor, 1)
+                                    / COALESCE(uom_template.factor, 1),
+                                    0.0
+                                )
+                            )
+                            * COALESCE(product.standard_price -> line.company_id::text, to_jsonb(0.0))::float
+                        )
+                    ELSE
+                        account_currency_table.rate
+                        * (
+                            -line.balance
+                            - (
+                                line.quantity
+                                / NULLIF(
+                                    COALESCE(uom_line.factor, 1)
+                                    / COALESCE(uom_template.factor, 1),
+                                    0.0
+                                )
+                            )
+                            * COALESCE(product.standard_price -> line.company_id::text, to_jsonb(0.0))::float
+                        )
                 END
             ) AS price_margin,
             (
@@ -252,9 +288,7 @@ class AccountInvoiceReport(models.Model):
                     END
                 )
                 * COALESCE(product.standard_price -> line.company_id::text, to_jsonb(0.0))::float
-            ) AS inventory_value,
-            COALESCE(partner.country_id, commercial_partner.country_id) AS country_id,
-            line.currency_id AS currency_id
+            ) AS inventory_value
             """,
         )
 
