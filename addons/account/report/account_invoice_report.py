@@ -12,6 +12,10 @@ class AccountInvoiceReport(models.Model):
     _order = "invoice_date desc"
     _rec_name = "invoice_date"
 
+    # ------------------------------------------------------------
+    # FIELDS
+    # ------------------------------------------------------------
+
     company_id = fields.Many2one(
         comodel_name="res.company",
         string="Company",
@@ -81,6 +85,12 @@ class AccountInvoiceReport(models.Model):
     )
 
     quantity = fields.Float(string="Product Quantity", readonly=True)
+    price_average = fields.Float(
+        string="Average Price",
+        readonly=True,
+        aggregator="avg",
+    )
+    price_margin = fields.Float(string="Margin", readonly=True)
     price_subtotal = fields.Float(string="Untaxed Amount", readonly=True)
     price_subtotal_currency = fields.Float(
         string="Untaxed Amount in Currency",
@@ -94,12 +104,6 @@ class AccountInvoiceReport(models.Model):
         string="Total in Currency",
         readonly=True,
     )
-    price_average = fields.Float(
-        string="Average Price",
-        readonly=True,
-        aggregator="avg",
-    )
-    price_margin = fields.Float(string="Margin", readonly=True)
     inventory_value = fields.Float(string="Inventory Value", readonly=True)
 
     _depends = {
@@ -297,15 +301,24 @@ class AccountInvoiceReport(models.Model):
         return SQL(
             """
             account_move_line line
-            LEFT JOIN res_partner partner ON partner.id = line.partner_id
-            LEFT JOIN product_product product ON product.id = line.product_id
-            LEFT JOIN account_account account ON account.id = line.account_id
-            LEFT JOIN product_template template ON template.id = product.product_tmpl_id
-            LEFT JOIN uom_uom uom_line ON uom_line.id = line.product_uom_id
-            LEFT JOIN uom_uom uom_template ON uom_template.id = template.uom_id
-            INNER JOIN account_move move ON move.id = line.move_id
-            LEFT JOIN res_partner commercial_partner ON commercial_partner.id = move.commercial_partner_id
-            JOIN %(currency_table)s ON account_currency_table.company_id = line.company_id
+            LEFT JOIN res_partner partner
+                ON line.partner_id=partner.id
+            LEFT JOIN account_account account
+                ON line.account_id=account.id
+            LEFT JOIN uom_uom uom_line
+                ON line.product_uom_id=uom_line.id
+            LEFT JOIN product_product product
+                ON line.product_id=product.id
+                LEFT JOIN product_template template
+                    ON product.product_tmpl_id=template.id
+                    LEFT JOIN uom_uom uom_template
+                        ON template.uom_id=uom_template.id
+            INNER JOIN account_move move
+                ON line.move_id=move.id
+                LEFT JOIN res_partner commercial_partner
+                    ON move.commercial_partner_id=commercial_partner.id
+            JOIN %(currency_table)s
+                ON line.company_id=account_currency_table.company_id
             """,
             currency_table=self.env["res.currency"]._get_simple_currency_table(
                 self.env.companies

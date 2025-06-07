@@ -204,22 +204,22 @@ class PurchaseReport(models.Model):
         return SQL(
             """
             purchase_order_line l
-            LEFT JOIN purchase_order o
-                ON o.id=l.order_id
-            LEFT JOIN res_partner partner
-                ON o.partner_id = partner.id
+            LEFT JOIN uom_uom line_uom
+                ON l.product_uom_id=line_uom.id
             LEFT JOIN product_product p
                 ON l.product_id=p.id
-            LEFT JOIN product_template t
-                ON p.product_tmpl_id=t.id
-            LEFT JOIN uom_uom product_uom
-                ON product_uom.id=t.uom_id
-            LEFT JOIN res_company c
-                ON c.id = o.company_id
-            LEFT JOIN uom_uom line_uom
-                ON line_uom.id=l.product_uom_id
-            LEFT JOIN %(currency_table)s
-                ON account_currency_table.company_id = o.company_id
+                LEFT JOIN product_template t
+                    ON p.product_tmpl_id=t.id
+                    LEFT JOIN uom_uom product_uom
+                        ON t.uom_id=product_uom.id
+            LEFT JOIN purchase_order o
+                ON l.order_id=o.id
+                LEFT JOIN res_partner partner
+                    ON o.partner_id = partner.id
+                LEFT JOIN res_company c
+                    ON o.company_id = c.id
+                LEFT JOIN %(currency_table)s
+                    ON o.company_id = account_currency_table.company_id
             """,
             currency_table=self.env["res.currency"]._get_simple_currency_table(
                 self.env.companies
@@ -229,7 +229,7 @@ class PurchaseReport(models.Model):
     def _where(self) -> SQL:
         return SQL(
             """
-                l.display_type IS NULL
+            l.display_type IS NULL
             """,
         )
 
