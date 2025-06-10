@@ -157,7 +157,7 @@
                 <field name="state" widget="badge" optional="hide" />
                 <field name="payment_state" widget="badge" optional="hide" />
                 <field name="invoice_user_id" optional="hide" widget="many2one_avatar_user" />
-                <field name="company_id" groups="base.group_multi_company" />
+                <field name="company_id" optional="hide" groups="base.group_multi_company" />
             </list>
         </field>
     </record>
