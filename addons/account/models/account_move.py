@@ -504,18 +504,6 @@ class AccountMove(models.Model):
         )
     )
 
-    invoice_payment_term_id = fields.Many2one(
-        comodel_name="account.payment.term",
-        string="Payment Terms",
-        compute="_compute_invoice_payment_term_id",
-        store=True,
-        readonly=False,
-        precompute=True,
-        inverse="_inverse_invoice_payment_term_id",
-        check_company=True,
-    )
-    needed_terms = fields.Binary(compute="_compute_needed_terms", exportable=False)
-    needed_terms_dirty = fields.Boolean(compute="_compute_needed_terms")
     # === Partner fields === #
     partner_id = fields.Many2one(
         "res.partner",
@@ -572,57 +560,18 @@ class AccountMove(models.Model):
         help="Fiscal positions are used to adapt taxes and accounts for particular "
         "customers or sales orders/invoices. The default value comes from the customer.",
     )
-
-    # === Payment fields === #
-    payment_reference = fields.Char(
-        string="Payment Reference",
-        compute="_compute_payment_reference",
+    invoice_payment_term_id = fields.Many2one(
+        comodel_name="account.payment.term",
+        string="Payment Terms",
+        compute="_compute_invoice_payment_term_id",
         store=True,
         readonly=False,
-        inverse="_inverse_payment_reference",
-        index="trigram",
-        copy=False,
-        tracking=True,
-        help="The payment reference to set on journal items.",
+        precompute=True,
+        inverse="_inverse_invoice_payment_term_id",
+        check_company=True,
     )
-    display_qr_code = fields.Boolean(
-        string="Display QR-code",
-        compute="_compute_display_qr_code",
-    )
-    qr_code_method = fields.Selection(
-        string="Payment QR-code",
-        copy=False,
-        selection=lambda self: self.env[
-            "res.partner.bank"
-        ].get_available_qr_methods_in_sequence(),
-        help="Type of QR-code to be generated for the payment of this invoice, "
-        "when printing it. If left blank, the first available and usable method "
-        "will be used.",
-    )
-
-    # === Payment widget fields === #
-    invoice_outstanding_credits_debits_widget = fields.Binary(
-        groups="account.group_account_invoice,account.group_account_readonly",
-        compute="_compute_payments_widget_to_reconcile_info",
-        exportable=False,
-    )
-    invoice_has_outstanding = fields.Boolean(
-        groups="account.group_account_invoice,account.group_account_readonly",
-        compute="_compute_payments_widget_to_reconcile_info",
-    )
-    invoice_payments_widget = fields.Binary(
-        groups="account.group_account_invoice,account.group_account_readonly",
-        compute="_compute_payments_widget_reconciled_info",
-        exportable=False,
-    )
-
-    preferred_payment_method_line_id = fields.Many2one(
-        string="Preferred Payment Method Line",
-        comodel_name="account.payment.method.line",
-        compute="_compute_preferred_payment_method_line_id",
-        store=True,
-        readonly=False,
-    )
+    needed_terms = fields.Binary(compute="_compute_needed_terms", exportable=False)
+    needed_terms_dirty = fields.Boolean(compute="_compute_needed_terms")
 
     # === Amount fields === #
     direction_sign = fields.Integer(
@@ -701,6 +650,57 @@ class AccountMove(models.Model):
         inverse="_inverse_tax_totals",
         help="Edit Tax amounts if you encounter rounding issues.",
         exportable=False,
+    )
+
+    # === Payment fields === #
+    payment_reference = fields.Char(
+        string="Payment Reference",
+        compute="_compute_payment_reference",
+        store=True,
+        readonly=False,
+        inverse="_inverse_payment_reference",
+        index="trigram",
+        copy=False,
+        tracking=True,
+        help="The payment reference to set on journal items.",
+    )
+    display_qr_code = fields.Boolean(
+        string="Display QR-code",
+        compute="_compute_display_qr_code",
+    )
+    qr_code_method = fields.Selection(
+        string="Payment QR-code",
+        copy=False,
+        selection=lambda self: self.env[
+            "res.partner.bank"
+        ].get_available_qr_methods_in_sequence(),
+        help="Type of QR-code to be generated for the payment of this invoice, "
+        "when printing it. If left blank, the first available and usable method "
+        "will be used.",
+    )
+
+    # === Payment widget fields === #
+    invoice_outstanding_credits_debits_widget = fields.Binary(
+        groups="account.group_account_invoice,account.group_account_readonly",
+        compute="_compute_payments_widget_to_reconcile_info",
+        exportable=False,
+    )
+    invoice_has_outstanding = fields.Boolean(
+        groups="account.group_account_invoice,account.group_account_readonly",
+        compute="_compute_payments_widget_to_reconcile_info",
+    )
+    invoice_payments_widget = fields.Binary(
+        groups="account.group_account_invoice,account.group_account_readonly",
+        compute="_compute_payments_widget_reconciled_info",
+        exportable=False,
+    )
+
+    preferred_payment_method_line_id = fields.Many2one(
+        string="Preferred Payment Method Line",
+        comodel_name="account.payment.method.line",
+        compute="_compute_preferred_payment_method_line_id",
+        store=True,
+        readonly=False,
     )
     payment_state = fields.Selection(
         selection=PAYMENT_STATE_SELECTION,

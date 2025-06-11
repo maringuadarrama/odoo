@@ -34,7 +34,7 @@
                     date="invoice_date" />
                 <filter name="invoice_date_due"
                     date="invoice_date_due" />
-                <filter name="later_than_a_year_ago" string="Posted Date: Last 365 days"
+                <filter name="later_than_a_year_ago" string="Invoice date: Last 365 days"
                     domain="[('invoice_date', '&gt;=', (datetime.datetime.combine(context_today() + relativedelta(days=-365), datetime.time(0,0,0))).strftime('%Y-%m-%d %H:%M:%S'))]" />
                 <group expand="1" string="Group By">
                     <filter name="partner_id" string="Partner"
@@ -142,7 +142,7 @@
                 <field name="invoice_date_due" optional="show" />
                 <field name="journal_id" optional="hide" />
                 <field name="move_type" optional="hide" />
-                <field name="move_id" string="Invoice Number" />
+                <field name="move_id" optional="show"/>
                 <field name="partner_id" optional="show" />
                 <field name="product_category_id" optional="hide" />
                 <field name="product_id" optional="show" />

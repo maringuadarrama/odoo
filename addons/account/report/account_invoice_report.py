@@ -21,23 +21,46 @@ class AccountInvoiceReport(models.Model):
         string="Company",
         readonly=True,
     )
-    company_currency_id = fields.Many2one(
-        comodel_name="res.currency",
-        string="Company Currency",
+    journal_id = fields.Many2one(
+        comodel_name="account.journal",
+        string="Journal",
         readonly=True,
     )
-    currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
-    journal_id = fields.Many2one("account.journal", string="Journal", readonly=True)
-    partner_id = fields.Many2one("res.partner", string="Partner", readonly=True)
-    commercial_partner_id = fields.Many2one("res.partner", string="Main Partner")
-    country_id = fields.Many2one("res.country", string="Country")
-    invoice_user_id = fields.Many2one("res.users", string="Salesperson", readonly=True)
+    currency_id = fields.Many2one(
+        comodel_name="res.currency",
+        string="Currency",
+        readonly=True,
+    )
+    partner_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Partner",
+        readonly=True,
+    )
+    commercial_partner_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Main Partner",
+        readonly=True,
+    )
+    country_id = fields.Many2one(
+        comodel_name="res.country",
+        string="Country",
+        readonly=True,
+    )
     fiscal_position_id = fields.Many2one(
         comodel_name="account.fiscal.position",
         string="Fiscal Position",
         readonly=True,
     )
-    move_id = fields.Many2one("account.move", readonly=True)
+    invoice_user_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Salesperson",
+        readonly=True,
+    )
+    move_id = fields.Many2one(
+        comodel_name="account.move",
+        string="Entry",
+        readonly=True,
+    )
     move_type = fields.Selection(
         selection=[
             ("out_invoice", "Customer Invoice"),
@@ -45,10 +68,15 @@ class AccountInvoiceReport(models.Model):
             ("out_refund", "Customer Credit Note"),
             ("in_refund", "Vendor Credit Note"),
         ],
+        string="Type",
         readonly=True,
     )
     state = fields.Selection(
-        selection=[("draft", "Draft"), ("posted", "Open"), ("cancel", "Cancelled")],
+        selection=[
+            ("draft", "Draft"),
+            ("posted", "Open"),
+            ("cancel", "Cancelled"),
+        ],
         string="Invoice Status",
         readonly=True,
     )
@@ -57,10 +85,8 @@ class AccountInvoiceReport(models.Model):
         string="Payment Status",
         readonly=True,
     )
-
     invoice_date = fields.Date(string="Invoice Date", readonly=True)
     invoice_date_due = fields.Date(string="Due Date", readonly=True)
-
     product_id = fields.Many2one(
         comodel_name="product.product",
         string="Product",
@@ -161,7 +187,6 @@ class AccountInvoiceReport(models.Model):
             """
             line.id,
             line.company_id,
-            line.company_currency_id,
             line.currency_id AS currency_id,
             move.commercial_partner_id,
             move.partner_id,
