@@ -110,14 +110,14 @@ class ResPartner(models.Model):
                         ("commercial_partner_id", "in", self.commercial_partner_id.ids),
                     ],
                 ),
-                ("line_ids", "any", [("untaxed_amount_to_invoice", ">", 0)]),
+                ("line_ids", "any", [("amount_to_invoice_taxexc", ">", 0)]),
                 ("state", "=", "sale"),
             ]
         )
         for (partner, currency), orders in sale_orders.grouped(
             lambda so: (so.partner_invoice_id, so.currency_id),
         ).items():
-            amount_to_invoice_sum = sum(orders.mapped("amount_to_invoice"))
+            amount_to_invoice_sum = sum(orders.mapped("amount_to_invoice_taxinc"))
             credit_company_currency = currency._convert(
                 amount_to_invoice_sum,
                 company.currency_id,
