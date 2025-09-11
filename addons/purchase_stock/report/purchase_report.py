@@ -8,9 +8,11 @@ from odoo.tools import SQL
 class PurchaseReport(models.Model):
     _inherit = "purchase.report"
 
-    picking_type_id = fields.Many2one('stock.warehouse', 'Warehouse', readonly=True)
+    picking_type_id = fields.Many2one("stock.warehouse", "Warehouse", readonly=True)
     effective_date = fields.Datetime(string="Effective Date")
-    days_to_arrival = fields.Float('Effective Days To Arrival', digits=(16, 2), readonly=True, aggregator='avg')
+    days_to_arrival = fields.Float(
+        "Effective Days To Arrival", digits=(16, 2), readonly=True, aggregator="avg"
+    )
 
     def _select(self) -> SQL:
         return SQL(
@@ -26,7 +28,8 @@ class PurchaseReport(models.Model):
                         )
                     )
                 )/(24*60*60)::decimal(16,2) as days_to_arrival
-            """, super()._select()
+            """,
+            super()._select(),
         )
 
     def _from(self) -> SQL:
@@ -53,8 +56,12 @@ class PurchaseReport(models.Model):
                         purchase.id
                 ) order_effective_date
                     ON order_effective_date.purchase_id = l.order_id
-            """, super()._from()
+            """,
+            super()._from(),
         )
 
     def _group_by(self) -> SQL:
-        return SQL("%s, spt.warehouse_id, effective_date, order_effective_date.date_done", super()._group_by())
+        return SQL(
+            "%s, spt.warehouse_id, effective_date, order_effective_date.date_done",
+            super()._group_by(),
+        )

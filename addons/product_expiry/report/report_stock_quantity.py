@@ -4,10 +4,10 @@ from odoo import models
 
 
 class ReportStockQuantity(models.Model):
-    _inherit = 'report.stock.quantity'
+    _inherit = "report.stock.quantity"
 
     _depends = {
-        'stock.quant': ['removal_date'],
+        "stock.quant": ["removal_date"],
     }
 
     def _get_product_qty_col(self):
