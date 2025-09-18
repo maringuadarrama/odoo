@@ -3472,7 +3472,7 @@ msgid "Full Synchronization:"
 msgstr "Sincronização total:"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__invoiced
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__invoiced
 msgid "Fully Invoiced"
 msgstr "Totalmente faturado"
 
@@ -3994,7 +3994,7 @@ msgid "Invoice Request"
 msgstr "Solicitação de fatura"
 
 #. module: point_of_sale
-#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_status
+#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_state
 msgid "Invoice Status"
 msgstr "Status da fatura"
 
@@ -8946,7 +8946,7 @@ msgid "To Close"
 msgstr "A fechar"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__to_invoice
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__to_invoice
 msgid "To Invoice"
 msgstr "A faturar"
 

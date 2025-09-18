@@ -3383,7 +3383,7 @@ msgid "Full Synchronization:"
 msgstr "完全同步："
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__invoiced
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__invoiced
 msgid "Fully Invoiced"
 msgstr "已开具全额结算单"
 
@@ -3897,7 +3897,7 @@ msgid "Invoice Request"
 msgstr "索取发票"
 
 #. module: point_of_sale
-#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_status
+#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_state
 msgid "Invoice Status"
 msgstr "发票状态"
 
@@ -8670,7 +8670,7 @@ msgid "To Close"
 msgstr "待关闭"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__to_invoice
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__to_invoice
 msgid "To Invoice"
 msgstr "待开票"
 

@@ -3474,7 +3474,7 @@ msgid "Full Synchronization:"
 msgstr "Đồng bộ toàn bộ:"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__invoiced
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__invoiced
 msgid "Fully Invoiced"
 msgstr "Đã xuất hoá đơn hết"
 
@@ -3997,7 +3997,7 @@ msgid "Invoice Request"
 msgstr "Yêu cầu hoá đơn"
 
 #. module: point_of_sale
-#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_status
+#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_state
 msgid "Invoice Status"
 msgstr "Trạng thái hóa đơn"
 
@@ -8916,7 +8916,7 @@ msgid "To Close"
 msgstr "Cần đóng"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__to_invoice
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__to_invoice
 msgid "To Invoice"
 msgstr "Cần xuất hoá đơn"
 
