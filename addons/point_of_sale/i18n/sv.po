@@ -3432,7 +3432,7 @@ msgid "Full Synchronization:"
 msgstr ""
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__invoiced
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__invoiced
 msgid "Fully Invoiced"
 msgstr "Fullt fakturerad"
 
@@ -3950,7 +3950,7 @@ msgid "Invoice Request"
 msgstr "Begäran om faktura"
 
 #. module: point_of_sale
-#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_status
+#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_state
 msgid "Invoice Status"
 msgstr "Fakturastatus"
 
@@ -8855,7 +8855,7 @@ msgid "To Close"
 msgstr "Att stänga"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__to_invoice
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__to_invoice
 msgid "To Invoice"
 msgstr "Att fakturera"
 

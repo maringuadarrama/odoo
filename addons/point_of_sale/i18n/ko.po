@@ -3392,7 +3392,7 @@ msgid "Full Synchronization:"
 msgstr "전체 동기화:"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__invoiced
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__invoiced
 msgid "Fully Invoiced"
 msgstr "청구서 발행 완료"
 
@@ -3908,7 +3908,7 @@ msgid "Invoice Request"
 msgstr "청구서 요청"
 
 #. module: point_of_sale
-#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_status
+#: model:ir.model.fields,field_description:point_of_sale.field_pos_order__invoice_state
 msgid "Invoice Status"
 msgstr "청구서 상태"
 
@@ -8695,7 +8695,7 @@ msgid "To Close"
 msgstr "마감 대기"
 
 #. module: point_of_sale
-#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_status__to_invoice
+#: model:ir.model.fields.selection,name:point_of_sale.selection__pos_order__invoice_state__to_invoice
 msgid "To Invoice"
 msgstr "청구서 발행 대기"
 
